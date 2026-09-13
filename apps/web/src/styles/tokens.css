@@ -1,0 +1,120 @@
+/*
+ * Design tokens (phase 0: basics). State colors follow plan §20.1 (FP-6) —
+ * StatusBadge (phase 7) will use the same variables.
+ */
+:root {
+  --color-bg: #1a1b1e;
+  --color-surface: #242528;
+  --color-text: #e6e7ea;
+  --color-muted: #9a9ca2;
+  --color-accent: #4f8ccf;
+  --color-border: #33353a;
+
+  /* Instance states (FP-6) */
+  --color-state-running: #2ea86a;
+  --color-state-stopped: #8a8d93;
+  --color-state-starting: #3d7fd6;
+  --color-state-stopping: #d6a33d;
+  --color-state-error: #d64550;
+  --color-state-crashed: #d64550;
+  --color-state-unknown: #8a8d93;
+
+  --radius: 6px;
+  --spacing-s: 8px;
+  --spacing-m: 16px;
+  --spacing-l: 24px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg: #f4f4f5;
+    --color-surface: #ffffff;
+    --color-text: #1f2023;
+    --color-muted: #6b6e75;
+    --color-border: #d7d8dc;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-m);
+  padding: var(--spacing-m) var(--spacing-l);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  gap: var(--spacing-m);
+}
+
+.nav-link {
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.main {
+  flex: 1;
+  padding: var(--spacing-l);
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: var(--spacing-s) var(--spacing-m);
+  margin: var(--spacing-m) 0 0;
+}
+
+.kv dt {
+  color: var(--color-muted);
+}
+
+.kv dd {
+  margin: 0;
+}
+
+.status-ok {
+  color: var(--color-state-running);
+  font-weight: 600;
+}
+
+.status-error {
+  color: var(--color-state-error);
+  font-weight: 600;
+}

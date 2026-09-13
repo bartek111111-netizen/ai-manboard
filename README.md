@@ -65,6 +65,64 @@ This allows the dashboard to manage different inference engines through a common
 - Local backend / process management
 - llama.cpp / llama-server
 
+## Repository Layout
+
+An npm-workspaces monorepo:
+
+```text
+packages/shared   # config layers, engine abstraction, schemas (isomorphic: Node + browser)
+apps/server       # Fastify API + process management (Node.js)
+apps/web          # React frontend (Vite, hash routing, UI in Polish via i18n)
+```
+
+## Configuration
+
+All state lives under `~/.ai-dashboard/` (override with the `AI_DASHBOARD_HOME`
+environment variable):
+
+```text
+config/global.json                  # global defaults (server, port range, engine binaries)
+config/engines/<engine>.json        # per-engine config (binary path, params)
+config/models/<model>.json          # per-model config
+config/presets/<model>/<preset>.json# saved presets (model + port + params)
+state/                              # runtime state (instances, PIDs)
+logs/                               # model logs
+.backups/                           # .bak copies from atomic writes
+```
+
+The effective configuration is a merge of six layers, highest wins, with
+per-value source tracking:
+
+**schema defaults → global → engine → model → preset → instance**
+
+## Engine Abstraction
+
+Inference engines are plugins behind a single `InferenceEngine` interface
+(`packages/shared/src/engine`). Each engine provides:
+
+- a **declarative parameter schema** (grouped params with types, defaults and
+  flags — UI forms are generated from it, no per-backend form code),
+- a **command builder** (`buildLaunch`: effective config → exact CLI command),
+- validation and **preflight** (binary check, model file, port, GPU/Vulkan),
+- readiness probing and runtime info,
+- **log classification** (known warnings, error patterns, ready markers).
+
+The first engine is `llama-server`; new backends register themselves in the
+engine registry without touching the core.
+
+## Roadmap / Status
+
+Development proceeds in phases defined in **`PLAN.md`** (source of truth);
+progress is tracked in **`STATUS.md`**. Completed so far:
+
+- **Faza 0** — skeleton (monorepo, dev tooling, i18n PL)
+- **Faza 1** — config store (atomic writes), 6-layer merge with `source` per
+  value, `/config` API, config file watch → reload
+- **Faza 2** — engine abstraction + `llama-server` module (29-param schema,
+  `buildLaunch`, preflight, `checkBinary`, `/engines` API)
+
+Next: model management → process manager → lifecycle → API/SSE → frontend.
+
 ## Development
 
 Install dependencies:
@@ -73,11 +131,16 @@ Install dependencies:
 npm install
 ```
 
-Start the development server:
+Start the development server (dashboard server + Vite):
 
 ```bash
 npm run dev
 ```
+
+- Dashboard server: `127.0.0.1:3100`
+- Web dev server: `localhost:5173` (Vite; proxies `/api` → `3100`)
+- The server honors `AI_DASHBOARD_HOME` for an isolated config directory
+  (used by tests and for trying the app with a fresh state)
 
 Build the project:
 
@@ -91,13 +154,22 @@ Run tests:
 npm test
 ```
 
+Type-check and lint:
+
+```bash
+npm run typecheck
+npm run lint
+```
+
 > Available scripts may change as development progresses.
 
-## Project Status
+## Requirements
 
-🚧 **Early development**
-
-The project is currently being actively developed. The initial focus is on establishing the architecture, model management, backend abstraction, and llama.cpp integration.
+- **Node.js** (server: current LTS+)
+- **llama.cpp** build with a working `llama-server` binary (`--version`
+  exits 0); for GPU usage the build must link **libvulkan**
+  (`llama.cpp` compiled with `-DGGML_VULKAN=1`, detected via `ldd`).
+  CPU-only usage works with any build.
 
 ## Goals
 

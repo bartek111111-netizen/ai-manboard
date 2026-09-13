@@ -1080,14 +1080,14 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - [x] 0.3 Web: React + routing (hash) + pusty layout + [API: status]
 - **Akceptacja**: `npm run dev` → widoki w przeglądarce + `status` w API. ✅ (zweryfikowane: serwer 3100 + Vite 5173, proxy `/api` działa; dodatkowo i18n PL — UI po polsku ze słownika `src/i18n`)
 
-### Faza 1 — Storage + Configuration (sesja 2)
-- [ ] 1.1 `config/store.ts`: odczyt/zapis JSON atomowy + `.bak` + walidacja plików
-- [ ] 1.2 Schematy: `global.json` (przykład §9.4), migracje/wersje
-- [ ] 1.3 `config/layers.ts`: merge 6 warstw + `source` per wartość
-- [ ] 1.4 API: `GET/PUT /config`, `GET /config` (effective)
-- [ ] 1.5 Testy unit: merge, walidacja, atomowość zapisu
-- [ ] 1.6 Watch plików config (fs `watch` + debounce) → reload + ostrzeżenie w UI (P-12)
-- **Akceptacja**: config warstw działa + testy zielone.
+### Faza 1 — Storage + Configuration (sesja 2) ✅ ZROBIONE
+- [x] 1.1 `config/store.ts`: odczyt/zapis JSON atomowy + `.bak` + walidacja plików
+- [x] 1.2 Schematy: `global.json` (przykład §9.4), migracje/wersje
+- [x] 1.3 `config/layers.ts`: merge 6 warstw + `source` per wartość
+- [x] 1.4 API: `GET/PUT /config`, `GET /config` (effective)
+- [x] 1.5 Testy unit: merge, walidacja, atomowość zapisu
+- [x] 1.6 Watch plików config (fs `watch` + debounce) → reload + ostrzeżenie w UI (P-12)
+- **Akceptacja**: config warstw działa + testy zielone. ✅ (zweryfikowane: store atomowy + `.bak`, warstwy z `source` per wartość, `GET/PUT /api/v1/config`, fs watch + debounce → reload z ostrzeżeniem w UI; 24 testy server + 12 shared zielone)
 
 ### Faza 2 — Abstrakcja engine + schemat llama-server (sesja 3)
 - [ ] 2.1 `packages/shared/engine/types.ts` (interfejs §7.1) + registry

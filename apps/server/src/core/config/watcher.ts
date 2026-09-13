@@ -39,12 +39,12 @@ export class ConfigWatcher {
       this.store.home.presetsDir,
     ];
     for (const dir of dirs) {
-      this.watchers.push(
-        watch(dir, (err) => {
-          if (err) return;
-          this.schedule();
-        }),
-      );
+      // Node 26 fs.watch: listener is (eventType: 'change' | 'rename', filename).
+      const watcher = watch(dir, () => this.schedule());
+      watcher.on('error', (err: Error) => {
+        console.error(`[dashboard] config watch error on ${dir}: ${err.message}`);
+      });
+      this.watchers.push(watcher);
     }
   }
 

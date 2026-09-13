@@ -10,13 +10,12 @@ import {
   closeSync,
   copyFileSync,
   existsSync,
-  fSync,
+  fsyncSync,
   mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
   renameSync,
-  writeFileSync,
   writeSync,
 } from 'node:fs';
 import { dirname, relative } from 'node:path';
@@ -69,7 +68,7 @@ function listIds(dir: string): string[] {
 }
 
 export class ConfigStore {
-  constructor(private readonly home: DashboardHome) {}
+  constructor(readonly home: DashboardHome) {}
 
   // ---------------------------------------------------------------- global
 
@@ -195,6 +194,7 @@ export class ConfigStore {
 
   private writeConfigFile(file: string, label: string, data: unknown): void {
     try {
+      mkdirSync(dirname(file), { recursive: true }); // e.g. presets/<modelId>/ on first preset
       const content = `${JSON.stringify(data, null, 2)}\n`;
       this.atomicWrite(file, content);
     } catch (err) {
@@ -221,7 +221,7 @@ export class ConfigStore {
     const handle = openSync(tmp, 'w');
     try {
       writeSync(handle, content);
-      fSync(handle);
+      fsyncSync(handle);
     } finally {
       closeSync(handle);
     }

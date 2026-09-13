@@ -1,7 +1,8 @@
 /**
- * REST client for the dashboard API (phase 0: status only).
+ * REST client for the dashboard API (Faza 1: status + config).
  * SSE streams are added in phase 6 (api/sse.ts).
  */
+import type { ConfigResponse } from '@ai-dashboard/shared';
 
 export interface DashboardStatus {
   name: string;
@@ -10,6 +11,8 @@ export interface DashboardStatus {
   uptimeSec: number;
   timestamp: string;
   engines: unknown[];
+  /** Config watch state (P-12). */
+  config?: ConfigResponse['state'];
 }
 
 /** Error thrown by the REST client (maps to the API error envelope). */
@@ -49,4 +52,9 @@ async function request<T>(url: string): Promise<T> {
 /** GET /api/v1/status */
 export function getStatus(): Promise<DashboardStatus> {
   return request<DashboardStatus>('/api/v1/status');
+}
+
+/** GET /api/v1/config — all layers + effective merge + watch state. */
+export function getConfig(): Promise<ConfigResponse> {
+  return request<ConfigResponse>('/api/v1/config');
 }

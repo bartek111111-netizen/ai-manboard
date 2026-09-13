@@ -12,9 +12,11 @@ export type ConfigFileKind = 'global' | 'engine' | 'model' | 'preset';
 
 /**
  * Migration table: fromVersion → transform.
- * v0 (no `version` field) is handled inline; later versions register here.
+ * v0 = file without a `version` field (legacy/manual) → v1 adds the field.
  */
-const migrations: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {};
+const migrations: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
+  0: (data) => ({ ...data, version: CURRENT_CONFIG_VERSION }),
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

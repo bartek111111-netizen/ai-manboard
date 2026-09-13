@@ -32,7 +32,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     const error =
       err instanceof AppError
         ? err
-        : new AppError('INTERNAL', err?.message ?? 'internal error', undefined, 500);
+        : new AppError('INTERNAL', err instanceof Error ? err.message : 'internal error', undefined, 500);
     reply.code(error.status).send(error.toBody());
   });
 

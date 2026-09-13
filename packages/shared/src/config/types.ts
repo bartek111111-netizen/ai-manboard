@@ -1,0 +1,98 @@
+/**
+ * Configuration layer types (CFG-1, §9.1–9.4).
+ *
+ * Every instance parameter is resolved as a merge of six layers with
+ * ascending priority: schema → global → engine → model → preset → instance.
+ * The result carries per-value provenance so the UI can show "skąd" (FC-5).
+ */
+
+/** Current config file version. Older versions are migrated (migrate.ts). */
+export const CURRENT_CONFIG_VERSION = 1;
+
+/** Layer origin labels, in ascending priority order (for docs/debugging). */
+export const CONFIG_SOURCES = [
+  'schema',
+  'global',
+  'engine',
+  'model',
+  'preset',
+  'instance',
+] as const;
+
+export type ConfigSource = (typeof CONFIG_SOURCES)[number];
+
+/** Per-parameter result of the layer merge: value + which layer supplied it. */
+export interface ResolvedParam<T = unknown> {
+  value: T;
+  source: ConfigSource;
+}
+
+/** Merged config for one (model, preset): parameter key → value + source. */
+export type ResolvedConfig = Record<string, ResolvedParam>;
+
+/**
+ * `config/global.json` — dashboard-wide settings (CFG-2, §9.4):
+ * model directories, engine binaries, ports, timeouts, security, monitoring.
+ */
+export interface GlobalConfig {
+  version: number;
+  /** Directories scanned for models (discovery). Absolute paths (S-9). */
+  modelDirs: string[];
+  /** Global parameter defaults (layer 2 of the merge). */
+  defaults: Record<string, unknown>;
+  /** Port allocation range for presets/instances (1024–65535, S-9). */
+  portRange: { start: number; end: number };
+  /** Per-engine global settings: binary path (ONB-1/ONB-2). */
+  engines: Record<string, { binary: string }>;
+  /** Dashboard HTTP server bind. */
+  server: { host: string; port: number };
+  /** Optional bearer token (S-2). `null` = off. */
+  security: { token: string | null };
+  /** Probe cadence and startup budget (FP-5). */
+  monitoring: { probeIntervalSec: number; startupTimeoutSec: number };
+  /** Log retention (FMK-2). */
+  logs: { ringLines: number; retentionFiles: number };
+}
+
+/**
+ * `config/engines/<engineId>.json` — engine layer (CFG-3):
+ * binary path override + engine-wide default parameters.
+ */
+export interface EngineConfig {
+  version: number;
+  binary: string;
+  /** Engine-wide parameter defaults (layer 3 of the merge). */
+  params: Record<string, unknown>;
+}
+
+/**
+ * `config/models/<modelId>.json` — model layer (CFG-4) plus manual
+ * metadata (FM-5) and capabilities (FM-6).
+ */
+export interface ModelConfig {
+  version: number;
+  /** Which engine runs this model (e.g. `llama-server`). */
+  engineId?: string;
+  displayName?: string;
+  description?: string;
+  tags: string[];
+  /** Free-form capability map (FM-6): e.g. `{ text: true, vision: false }`. */
+  capabilities: Record<string, boolean>;
+  /** Model-level parameter defaults (layer 4 of the merge). */
+  params: Record<string, unknown>;
+}
+
+/**
+ * `config/presets/<modelId>/<presetName>.json` — preset layer (CFG-5/6):
+ * a named (possibly partial) parameter set with its own port.
+ */
+export interface Preset {
+  version: number;
+  /** Preset name (matches the file name). */
+  name: string;
+  description?: string;
+  /** Dedicated port (1024–65535, S-9). */
+  port?: number;
+  /** Partial or full parameter overrides (layer 5 of the merge). */
+  params: Record<string, unknown>;
+}

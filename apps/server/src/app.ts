@@ -1,26 +1,47 @@
 import { existsSync, readFileSync } from 'node:fs';
 import Fastify, { type FastifyInstance, type LogLevel } from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { statusHandler } from './api/handlers/status.js';
+import { AppError, type ConfigWatchState } from '@ai-dashboard/shared';
+import { makeStatusHandler } from './api/handlers/status.js';
+import { makeConfigHandlers } from './api/handlers/config.js';
+import type { ConfigStore } from './core/config/store.js';
 import { WEB_DIST_DIR } from './web-dist.js';
 
 export interface BuildAppOptions {
   /** Web app build directory to serve (production mode); skipped when missing. */
   staticDir?: string;
+  /** Config store over `~/.ai-dashboard` (Faza 1). */
+  store: ConfigStore;
+  /** Live config watch state (P-12) — shared with the runtime watcher. */
+  getConfigState: () => ConfigWatchState;
 }
 
 /**
  * Builds the Fastify app: API routes + (in production) the built web UI.
  * Kept separate from index.ts so it can be exercised in tests (vitest).
  */
-export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
   const logLevel = process.env.AI_DASHBOARD_LOG_LEVEL;
   const app = Fastify({
     logger: logLevel ? { level: logLevel as LogLevel } : false,
   });
 
-  // API (phase 0: status only; more routes are added in later phases).
-  app.get('/api/v1/status', statusHandler);
+  // Errors → unified `{"error": {...}}` envelope (PLAN §14, §21).
+  app.setErrorHandler((err, _request, reply) => {
+    if (reply.sent) return;
+    const error =
+      err instanceof AppError
+        ? err
+        : new AppError('INTERNAL', err?.message ?? 'internal error', undefined, 500);
+    reply.code(error.status).send(error.toBody());
+  });
+
+  // API.
+  const { store, getConfigState } = options;
+  const configHandlers = makeConfigHandlers(store, getConfigState);
+  app.get('/api/v1/status', makeStatusHandler(getConfigState));
+  app.get('/api/v1/config', configHandlers.getConfig);
+  app.put('/api/v1/config/global', configHandlers.putGlobalConfig);
   // Plain liveness check (the token middleware from phase 6 will cover the API).
   app.get('/healthz', async () => ({ ok: true }));
 

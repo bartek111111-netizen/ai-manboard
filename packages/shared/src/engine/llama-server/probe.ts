@@ -1,0 +1,85 @@
+/**
+ * Runtime probes for a live llama-server (PLAN §10.2, §10.3).
+ * - isReady: `GET <base>/v1/models` with a 2 s timeout → HTTP 200 = ready.
+ * - fetchRuntimeInfo: reads `/v1/models`, `/slots`, `/metrics`, `/health`;
+ *   each is optional (older/newer builds differ — e.g. build 67672dc5 has
+ *   no `/state`, `/parallel_info`), raw responses are preserved in `extras`.
+ */
+import type { InstanceView, RuntimeInfo } from '../types.js';
+
+const PROBE_TIMEOUT_MS = 2_000;
+
+function normalizeBase(base: string): string {
+  return base.replace(/\/+$/, '');
+}
+
+async function getJson(url: string): Promise<Record<string, unknown> | unknown[] | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+    if (!res.ok) return null;
+    const body: unknown = await res.json();
+    if (body !== null && typeof body === 'object') return body as Record<string, unknown> | unknown[];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Readiness probe (FP-5): `GET /v1/models`, 2 s timeout, HTTP 200 = ready. */
+export async function isLlamaServerReady(_instance: InstanceView, base: string): Promise<boolean> {
+  const url = `${normalizeBase(base)}/v1/models`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Runtime info from the backend API (FMK-6); null when nothing is reachable. */
+export async function fetchLlamaServerRuntimeInfo(base: string): Promise<RuntimeInfo | null> {
+  const root = normalizeBase(base);
+  const info: RuntimeInfo = { extras: {} };
+  let reachable = false;
+
+  const models = await getJson(`${root}/v1/models`);
+  if (Array.isArray(models) ? models.length > 0 : models !== null) {
+    reachable = true;
+    const data = (models as Record<string, unknown>)?.data;
+    const first = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+    if (first && typeof first.id === 'string') info.modelLoaded = first.id;
+    info.extras.models = models;
+  }
+
+  const slots = await getJson(`${root}/slots`);
+  if (Array.isArray(slots)) {
+    reachable = true;
+    info.slots = {
+      total: slots.length,
+      used: slots.filter((s) => typeof s === 'object' && s !== null && 'used' in s && (s as { used?: boolean }).used === true).length,
+    };
+    info.extras.slots = slots;
+  }
+
+  const health = await getJson(`${root}/health`);
+  if (health !== null) {
+    reachable = true;
+    info.extras.health = health;
+  }
+
+  // `/metrics` (Prometheus text): availability + trimmed sample only — the
+  // full metric parsing belongs to a later phase (MVP keeps it light).
+  try {
+    const res = await fetch(`${root}/metrics`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+    if (res.ok) {
+      reachable = true;
+      const text = await res.text();
+      info.extras.metricsAvailable = true;
+      info.extras.metricsSample = text.slice(0, 2_000);
+    }
+  } catch {
+    // unavailable — ignore
+  }
+
+  return reachable ? info : null;
+}

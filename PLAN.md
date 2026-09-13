@@ -1089,18 +1089,21 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - [x] 1.6 Watch plików config (fs `watch` + debounce) → reload + ostrzeżenie w UI (P-12)
 - **Akceptacja**: config warstw działa + testy zielone. ✅ (zweryfikowane: store atomowy + `.bak`, warstwy z `source` per wartość, `GET/PUT /api/v1/config`, fs watch + debounce → reload z ostrzeżeniem w UI; 24 testy server + 12 shared zielone)
 
-### Faza 2 — Abstrakcja engine + schemat llama-server (sesja 3)
-- [ ] 2.1 `packages/shared/engine/types.ts` (interfejs §7.1) + registry
-- [ ] 2.2 `schema.ts` dla llama-server (tabela §10.1)
-- [ ] 2.3 `args.ts`: buildLaunch (config → komenda)
+### Faza 2 — Abstrakcja engine + schemat llama-server (sesja 3) ✅ ZROBIONE
+- [x] 2.1 `packages/shared/engine/types.ts` (interfejs §7.1) + registry
+- [x] 2.2 `schema.ts` dla llama-server (tabela §10.1)
+- [x] 2.3 `args.ts`: buildLaunch (config → komenda)
 - [x] 2.4 **Potwierdzenie flag (ZROBIONE 2026-07)**: `~/llama.cpp/build/bin/llama-server --help`
   + trasy HTTP (0.4.0-dev, commit 67672dc5 — build deweloperski!) → tabela
   §10.1 + §10.3 (`/state`, `/parallel_info` nie istnieją) → korekty `schema.ts`/`args.ts`
-- [ ] 2.5 `validate()` + `preflight()` (binarka, port, ścieżka)
-- [ ] 2.6 Testy unit: snapshoty komendy (per preset)
-- [ ] 2.7 API: `GET /engines`, `GET /engines/:id/schema`, `PUT /engines/:id`
+- [x] 2.5 `validate()` + `preflight()` (binarka, port, ścieżka)
+- [x] 2.6 Testy unit: snapshoty komendy (per preset)
+- [x] 2.7 API: `GET /engines`, `GET /engines/:id/schema`, `PUT /engines/:id`
   (ścieżka binarki + walidacja: `--help`, check libvulkan) + testy
 - **Akceptacja**: `buildLaunch(preset)` = poprawna komenda (sprawdzona z `--help`).
+  ✅ (snapshot presetu „szybka” = komenda z §10.1 do znaku; wszystkie emitowane flagi
+  istnieją w `--help` + pełna grupa argumentów parsuje się w realnej binarce bez
+  „unknown argument”; `PUT /engines` zrealną binarką: `versionLine` + `vulkan: true`)
 
 ### Faza 3 — Model Management (sesja 4)
 - [ ] 3.1 Discovery (skan katalogów, cache mtime, `filePatterns`)

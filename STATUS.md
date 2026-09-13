@@ -1,5 +1,42 @@
 # STATUS
 
+## Faza 2 — Abstrakcja engine + schemat llama-server — ✅ ZROBIONE
+
+Działa: abstrakcja engine (PLAN §7): `packages/shared/engine/types.ts`
+(interfejs `InferenceEngine` + typy: `ParamSchema`, `LaunchCommand`,
+`RuntimeInfo`, `PreflightResult`, `BinaryCheckResult`) + registry
+(`registerEngine`/`getEngine`/`listEngines`; moduły engine eksportowane
+podsubpath `@ai-dashboard/shared/engine` — kod node'owy nie trafia do bundla
+web); moduł `llama-server`: `schema.ts` (29 parametrów z tabeli §10.1, grupy
+UI, polskie etykiety; bool-flagi z `offFlag`/`offValue`: `--no-slots`,
+`--no-ui`, `--fit off`), `args.ts` (`buildLaunch`: reguła „flag tylko gdy
+różni się od domyślnej", `--model/--host/--port` zawsze, `cwd` = katalog
+modelu), `logpatterns.ts` (klasyfikacja: RADV=znane ostrzeżenie, OOM/CUDA/
+Vulkan=error, ready-markery: `server is listening` / `all slots are idle`),
+`probe.ts` (`/v1/models` = readiness; runtime: `/slots`, `/health`,
+`/metrics` → `extras`), `index.ts` (`validate`: model/spec-model muszą istnieć,
+port 1024–65535; `checkBinary`: exists → X_OK → `--version` exit 0 + linia
+`version:` (llama.cpp loguje do **stderr**) → libvulkan przez `ldd`/`readelf`;
+`preflight`: binarka → model → port (bind test) → gpu-layers>0 wymaga builda
+Vulkan, brak `radv` w `--version` = ostrzeżenie GPU_MARKER, nie blokuje).
+Warstwa 1 (schema-defaults) dołączyła do `buildEffective` (`source: 'schema'`).
+API: `GET /api/v1/engines` (lista + `binary`/`binarySource`: engine → global),
+`GET /engines/:id/schema`, `PUT /engines/:id` (walidacja binarki `ENGINE_BINARY_INVALID`
++ parametrów `VALIDATION_FAILED`, zapis `config/engines/<id>.json`). Testy:
+snapshot komendy presetu „szybka" = komenda z §10.1 **do znaku** (`--model
+/mnt/dane/Modele/llama-3-8b-instruct.Q8_0.gguf --host 127.0.0.1 --port 8081
+--ctx-size 4096 --n-gpu-layers 32 --threads 8 --temp 0.7 --top-p 0.8 --top-k
+20 --n-predict 512 --metrics --offline`); weryfikacja z realną binarką
+(67672dc5): wszystkie emitowane flagi w `--help`, pełna grupa argumentów
+parsuje się bez „unknown argument" (osiąga załadowanie modelu), `PUT` z
+`~/llama.cpp/build/bin/llama-server` → `versionLine: version: 0.4.0-dev
+(build 1316, commit 67672dc5)` + `vulkan: true`. 36/36 (shared) + 32/32
+(server) zielone.
+
+**Dalej:** Faza 3 — Model Management (discovery, metadata GGUF,
+capabilities, ręczne dodawanie) + warstwa 6 (instance overrides) do
+`buildEffective`.
+
 ## Faza 1 — Storage + Configuration — ✅ ZROBIONE
 
 Działa: warstwa storage/configu (§9.3/§9.4): `ConfigStore` z atomowym zapisem

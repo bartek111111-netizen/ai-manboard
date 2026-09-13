@@ -112,6 +112,22 @@ describe('buildEffective (snapshot → per (model, preset) merge)', () => {
     expect(e2['m2']['d'].threads).toEqual({ value: 4, source: 'global' });
   });
 
+  it('buildEffective accepts schema defaults (layer 1) — Faza 2', () => {
+    const schemaDefaults: Record<string, Record<string, unknown>> = {
+      'llama-server': { threads: 4, temp: 0.8, 'context-size': 4096, 'batch-size': 2048 },
+    };
+    const effective = buildEffective(snapshot, schemaDefaults);
+    const szybk = effective['m1']['szybka'];
+    // Higher layers still win over the schema layer:
+    expect(szybk.threads).toEqual({ value: 8, source: 'engine' }); // 8 (engine) beats 4 (schema)
+    expect(szybk.temp).toEqual({ value: 0.7, source: 'preset' });
+    expect(szybk['context-size']).toEqual({ value: 4096, source: 'preset' });
+    // A key present only in the schema layer surfaces with source 'schema':
+    expect(szybk['batch-size']).toEqual({ value: 2048, source: 'schema' });
+    // No schemaDefaults → no 'schema' source appears at all.
+    expect(buildEffective(snapshot).m1['szybka']['batch-size']).toBeUndefined();
+  });
+
   it('handles an empty snapshot', () => {
     const empty: ConfigSnapshot = {
       global: {

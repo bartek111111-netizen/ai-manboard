@@ -46,16 +46,24 @@ export function resolveParams(layers: readonly ConfigLayer[]): ResolvedConfig {
 
 /**
  * Builds the effective config for every (model, preset) pair from a
- * snapshot, using the layers available at Faza 1:
- * global defaults → engine → model → preset.
- * (Schema defaults and instance overrides join in later phases.)
+ * snapshot, using the layers available up to Faza 2:
+ * schema defaults (layer 1, from `schemaDefaults`) → global defaults →
+ * engine → model → preset. (Instance overrides join in Faza 4.)
+ *
+ * `schemaDefaults` maps `engineId` → `{ [paramKey]: schema default }`
+ * (built from the engine registry's `ParamSchema[].default`).
  */
-export function buildEffective(snapshot: ConfigSnapshot): Record<string, Record<string, ResolvedConfig>> {
+export function buildEffective(
+  snapshot: ConfigSnapshot,
+  schemaDefaults?: Record<string, Record<string, unknown>>,
+): Record<string, Record<string, ResolvedConfig>> {
   const result: Record<string, Record<string, ResolvedConfig>> = {};
 
   for (const [modelId, model] of Object.entries(snapshot.models)) {
     const engine = model.engineId ? snapshot.engines[model.engineId] : undefined;
+    const schemaParams = model.engineId ? schemaDefaults?.[model.engineId] : undefined;
     const baseLayers: ConfigLayer[] = [
+      ...(schemaParams ? [{ source: 'schema' as ConfigSource, params: schemaParams }] : []),
       { source: 'global', params: snapshot.global.defaults },
       ...(engine ? [{ source: 'engine' as ConfigSource, params: engine.params }] : []),
       { source: 'model', params: model.params },

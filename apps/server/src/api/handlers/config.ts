@@ -6,8 +6,17 @@
  */
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { mergeGlobalConfig, type ConfigResponse, type ConfigWatchState } from '@ai-dashboard/shared';
+import { schemaDefaultsMap } from './engines.js';
 import { buildEffective } from '../../core/config/layers.js';
 import type { ConfigStore } from '../../core/config/store.js';
+
+/**
+ * Schema defaults (layer 1) for the effective merge — from the engine
+ * registry (Faza 2). The registry is static per process, so this is cheap.
+ */
+function schemaDefaults(): Record<string, Record<string, unknown>> {
+  return schemaDefaultsMap();
+}
 
 export function makeConfigHandlers(
   store: ConfigStore,
@@ -19,7 +28,7 @@ export function makeConfigHandlers(
       const snapshot = store.snapshot();
       const response: ConfigResponse = {
         ...snapshot,
-        effective: buildEffective(snapshot),
+        effective: buildEffective(snapshot, schemaDefaults()),
         state: getConfigState(),
       };
       reply.send(response);

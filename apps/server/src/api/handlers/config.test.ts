@@ -50,6 +50,9 @@ describe('Config API (Faza 1.4: GET/PUT /api/v1/config)', () => {
     expect(body.presets[modelId]['szybka'].port).toBe(8081);
     expect(body.effective[modelId]['szybka'].temp).toEqual({ value: 0.7, source: 'preset' });
     expect(body.effective[modelId]['szybka'].threads).toEqual({ value: 16, source: 'model' });
+    // Schema defaults are layer 1 (Faza 2): keys defined nowhere else surface from there.
+    expect(body.effective[modelId]['szybka']['batch-size']).toEqual({ value: 2048, source: 'schema' });
+    expect(body.effective[modelId]['szybka']['context-size']).toEqual({ value: 0, source: 'schema' });
     expect(body.state.home).toBe(home.root);
     expect(body.state.watchActive).toBe(true);
     await app.close();

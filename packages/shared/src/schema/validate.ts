@@ -10,6 +10,7 @@ import type {
   ModelConfig,
   Preset,
 } from '../config/types.js';
+import type { ParamSchema } from '../engine/types.js';
 
 export const MIN_PORT = 1024;
 export const MAX_PORT = 65535;
@@ -182,6 +183,74 @@ export function validateModelConfig(data: unknown, modelId = '<model>'): ModelCo
     throw new AppError('CONFIG_INVALID', `models/${modelId}.json is invalid`, { problems });
   }
   return data as unknown as ModelConfig;
+}
+
+/**
+ * Validates a params object against a declarative engine schema (§7.2):
+ * unknown keys, wrong types, out-of-range values, bad enum choices.
+ * Returns a list of problems (empty = ok). Used by the API (PUT /engines/:id).
+ */
+export function validateParamsAgainstSchema(
+  schema: ParamSchema[],
+  params: Record<string, unknown>,
+): string[] {
+  const problems: string[] = [];
+  const byKey = new Map(schema.map((s) => [s.key, s]));
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    const spec = byKey.get(key);
+    if (!spec) {
+      problems.push(`${key}: unknown parameter`);
+      continue;
+    }
+    switch (spec.type) {
+      case 'int':
+        if (typeof value !== 'number' || !Number.isInteger(value)) {
+          problems.push(`${key}: must be an integer`);
+        } else {
+          if (spec.min !== undefined && value < spec.min) {
+            problems.push(`${key}: below the minimum (${spec.min})`);
+          }
+          if (spec.max !== undefined && value > spec.max) {
+            problems.push(`${key}: above the maximum (${spec.max})`);
+          }
+        }
+        break;
+      case 'float':
+        if (typeof value !== 'number') {
+          problems.push(`${key}: must be a number`);
+        } else {
+          if (spec.min !== undefined && value < spec.min) {
+            problems.push(`${key}: below the minimum (${spec.min})`);
+          }
+          if (spec.max !== undefined && value > spec.max) {
+            problems.push(`${key}: above the maximum (${spec.max})`);
+          }
+        }
+        break;
+      case 'bool':
+        if (typeof value !== 'boolean') problems.push(`${key}: must be a boolean`);
+        break;
+      case 'string':
+      case 'path-model':
+      case 'path-file':
+        if (typeof value !== 'string') problems.push(`${key}: must be a string`);
+        break;
+      case 'enum': {
+        if (spec.allowNumber && typeof value === 'number') break;
+        const allowed = spec.choices?.map((c) => c.value) ?? [];
+        if (allowed.length > 0) {
+          if (!allowed.includes(value)) {
+            problems.push(`${key}: invalid value (${String(value)}); allowed: ${allowed.join(', ')}`);
+          }
+        } else if (typeof value !== 'string') {
+          problems.push(`${key}: must be a string`);
+        }
+        break;
+      }
+    }
+  }
+  return problems;
 }
 
 /**

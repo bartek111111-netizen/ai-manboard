@@ -33,6 +33,7 @@ import type { PidRegistry } from './registry.js';
 import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn, isPidAlive } from './reconcile.js';
 import { writeAutoLog } from '../logs/store.js';
 import { readFileSync } from 'node:fs';
+import si from 'systeminformation';
 
 export interface LifecycleDeps {
   store: ConfigStore;
@@ -221,15 +222,23 @@ export class LifecycleManager {
     }
 
     try {
-      // Use /proc to read process memory
       const pid = entry.child.pid;
+
+      // Use systeminformation for CPU% and RSS
+      const procInfo = await si.processInfo(pid, 'cpu', 'mem');
+      if (procInfo.length > 0) {
+        const info = procInfo[0];
+        return {
+          cpuPct: info.cpu,
+          rssMB: Math.round(info.mem / 1024 / 1024),
+        };
+      }
+
+      // Fallback to /proc if systeminformation fails
       const procMem = readFileSync(`/proc/${pid}/status`, 'utf8');
       const rssMatch = procMem.match(/VmRSS:\s+(\d+)\s+kB/);
       const rssKB = rssMatch ? parseInt(rssMatch[1], 10) : 0;
       const rssMB = rssKB / 1024;
-
-      // CPU% is harder to get accurately without systeminformation; use a simple estimate
-      // For now, return 0 (or we could use si.processInfo later)
       return { cpuPct: 0, rssMB: Math.round(rssMB) };
     } catch {
       return { cpuPct: null, rssMB: null };

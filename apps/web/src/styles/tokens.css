@@ -1456,3 +1456,30 @@ section {
   color: var(--color-text);
   font-size: 0.9rem;
 }
+
+/* --- Preset create first (when no presets exist) --- */
+.preset-create-first {
+  display: flex;
+  gap: var(--spacing-s);
+  margin-top: var(--spacing-m);
+  padding: var(--spacing-m);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.preset-create-first .input {
+  flex: 1;
+}
+
+/* --- Dirty state (unsaved changes) --- */
+.btn-dirty {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+  font-weight: 600;
+}
+
+.btn-dirty:hover {
+  background: color-mix(in srgb, var(--color-accent) 80%, var(--color-bg));
+}

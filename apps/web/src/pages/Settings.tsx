@@ -32,6 +32,7 @@ export function Settings() {
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [pickerMode, setPickerMode] = useState<{ type: 'modelDir' | 'binary'; engineId?: string } | null>(null);
   const [hiddenModels, setHiddenModels] = useState<{ id: string; displayName: string; path: string }[]>([]);
 
@@ -75,6 +76,7 @@ export function Settings() {
   const save = (): void => {
     setBusy(true);
     setSaved(false);
+    setDirty(false);
     const body = {
       version: 1,
       modelDirs,
@@ -101,15 +103,20 @@ export function Settings() {
 
   const handlePickerSelect = (path: string): void => {
     if (pickerMode?.type === 'modelDir') {
-      if (!modelDirs.includes(path)) setModelDirs([...modelDirs, path]);
+      if (!modelDirs.includes(path)) {
+        setModelDirs([...modelDirs, path]);
+        setDirty(true);
+      }
     } else if (pickerMode?.type === 'binary' && pickerMode.engineId) {
       setBinaryMap((prev) => ({ ...prev, [pickerMode.engineId!]: path }));
+      setDirty(true);
     }
     setPickerMode(null);
   };
 
   const removeDir = (dir: string): void => {
     setModelDirs(modelDirs.filter((d) => d !== dir));
+    setDirty(true);
   };
 
   return (
@@ -170,9 +177,10 @@ export function Settings() {
                   type="text"
                   className="input"
                   value={binaryMap[eng.id] ?? ''}
-                  onChange={(e) =>
-                    setBinaryMap((prev) => ({ ...prev, [eng.id]: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setBinaryMap((prev) => ({ ...prev, [eng.id]: e.target.value }));
+                    setDirty(true);
+                  }}
                 />
                 <button
                   type="button"
@@ -275,7 +283,10 @@ export function Settings() {
             type="number"
             className="input"
             value={portStart}
-            onChange={(e) => setPortStart(Number(e.target.value))}
+            onChange={(e) => {
+              setPortStart(Number(e.target.value));
+              setDirty(true);
+            }}
           />
         </label>
         <label className="field">
@@ -284,7 +295,10 @@ export function Settings() {
             type="number"
             className="input"
             value={portEnd}
-            onChange={(e) => setPortEnd(Number(e.target.value))}
+            onChange={(e) => {
+              setPortEnd(Number(e.target.value));
+              setDirty(true);
+            }}
           />
         </label>
       </fieldset>
@@ -299,13 +313,21 @@ export function Settings() {
             className="input"
             placeholder={t('settingsTokenPlaceholder')}
             value={token}
-            onChange={(e) => setToken(e.target.value)}
+            onChange={(e) => {
+              setToken(e.target.value);
+              setDirty(true);
+            }}
           />
         </label>
       </fieldset>
 
       <div className="instance-actions">
-        <button type="button" className="btn" disabled={busy} onClick={save}>
+        <button
+          type="button"
+          className={`btn ${dirty ? 'btn-dirty' : ''}`}
+          disabled={busy}
+          onClick={save}
+        >
           {t('settingsSave')}
         </button>
         {saved && <span className="status-ok">{t('settingsSaved')}</span>}

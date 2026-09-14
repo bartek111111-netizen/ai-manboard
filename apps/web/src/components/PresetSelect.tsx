@@ -150,7 +150,22 @@ export function PresetSelect({
       <ErrorNotice message={error?.message ?? null} code={error?.code} />
 
       {presets.length === 0 ? (
-        <p className="muted">{t('presetsEmpty')}</p>
+        <>
+          <p className="muted">{t('presetsEmpty')}</p>
+          {/* Preset creation form (shown when no presets exist) */}
+          <div className="preset-create-first">
+            <input
+              type="text"
+              className="input"
+              placeholder={t('newPresetPlaceholder')}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <button type="button" className="btn" disabled={busy || newName.trim() === ''} onClick={createPreset}>
+              {t('actionNewPreset')}
+            </button>
+          </div>
+        </>
       ) : (
         <>
           {/* Top bar: preset selector + action buttons */}

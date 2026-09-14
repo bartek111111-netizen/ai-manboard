@@ -5,7 +5,7 @@ import { AddModelModal } from '../components/AddModelModal';
 import { CapabilityIcons } from '../components/CapabilityIcons';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { StatusBadge } from '../components/StatusBadge';
-import { restartInstance, startInstance, stopInstance } from '../api/client';
+import { discoverModels, restartInstance, startInstance, stopInstance } from '../api/client';
 import { t } from '../i18n';
 import { useModelData } from '../hooks/useModelData';
 import { errInfo } from '../ui/errors';

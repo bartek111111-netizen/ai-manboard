@@ -134,6 +134,7 @@ export function ModelList() {
                     <StatusBadge state={state} small />
                   </td>
                   <td className="actions">
+                    <button type="button" className="btn small" title="Ukryj" onClick={() => run(() => fetch(`/api/v1/models/${model.id}/hide`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hidden: true }) }))}>👁</button>
                     {presetName && (
                       <>
                         {!isLiveState(state) && (

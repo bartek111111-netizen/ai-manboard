@@ -33,6 +33,7 @@ export function Settings() {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pickerMode, setPickerMode] = useState<{ type: 'modelDir' | 'binary'; engineId?: string } | null>(null);
+  const [hiddenModels, setHiddenModels] = useState<{ id: string; displayName: string; path: string }[]>([]);
 
   const load = useCallback((): void => {
     Promise.all([getEngines(), getConfig()])
@@ -58,6 +59,13 @@ export function Settings() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: { gpus: GpuInfo[] }) => setGpus(data.gpus))
       .catch(() => setGpus([]));
+
+    fetch('/api/v1/models/hidden')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { models: { id: string; displayName: string; path: string }[] }) => {
+        setHiddenModels(data.models);
+      })
+      .catch(() => setHiddenModels([]));
   }, []);
 
   useEffect(() => {
@@ -177,6 +185,40 @@ export function Settings() {
             </label>
           </div>
         ))}
+      </fieldset>
+
+      {/* Hidden models */}
+      <fieldset>
+        <legend>{t('hiddenModelsHeading')}</legend>
+        {hiddenModels.length === 0 ? (
+          <p className="muted">{t('noHiddenModels')}</p>
+        ) : (
+          <div className="hidden-models-list">
+            {hiddenModels.map((model) => (
+              <div key={model.id} className="hidden-model-row">
+                <span className="hidden-model-name">{model.displayName}</span>
+                <span className="hidden-model-path">{model.path}</span>
+                <button
+                  type="button"
+                  className="btn small"
+                  onClick={() => {
+                    fetch(`/api/v1/models/${model.id}/hide`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ hidden: false }),
+                    })
+                      .then(() => {
+                        setHiddenModels(hiddenModels.filter((m) => m.id !== model.id));
+                      })
+                      .catch(() => {});
+                  }}
+                >
+                  {t('unhideModel')}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </fieldset>
 
       {/* GPU selection */}

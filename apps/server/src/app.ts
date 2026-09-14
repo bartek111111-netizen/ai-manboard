@@ -83,6 +83,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   app.get('/api/v1/models/:modelId', modelHandlers.getModel);
   app.patch('/api/v1/models/:modelId', modelHandlers.updateModel);
   app.delete('/api/v1/models/:modelId', modelHandlers.removeModel);
+  app.patch('/api/v1/models/:modelId/hide', modelHandlers.setHidden);
+  app.get('/api/v1/models/hidden', modelHandlers.listHidden);
   // Presets CRUD (Faza 6.1).
   app.get('/api/v1/models/:modelId/presets', presetHandlers.list);
   app.put('/api/v1/models/:modelId/presets/:name', presetHandlers.put);

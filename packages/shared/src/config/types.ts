@@ -90,6 +90,8 @@ export interface ModelConfig {
   origin?: 'discover' | 'manual';
   /** Model-level parameter defaults (layer 4 of the merge). `model` = file path. */
   params: Record<string, unknown>;
+  /** True when the model is hidden from the list (user chose to hide it). */
+  hidden?: boolean;
 }
 
 /**

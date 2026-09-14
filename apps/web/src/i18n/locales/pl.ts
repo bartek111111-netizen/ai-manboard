@@ -169,6 +169,12 @@ export const pl = {
   addModelDir: 'Dodaj katalog',
   removeDir: 'Usuń katalog',
 
+  // Hidden models
+  hiddenModelsHeading: 'Ukryte modele',
+  noHiddenModels: 'Brak ukrytych modeli',
+  unhideModel: 'Pokaż',
+  hideModel: 'Ukryj',
+
   // Engine status
   engineHeading: 'Engine (backendy)',
   engineConfigured: 'Skonfigurowany',

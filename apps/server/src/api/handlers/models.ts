@@ -53,5 +53,17 @@ export function makeModelHandlers(store: ConfigStore) {
       registry.remove(id);
       reply.send({ ok: true, id });
     },
+
+    /** PATCH /api/v1/models/:modelId/hide — hide or unhide a model. */
+    setHidden: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      const id = String((request.params as Record<string, string>).modelId);
+      const body = request.body as { hidden: boolean };
+      reply.send(registry.setHidden(id, body.hidden));
+    },
+
+    /** GET /api/v1/models/hidden — list hidden models. */
+    listHidden: async (_request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      reply.send({ models: registry.listHidden() });
+    },
   };
 }

@@ -90,6 +90,38 @@ body {
   margin: 0 auto;
 }
 
+/* --- Settings: hidden models --- */
+.hidden-models-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.hidden-model-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.hidden-model-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.hidden-model-path {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- Engine status cards --- */
 .engine-card {
   padding: var(--spacing-s);
@@ -365,32 +397,35 @@ body {
 }
 
 .status-dot {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--color-muted);
 }
 
 .status-dot.on {
   background: var(--color-state-running);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--color-state-running) 60%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-state-running) 70%, transparent);
 }
 
 .status-dot.off {
   background: var(--color-state-error);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-state-error) 50%, transparent);
 }
 
 .status-dot.blink {
-  background: var(--color-muted);
+  background: var(--color-state-error);
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
 @keyframes pulse-dot {
   0%, 100% {
-    box-shadow: 0 0 4px color-mix(in srgb, var(--color-muted) 40%, transparent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--color-state-error) 60%, transparent);
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 8px color-mix(in srgb, var(--color-muted) 60%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-state-error) 80%, transparent);
+    opacity: 0.7;
   }
 }
 

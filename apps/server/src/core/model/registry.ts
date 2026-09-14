@@ -28,12 +28,13 @@ export class ModelRegistry {
     private engines: InferenceEngine[],
   ) {}
 
-  /** Lists all models, sorted by display name. */
-  list(): ModelView[] {
-    return this.store
+  /** Lists visible models (excludes hidden), sorted by display name. */
+  list(includeHidden = false): ModelView[] {
+    const models = this.store
       .listModelIds()
       .map((id) => this.viewFor(id))
       .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id));
+    return includeHidden ? models : models.filter((m) => !m.hidden);
   }
 
   /** Returns one model; throws `MODEL_NOT_FOUND` when absent. */
@@ -86,6 +87,23 @@ export class ModelRegistry {
   remove(modelId: string): void {
     this.requireConfig(modelId);
     this.store.deleteModel(modelId);
+  }
+
+  /** Hides or unhides a model (toggles the `hidden` flag). */
+  setHidden(modelId: string, hidden: boolean): ModelView {
+    const current = this.requireConfig(modelId);
+    const next: ModelConfig = { ...current, hidden };
+    this.store.writeModel(modelId, next);
+    return this.viewFor(modelId);
+  }
+
+  /** Lists hidden models (for the Settings UI). */
+  listHidden(): ModelView[] {
+    return this.store
+      .listModelIds()
+      .map((id) => this.viewFor(id))
+      .filter((m) => m.hidden)
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 
   /** Manual edit (FM-5/6): merges the patch into the model config. */
@@ -163,6 +181,7 @@ export class ModelRegistry {
       sizeBytes,
       fileExists,
       origin: config.origin ?? 'manual',
+      hidden: config.hidden ?? false,
     };
   }
 }

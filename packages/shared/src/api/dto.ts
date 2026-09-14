@@ -93,6 +93,8 @@ export interface ModelView {
   fileExists: boolean;
   /** Where the model came from. */
   origin: 'discover' | 'manual';
+  /** Whether the model is hidden from the list. */
+  hidden?: boolean;
 }
 
 /** Manual add (FM-3): the only path input to the API (S-4, file picker). */

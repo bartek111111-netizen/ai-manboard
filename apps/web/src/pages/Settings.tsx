@@ -1,6 +1,6 @@
 /**
- * Settings (Faza 9.3): global config — model dirs, engine binaries, port range,
- * security token.
+ * Settings (Faza 9.3): global config — model dirs, engine binaries, GPU selection,
+ * port range, security token.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { getEngines, getConfig, putGlobalConfig } from '../api/client';
@@ -9,6 +9,15 @@ import { ErrorNotice } from '../components/ErrorNotice';
 import { t } from '../i18n';
 import { errInfo } from '../ui/errors';
 
+interface GpuInfo {
+  id: string;
+  name: string;
+  memoryTotalMB: number | null;
+  memoryUsedMB: number | null;
+  utilization: number | null;
+  driver: string;
+}
+
 export function Settings() {
   const [modelDirs, setModelDirs] = useState('');
   const [engines, setEngines] = useState<EngineInfo[]>([]);
@@ -16,6 +25,8 @@ export function Settings() {
   const [portStart, setPortStart] = useState(8080);
   const [portEnd, setPortEnd] = useState(8090);
   const [token, setToken] = useState('');
+  const [gpus, setGpus] = useState<GpuInfo[]>([]);
+  const [selectedGpu, setSelectedGpu] = useState<string | null>(null);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -24,24 +35,28 @@ export function Settings() {
     Promise.all([getEngines(), getConfig()])
       .then(([engineList, config]) => {
         setEngines(engineList);
-        // Model dirs as newline-separated text
         setModelDirs(config.global.modelDirs.join('\n'));
-        // Binary map
         const binaries: Record<string, string> = {};
         for (const eng of engineList) {
           if (eng.binary) binaries[eng.id] = eng.binary;
         }
         setBinaryMap(binaries);
-        // Port range
         setPortStart(config.global.portRange.start);
         setPortEnd(config.global.portRange.end);
-        // Token
         setToken(config.global.security.token ?? '');
         setError(null);
       })
       .catch((err: unknown) => {
         setError(errInfo(err));
       });
+
+    // Load GPUs
+    fetch('/api/v1/gpus')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { gpus: GpuInfo[] }) => {
+        setGpus(data.gpus);
+      })
+      .catch(() => setGpus([]));
   }, []);
 
   useEffect(() => {
@@ -77,6 +92,23 @@ export function Settings() {
       .finally(() => setBusy(false));
   };
 
+  const handleBrowseModelDir = (): void => {
+    const input = window.prompt(t('browseModelDirPrompt'), '/mnt/dane/');
+    if (input) {
+      const dirs = modelDirs.split('\n').filter((d) => d.trim() !== '');
+      dirs.push(input.trim());
+      setModelDirs(dirs.join('\n'));
+    }
+  };
+
+  const handleBrowseBinary = (engineId: string): void => {
+    const current = binaryMap[engineId] ?? '';
+    const input = window.prompt(t('browseBinaryPrompt'), current || '/mnt/dane/');
+    if (input) {
+      setBinaryMap((prev) => ({ ...prev, [engineId]: input.trim() }));
+    }
+  };
+
   return (
     <section className="settings-page">
       <h2>{t('settingsHeading')}</h2>
@@ -85,13 +117,18 @@ export function Settings() {
       {/* Model directories */}
       <fieldset>
         <legend>{t('settingsModelDirs')}</legend>
-        <textarea
-          className="input"
-          rows={4}
-          placeholder={t('settingsModelDirsPlaceholder')}
-          value={modelDirs}
-          onChange={(e) => setModelDirs(e.target.value)}
-        />
+        <div className="file-input-row">
+          <textarea
+            className="input"
+            rows={4}
+            placeholder={t('settingsModelDirsPlaceholder')}
+            value={modelDirs}
+            onChange={(e) => setModelDirs(e.target.value)}
+          />
+          <button type="button" className="btn small" onClick={handleBrowseModelDir}>
+            {t('browseBtn')}
+          </button>
+        </div>
       </fieldset>
 
       {/* Engine binaries */}
@@ -101,17 +138,55 @@ export function Settings() {
           <div key={eng.id} className="settings-engine">
             <label className="field">
               <span>{eng.displayName} — {t('settingsEngineBinary')}</span>
-              <input
-                type="text"
-                className="input"
-                value={binaryMap[eng.id] ?? ''}
-                onChange={(e) =>
-                  setBinaryMap((prev) => ({ ...prev, [eng.id]: e.target.value }))
-                }
-              />
+              <div className="file-input-row">
+                <input
+                  type="text"
+                  className="input"
+                  value={binaryMap[eng.id] ?? ''}
+                  onChange={(e) =>
+                    setBinaryMap((prev) => ({ ...prev, [eng.id]: e.target.value }))
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn small"
+                  onClick={() => handleBrowseBinary(eng.id)}
+                >
+                  {t('browseBtn')}
+                </button>
+              </div>
             </label>
           </div>
         ))}
+      </fieldset>
+
+      {/* GPU selection */}
+      <fieldset>
+        <legend>{t('settingsGpuSelection')}</legend>
+        {gpus.length === 0 ? (
+          <p className="muted">{t('noGpusDetected')}</p>
+        ) : (
+          gpus.map((gpu) => (
+            <label key={gpu.id} className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={selectedGpu === gpu.id}
+                onChange={() => setSelectedGpu(gpu.id)}
+              />
+              <span>
+                {gpu.name}
+                {gpu.memoryTotalMB != null && (
+                  <span className="gpu-memory-badge">
+                    {' '}{(gpu.memoryTotalMB / 1024).toFixed(0)} GB
+                  </span>
+                )}
+              </span>
+            </label>
+          ))
+        )}
+        {selectedGpu && (
+          <p className="muted small">{t('selectedGpuForModels')} {selectedGpu}</p>
+        )}
       </fieldset>
 
       {/* Port range */}

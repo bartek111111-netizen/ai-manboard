@@ -150,6 +150,13 @@ export const pl = {
   addingBtn: 'Dodawanie...',
   cancelBtn: 'Anuluj',
 
+  // Settings — GPU selection
+  settingsGpuSelection: 'Karta graficzna',
+  noGpusDetected: 'Nie wykryto GPU',
+  selectedGpuForModels: 'Wybrano GPU:',
+  browseModelDirPrompt: 'Wpisz ścieżkę do folderu z modelami:',
+  browseBinaryPrompt: 'Wpisz ścieżkę do binarki:',
+
   // System status
   systemStatusHeading: 'Status systemu',
   systemStatsHeading: 'System',

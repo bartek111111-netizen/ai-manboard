@@ -240,7 +240,8 @@ export class LifecycleManager {
       const rssKB = rssMatch ? parseInt(rssMatch[1], 10) : 0;
       const rssMB = rssKB / 1024;
       return { cpuPct: 0, rssMB: Math.round(rssMB) };
-    } catch {
+    } catch (err) {
+      console.error('Failed to get process metrics:', err);
       return { cpuPct: null, rssMB: null };
     }
   }

@@ -52,10 +52,10 @@ function buildCommandPreview(schema: ParamSchema[], values: Record<string, unkno
     }
   }
 
-  // Model path last (with --model flag)
+  // Model path last (with --model flag, consistent with other flags)
   const modelPath = values['model'];
   if (typeof modelPath === 'string' && modelPath) {
-    parts.push(`--model ${modelPath}`);
+    parts.push(`--model=${modelPath}`);
   }
 
   return parts.join(' \\\n  ');

@@ -52,13 +52,17 @@ describe('resolveInstanceId', () => {
   });
 });
 
+/** A mock registry that returns null (no instance) for all `get` calls. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock signature
+const mockRegistry = { get: (instanceId: string): { port: number } | null => null };
+
 describe('InstanceResolver', () => {
   afterEach(clearHome);
 
   it('resolves a pinned-port preset into a launch command on that port', async () => {
     const home = tempHome('resolve-pin');
     const { store } = seededStore(home);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [] });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry });
     const inst = await resolver.resolve(`${MODEL_ID}--test`);
     expect(inst.port).toBe(8081);
     expect(inst.base).toBe('http://127.0.0.1:8081');
@@ -76,7 +80,7 @@ describe('InstanceResolver', () => {
     const { store } = seededStore(home);
     const preset: Preset = { version: 1, name: 'noport', port: undefined, params: {} };
     store.writePreset(MODEL_ID, 'noport', preset);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [] });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry });
     const inst = await resolver.resolve(`${MODEL_ID}--noport`);
     expect(inst.port).toBeGreaterThanOrEqual(8080);
     expect(inst.port).toBeLessThanOrEqual(8099);
@@ -87,7 +91,7 @@ describe('InstanceResolver', () => {
     const { store } = seededStore(home);
     const preset: Preset = { version: 1, name: 'noport', params: {} };
     store.writePreset(MODEL_ID, 'noport', preset);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8080] });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8080], registry: mockRegistry });
     const inst = await resolver.resolve(`${MODEL_ID}--noport`);
     expect(inst.port).toBe(8081); // 8080 taken → next free
   });
@@ -95,7 +99,7 @@ describe('InstanceResolver', () => {
   it('throws PRESET_NOT_FOUND when the preset does not exist', async () => {
     const home = tempHome('resolve-missing');
     const { store } = seededStore(home);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [] });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry });
     await expect(resolver.resolve(`${MODEL_ID}--ghost`)).rejects.toThrowError(/preset not found/i);
   });
 
@@ -104,14 +108,14 @@ describe('InstanceResolver', () => {
     const { store } = seededStore(home);
     const preset: Preset = { version: 1, name: 'busy', port: 8085, params: {} };
     store.writePreset(MODEL_ID, 'busy', preset);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8085] });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8085], registry: mockRegistry });
     await expect(resolver.resolve(`${MODEL_ID}--busy`)).rejects.toThrowError(/8085/);
   });
 
   it('lists known instance ids', async () => {
     const home = tempHome('resolve-list');
     const { store } = seededStore(home);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [] });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry });
     expect(resolver.listIds()).toContain(`${MODEL_ID}--test`);
   });
 });

@@ -1139,14 +1139,14 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - **Akceptacja**: logi na żywo + auth działają.
 
 ### Faza 7 — Frontend: modele + start/stop (sesja 8)
-- [ ] 7.1 `ModelList` + `StatusBadge` + `CapabilityIcons`
-- [ ] 7.2 `InstancePanel` (start/stop/restart + endpoint + PID + uptime)
-- [ ] 7.3 `PresetSelect` + CRUD presetów z UI
-- [ ] 7.4 Błędy: komunikaty + akcje (per §17)
-- [ ] 7.5 Onboarding (ONB-1/ONB-2): kreator pierwszego uruchomienia (binarka +
+- [x] 7.1 `ModelList` + `StatusBadge` + `CapabilityIcons`
+- [x] 7.2 `InstancePanel` (start/stop/restart + endpoint + PID + uptime)
+- [x] 7.3 `PresetSelect` + CRUD presetów z UI
+- [x] 7.4 Błędy: komunikaty + akcje (per §17)
+- [x] 7.5 Onboarding (ONB-1/ONB-2): kreator pierwszego uruchomienia (binarka +
   katalogi modeli, file pickery, [Sprawdź]) + [Pomiń]
 - **Akceptacja**: szybka ścieżka (20.2) działa w przeglądarce; świeże
-  `AI_DASHBOARD_HOME` (bez configu) → kreator → start modelu.
+  `AI_DASHBOARD_HOME` (bez configu) → kreator → start modelu. ✅ (E2E: kreator → skan → start → `running` + endpoint)
 
 ### Faza 8 — Logi + monitoring (sesja 9)
 - [ ] 8.1 `LogViewer` (SSE) + filtry

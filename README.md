@@ -161,9 +161,13 @@ progress is tracked in **`STATUS.md`**. Completed so far:
   duplicate), SSE hub (`stream/:id/logs` + `stream/events`), full instance DTO
   (`GET /instances/:id` + metrics + logs), bearer-token auth (S-2, `?token=` for
   SSE)
+- **Faza 7** — frontend: models + start/stop — model list (table + preset select +
+  actions), instance panel (start/stop/restart + PID + uptime + endpoint, SSE live
+  state), preset CRUD (new/duplicate/delete + port edit), error notices (message +
+  action), onboarding wizard (binary + model dirs, [Sprawdź] preflight, [Pomiń])
 
-Next: frontend (per `PLAN.md` Faza 7 — `InstancePanel` with live logs from SSE,
-config editor, preset list).
+Next: logs + metrics UI (per `PLAN.md` Faza 8 — `LogViewer` from SSE, `MetricsPanel`
+with CPU/RSS/GPU), then config editor + dashboard (Faza 9), reconciler (Faza 10).
 
 ## Development
 

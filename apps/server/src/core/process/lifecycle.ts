@@ -92,6 +92,7 @@ export class LifecycleManager {
       store: deps.store,
       engines: deps.engines,
       takenPorts: () => deps.registry.takenPorts(),
+      registry: deps.registry,
     });
   }
 

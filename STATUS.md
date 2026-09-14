@@ -1,5 +1,31 @@
 # STATUS
 
+## Faza 7 — Frontend: modele + start/stop — ✅ ZROBIONE
+
+Działa: UI (React) — lista modeli, panel instancji, presety, onboarding (PLAN §22 7.1–7.5, §20).
+**ModelList (7.1):** `pages/ModelList.tsx` — tabela modeli (nazwa/engine/capabilities/
+rozmiar/preset/port/stan/akcje), preset select na wiersz, [Nowy skan] / [Dodaj model] /
+[Ustawienia]; `hooks/useModelData.ts` — fetch models + instances + presets, polling 3 s;
+`components/StatusBadge.tsx` (badge stanu z kolorem z `tokens.css`), `components/
+CapabilityIcons.tsx` (ikony możliwości: 🔤👁🎧🔧🧠🎨). **InstancePanel (7.2):**
+`components/InstancePanel.tsx` — state/PID/port/uptime/endpoint (kopiuj) + [Start] /
+[Stop] / [Restart]; polling DTO 3 s + SSE `openEventStream` (badge live). **PresetSelect
+(7.3):** `components/PresetSelect.tsx` — wybór + CRUD presetów (nowy / duplikuj / usuń,
+edycja portu); pełna forma parametrów = Faza 9. **Błędy (7.4):** `ui/errors.ts` —
+`errInfo` (message + code) + `errorAction` (sugestia dla `MODEL_NOT_FOUND` /
+`INSTANCE_LIVE` / `ENGINE_BINARY_INVALID` / `UNAUTHORIZED`); `components/ErrorNotice.tsx`
+(komunikat + "Co zrobić"). **Onboarding (7.5):** `pages/Onboarding.tsx` — kreator
+(binarka `llama-server` + [Sprawdź] preflight, katalogi modeli + [Zapisz] + [Nowy skan],
+[Pomiń]); `hooks/useOnboarding.ts` — wykrywanie (brak binarki LUB `modelDirs` puste);
+`pages/HomeView.tsx` — Onboarding albo ModelList. **Fix server:** `resolve.ts` — wyklucza
+port bieżącej instancji z `taken` (GET `/instances/:id` nie triggeruje `PORT_IN_USE`).
+Bramka: **typecheck + lint + testy zielone — 129 (server) + 15 (web) = 144/144**;
+web build OK. E2E: świeży `AI_DASHBOARD_HOME` → kreator → skan → start → `running` +
+endpoint (port 8124, PID 62, uptime 5 s).
+
+**Dalej:** Faza 8 — `LogViewer` (SSE logi) + `MetricsPanel` (CPU/RSS/GPU); Faza 9 —
+`SchemaForm` + dashboard + `Settings`; Faza 10 — reconciler + S-1 + CORS.
+
 ## Faza 6 — API uzupełnieniowe + SSE + auth — ✅ ZROBIONE
 
 Działa: API uzupełnieniowe (PLAN §22 6.1–6.5, §14.1) + SSE + token.

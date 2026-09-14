@@ -57,6 +57,8 @@ export interface InstanceResolverDeps {
   engines: InferenceEngine[];
   /** Ports already claimed by other instances (`registry.takenPorts()`). */
   takenPorts: () => number[];
+  /** The instance registry (to exclude the current instance's own port). */
+  registry: { get(instanceId: string): { port: number } | null };
 }
 
 /** Schema defaults (layer 1) per engine, built from `ParamSchema[].default`. */
@@ -124,7 +126,10 @@ export class InstanceResolver {
     const modelPath = typeof model.params?.model === 'string' ? model.params.model : '';
     if (!modelPath) throw new AppError('VALIDATION_FAILED', `model file path is missing for ${modelId}`);
 
-    const taken = this.deps.takenPorts();
+    // Exclude the current instance's own port (it may already be running on it
+    // — `getFullDto` calls `resolve` to read config, not to spawn).
+    const currentPort = this.deps.registry.get(instanceId)?.port ?? null;
+    const taken = this.deps.takenPorts().filter((p) => p !== currentPort);
     let port: number;
     if (preset.port !== undefined) {
       assertValidPort(preset.port);

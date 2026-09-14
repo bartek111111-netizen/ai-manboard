@@ -27,6 +27,7 @@ export function PresetSelect({
   const [newName, setNewName] = useState('');
   const [editParams, setEditParams] = useState<Record<string, unknown>>({});
   const [savingParams, setSavingParams] = useState(false);
+  const [autoAssign, setAutoAssign] = useState(false);
 
   const refresh = useCallback((): void => {
     getPresets(modelId)
@@ -71,8 +72,11 @@ export function PresetSelect({
   useEffect(() => {
     if (current) {
       setEditParams({ ...current.params });
+      // Auto-assign checkbox: check if this preset is the default
+      setAutoAssign(current.name === 'default');
     } else {
       setEditParams({});
+      setAutoAssign(false);
     }
   }, [selected, current]);
 
@@ -142,18 +146,55 @@ export function PresetSelect({
         <p className="muted">{t('presetsEmpty')}</p>
       ) : (
         <>
-          {/* Preset selector */}
-          <label className="field">
-            <span>{t('presetSelect')}</span>
-            <select className="preset-select" value={selected ?? ''} onChange={(e) => onSelect(e.target.value || null)}>
-              {presets.map((preset) => (
-                <option key={preset.name} value={preset.name}>
-                  {preset.name}
-                  {preset.name === 'default' ? ` (${t('defaultTag')})` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* Top bar: preset selector + action buttons */}
+          <div className="preset-toolbar">
+            <label className="field">
+              <span>{t('presetSelect')}</span>
+              <select
+                className="preset-select"
+                value={selected ?? ''}
+                onChange={(e) => onSelect(e.target.value || null)}
+              >
+                {presets.map((preset) => (
+                  <option key={preset.name} value={preset.name}>
+                    {preset.name}
+                    {preset.name === 'default' ? ` (${t('defaultTag')})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="preset-toolbar-actions">
+              <button type="button" className="btn small" disabled={busy} onClick={createPreset}>
+                {t('actionNewPreset')}
+              </button>
+              <button type="button" className="btn small" disabled={busy} onClick={createDefaultPreset}>
+                {t('actionNewDefaultPreset')}
+              </button>
+              {current && (
+                <>
+                  <button type="button" className="btn small" disabled={busy} onClick={duplicate}>
+                    {t('actionDuplicate')}
+                  </button>
+                  <button type="button" className="btn small danger" disabled={busy} onClick={remove}>
+                    {t('actionDelete')}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Auto-assign checkbox */}
+          {current && (
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={autoAssign}
+                onChange={(e) => setAutoAssign(e.target.checked)}
+              />
+              {t('autoAssign')}
+            </label>
+          )}
 
           {current && (
             <>
@@ -187,24 +228,10 @@ export function PresetSelect({
               )}
             </>
           )}
-
-          {/* Action buttons */}
-          <div className="instance-actions">
-            {current && (
-              <button type="button" className="btn small" disabled={busy} onClick={duplicate}>
-                {t('actionDuplicate')}
-              </button>
-            )}
-            {current && (
-              <button type="button" className="btn small danger" disabled={busy} onClick={remove}>
-                {t('actionDelete')}
-              </button>
-            )}
-          </div>
         </>
       )}
 
-      {/* Create new preset */}
+      {/* New preset name input (only when creating) */}
       <div className="preset-create">
         <input
           type="text"
@@ -213,11 +240,8 @@ export function PresetSelect({
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
-        <button type="button" className="btn" disabled={busy} onClick={createPreset}>
+        <button type="button" className="btn" disabled={busy || newName.trim() === ''} onClick={createPreset}>
           {t('actionNewPreset')}
-        </button>
-        <button type="button" className="btn" disabled={busy} onClick={createDefaultPreset}>
-          {t('actionNewDefaultPreset')}
         </button>
       </div>
     </section>

@@ -1375,8 +1375,8 @@ section {
 }
 
 .file-picker-entry:hover {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: var(--color-bg);
 }
 

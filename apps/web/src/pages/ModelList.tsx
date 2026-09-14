@@ -167,6 +167,7 @@ export function ModelList() {
                           <button
                             type="button"
                             className="btn small"
+                            title="Start"
                             disabled={busy}
                             onClick={() => run(() => startInstance(`${model.id}--${presetName}`))}
                           >
@@ -177,6 +178,7 @@ export function ModelList() {
                           <button
                             type="button"
                             className="btn small"
+                            title="Stop"
                             disabled={busy}
                             onClick={() => run(() => stopInstance(`${model.id}--${presetName}`))}
                           >
@@ -187,6 +189,7 @@ export function ModelList() {
                           <button
                             type="button"
                             className="btn small"
+                            title="Restart"
                             disabled={busy}
                             onClick={() => run(() => restartInstance(`${model.id}--${presetName}`))}
                           >

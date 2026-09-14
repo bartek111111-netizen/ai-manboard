@@ -13,18 +13,27 @@ export function Layout() {
   const [runningModel, setRunningModel] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getInstances(), getModels()])
-      .then(([instances, models]) => {
-        const running = instances.find((i) => i.state === 'running');
+    let cancelled = false;
+
+    const checkStatus = async () => {
+      try {
+        const [instances, models] = await Promise.all([getInstances(), getModels()]);
+        if (cancelled) return;
+        const running = instances.find((i) => i.state === 'running' || i.state === 'starting');
         if (running) {
-          // Find the model display name
           const model = models.find((m) => m.id === running.modelId);
           setRunningModel(model?.displayName ?? running.modelId);
         } else {
           setRunningModel(null);
         }
-      })
-      .catch(() => setRunningModel(null));
+      } catch {
+        if (!cancelled) setRunningModel(null);
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   return (

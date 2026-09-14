@@ -91,6 +91,10 @@ export const pl = {
   stateStarting: 'startuje',
   fieldPort: 'Port',
 
+  // Info page
+  navInfo: 'Info',
+  infoHeading: 'Informacje o aplikacji',
+
   // Detail tabs
   tabPreview: 'Podgląd',
   tabConfig: 'Konfiguracja',

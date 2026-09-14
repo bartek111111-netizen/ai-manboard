@@ -133,6 +133,7 @@ export function Sidebar() {
           {runningCount > 0 && <span className="sidebar-count">{runningCount}</span>}
         </a>
         <a href="#/settings" className="sidebar-link">{t('navSettings')}</a>
+        <a href="#/info" className="sidebar-link sidebar-info-link">ℹ️ {t('navInfo')}</a>
       </nav>
 
       <div className="sidebar-stats">

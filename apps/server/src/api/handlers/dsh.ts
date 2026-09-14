@@ -28,13 +28,13 @@ function findDshProcess(): number | null {
 
 export function registerDshHandler(app: FastifyInstance): void {
   // GET /api/v1/dsh/status — check if DSH is running
-  app.get('/api/v1/dsh/status', (req, reply) => {
+  app.get('/api/v1/dsh/status', (_req, reply) => {
     const pid = findDshProcess();
     reply.send({ running: pid !== null, pid });
   });
 
   // POST /api/v1/dsh/start — start DSH (detached)
-  app.post('/api/v1/dsh/start', (req, reply) => {
+  app.post('/api/v1/dsh/start', (_req, reply) => {
     const existing = findDshProcess();
     if (existing) {
       return reply.send({ ok: true, message: 'DSH already running', pid: existing });
@@ -52,7 +52,7 @@ export function registerDshHandler(app: FastifyInstance): void {
   });
 
   // POST /api/v1/dsh/stop — kill DSH
-  app.post('/api/v1/dsh/stop', (req, reply) => {
+  app.post('/api/v1/dsh/stop', (_req, reply) => {
     const pid = findDshProcess();
     if (!pid) {
       return reply.send({ ok: false, message: 'DSH not running' });

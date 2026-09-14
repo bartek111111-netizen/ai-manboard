@@ -50,7 +50,7 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
       {isLive && runtime && (
         <dl className="kv">
           <dt>{t('metricsModelLoaded')}</dt>
-          <dd>{runtime.modelLoaded ?? '—'}</dd>
+          <dd>{runtime.modelLoaded ? '✓' : '—'}</dd>
 
           <dt>{t('metricsContextSize')}</dt>
           <dd>{runtime.contextSize ?? '—'}</dd>

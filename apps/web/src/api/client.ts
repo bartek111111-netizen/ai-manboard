@@ -10,6 +10,8 @@ import type {
   Preset,
 } from '@ai-dashboard/shared';
 
+export type { InstanceInfo, InstanceState, ModelView, Preset };
+
 export interface DashboardStatus {
   name: string;
   version: string;

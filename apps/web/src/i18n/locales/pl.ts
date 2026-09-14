@@ -89,7 +89,6 @@ export const pl = {
   noRunningModels: 'Brak uruchomionych modeli.',
   stateRunning: 'działa',
   stateStarting: 'startuje',
-  fieldPort: 'Port',
   stateWorking: 'generuje',
   stateIdle: 'wolny',
   stateReady: 'gotowy',

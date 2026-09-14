@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { t } from '../i18n';
 import { getInstances } from '../api/client';
-import { useModelState, type ModelStateInfo } from '../hooks/useModelState';
+import { useModelState } from '../hooks/useModelState';
 import { getConfig } from '../api/client';
 
 /**

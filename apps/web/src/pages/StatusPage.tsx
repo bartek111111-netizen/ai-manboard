@@ -3,7 +3,7 @@
  * Polls every 3s for real-time updates.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { getInstances, getInstance, getModels, type InstanceInfo, type InstanceDto, type ModelInfo } from '../api/client';
+import { getInstances, getInstance, getModels, type InstanceInfo, type InstanceDto, type ModelView } from '../api/client';
 import { t } from '../i18n';
 
 const REFRESH_INTERVAL_MS = 3000;
@@ -16,17 +16,18 @@ interface ModelMetrics {
   port: number | null;
   uptimeSec: number | null;
   runtime: {
-    modelLoaded?: string | null;
-    contextSize?: number | null;
-    slots?: { used: number; total: number } | null;
-    tokensPerSec?: number | null;
+    modelLoaded?: boolean;
+    contextSize?: number;
+    slots?: { total: number; used: number };
+    tokensPerSec?: number;
+    extras: Record<string, unknown>;
   } | null;
-  process: { cpuPct: number | null; rssMB: number | null } | null;
+  process: { cpuPct: number | null; rssMB: number | null };
 }
 
 export function StatusPage() {
   const [instances, setInstances] = useState<InstanceInfo[]>([]);
-  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [models, setModels] = useState<ModelView[]>([]);
   const [metrics, setMetrics] = useState<Record<string, ModelMetrics>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

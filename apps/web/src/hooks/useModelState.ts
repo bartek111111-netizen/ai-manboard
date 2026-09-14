@@ -19,7 +19,7 @@ export interface ModelStateInfo {
 export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
   const [states, setStates] = useState<ModelStateInfo[]>([]);
 
-  const detectState = useCallback((slotsUsed: number, slotsTotal: number): ModelState => {
+  const detectState = useCallback((slotsUsed: number): ModelState => {
     if (slotsUsed === 0) return 'idle';
     if (slotsUsed > 0) return 'working';
     return 'unknown';
@@ -36,7 +36,7 @@ export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
             .then((dto: any) => {
               const slotsUsed = dto.runtime?.slots?.used ?? 0;
               const slotsTotal = dto.runtime?.slots?.total ?? 0;
-              const newState = detectState(slotsUsed, slotsTotal);
+              const newState = detectState(slotsUsed);
 
               setStates((prev) => {
                 // Remove instances that are no longer running

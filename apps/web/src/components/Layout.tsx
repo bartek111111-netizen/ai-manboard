@@ -67,10 +67,10 @@ export function Layout() {
 
   const getStateColor = (state: string): string => {
     switch (state) {
-      case 'working': return 'var(--color-state-working)';
-      case 'idle': return 'var(--color-state-idle)';
-      case 'ready': return 'var(--color-state-ready)';
-      default: return 'var(--color-muted)';
+      case 'working': return '#f5a623'; // yellow/amber = generating
+      case 'idle': return '#2ea86a'; // green = ready/idle
+      case 'ready': return '#2ea86a'; // green = ready
+      default: return '#666'; // gray = unknown
     }
   };
 
@@ -83,10 +83,6 @@ export function Layout() {
             <NavLink to="/">{t('appTitle')}</NavLink>
           </h1>
           <div className="app-header-status">
-            {/* Debug: show state count */}
-            <span className="debug-state-count">
-              states: {modelStates.length}
-            </span>
             {/* State dots per model */}
             <div className="state-dots">
               {modelStates.map((ms) => (

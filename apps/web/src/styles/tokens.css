@@ -1651,15 +1651,15 @@ section {
 }
 
 .toast-notification.state-working {
-  border-color: var(--color-state-working);
+  border-color: #f5a623;
 }
 
 .toast-notification.state-idle {
-  border-color: var(--color-state-idle);
+  border-color: #2ea86a;
 }
 
 .toast-notification.state-ready {
-  border-color: var(--color-state-ready);
+  border-color: #2ea86a;
 }
 
 @keyframes toastIn {

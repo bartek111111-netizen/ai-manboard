@@ -131,6 +131,9 @@ export const pl = {
   pathModelPlaceholder: 'ścieżka do pliku GGUF',
   advancedSection: 'Parametry zaawansowane',
 
+  // Instance resolve (Faza 10.1)
+  actionResolve: 'Rozstrzygnij',
+
   // Preset editor (Faza 9.2)
   presetEditHeading: 'Edycja presetu',
   presetSave: 'Zapisz',

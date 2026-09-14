@@ -17,6 +17,7 @@ import { ProcessManager } from './core/process/manager.js';
 import { PidRegistry } from './core/process/registry.js';
 import { SseHub } from './core/sse/hub.js';
 import { WEB_DIST_DIR } from './web-dist.js';
+import { validateSecurityConfig } from './security.js';
 
 function snapshotHash(snapshot: ConfigSnapshot): string {
   return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
@@ -35,6 +36,16 @@ async function main(): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown error';
     console.error(`[dashboard] config error — not starting: ${message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  // S-1: if the host is non-loopback, a security token is required.
+  try {
+    validateSecurityConfig(env.host, store.readGlobal().security.token);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    console.error(`[dashboard] security error — not starting: ${message}`);
     process.exitCode = 1;
     return;
   }
@@ -87,6 +98,12 @@ async function main(): Promise<void> {
   });
   const prober = new HealthProber();
   const lifecycle = new LifecycleManager({ store, engines: listEngines(), manager, registry, prober, logs });
+
+  // Faza 10.1: reconcile the registry at startup (PLAN §11.3).
+  const reconciled = lifecycle.reconcileAll();
+  if (reconciled.length > 0) {
+    console.log(`[dashboard] reconciled ${reconciled.length} instance(s): ${reconciled.join(', ')}`);
+  }
 
   const app = await buildApp({
     store,

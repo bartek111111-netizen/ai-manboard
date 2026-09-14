@@ -182,6 +182,11 @@ export function restartInstance(instanceId: string): Promise<{ instanceId: strin
   return request(`/api/v1/instances/${encodeURIComponent(instanceId)}/restart`, jsonInit('POST', {}));
 }
 
+/** POST /api/v1/instances/:instanceId/resolve — re-check PID, update state (Faza 10.1). */
+export function resolveInstance(instanceId: string): Promise<{ instanceId: string; state: InstanceState }> {
+  return request(`/api/v1/instances/${encodeURIComponent(instanceId)}/resolve`, jsonInit('POST', {}));
+}
+
 // --- presets (CFG) ---
 
 /** GET /api/v1/models/:modelId/presets */

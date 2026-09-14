@@ -173,9 +173,14 @@ progress is tracked in **`STATUS.md`**. Completed so far:
   schema: groups, types, validation, source layer), preset editing (full parameter
   form per preset, [Zapisz]/[Anuluj]), `Settings` (global: model dirs, engine
   binaries, port range, security token)
+- **Faza 10** — reconcile + hardening + docs: `reconcile.ts` (startup: live process
+  → unchanged, dead → crashed/stopped; `POST /instances/:id/resolve` for `unknown`),
+  S-1 security rule (bind ≠ loopback ⇒ required token), `gpu.ts` (sysfs/nvidia-smi),
+  `tools/e2e/run-e2e.sh` (full lifecycle: discover → preset → start → running →
+  metrics → stop)
 
-Next: reconciler + hardening + E2E (per `PLAN.md` Faza 10 — `reconcile.ts`, S-1
-security rule, GPU monitor, full E2E script, README polish).
+Project complete (PLAN 0–10 ✅). Optional extensions: full E2E with crash (kill
+process), GPU metrics in UI, CORS, docs polish.
 
 ## Development
 

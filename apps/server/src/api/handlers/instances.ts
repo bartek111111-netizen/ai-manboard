@@ -62,5 +62,12 @@ export function makeInstanceHandlers(lifecycle: LifecycleManager) {
       const state: InstanceState = await lifecycle.restart(instanceId);
       reply.send({ instanceId, state });
     },
+
+    /** POST /api/v1/instances/:instanceId/resolve → re-check PID, update state (Faza 10.1). */
+    resolve: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      const instanceId = param(request);
+      const state: InstanceState = lifecycle.resolve(instanceId);
+      reply.send({ instanceId, state });
+    },
   };
 }

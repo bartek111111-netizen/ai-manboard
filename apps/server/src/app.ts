@@ -94,6 +94,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     app.post('/api/v1/instances/:instanceId/start', instanceHandlers.start);
     app.post('/api/v1/instances/:instanceId/stop', instanceHandlers.stop);
     app.post('/api/v1/instances/:instanceId/restart', instanceHandlers.restart);
+    app.post('/api/v1/instances/:instanceId/resolve', instanceHandlers.resolve);
   }
   // SSE streams (Faza 6.2): only when the hub + manager are wired in.
   if (options.sse && options.manager) {

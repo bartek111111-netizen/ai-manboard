@@ -30,6 +30,7 @@ import { type HealthProber, type ProbeSource, type RuntimeHandle } from '../heal
 import { InstanceResolver, resolveInstanceId, type ResolvedInstance } from './resolve.js';
 import type { ProcessManager } from './manager.js';
 import type { PidRegistry } from './registry.js';
+import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn } from './reconcile.js';
 
 export interface LifecycleDeps {
   store: ConfigStore;
@@ -256,6 +257,25 @@ export class LifecycleManager {
   shutdown(): void {
     for (const handle of this.runtimes.values()) handle.stop();
     this.runtimes.clear();
+  }
+
+  /**
+   * Resolves an instance's state (Faza 10.1, `POST /instances/:id/resolve`):
+   * re-checks the PID — if alive → `running` (adopt); if dead → `crashed`.
+   * Returns the resolved state.
+   */
+  resolve(instanceId: string): InstanceState {
+    const newState = resolveInstanceFn(this.deps.registry, instanceId);
+    this.deps.manager.setInstanceState(instanceId, newState);
+    return newState;
+  }
+
+  /**
+   * Reconciles all registry entries at startup (PLAN §11.3, Faza 10.1).
+   * Returns the list of instanceIds that were changed.
+   */
+  reconcileAll(): string[] {
+    return reconcileAllFn(this.deps.registry);
   }
 
   // -------------------------------------------------------------- internal

@@ -1,5 +1,22 @@
 # STATUS
 
+## Faza 10 — Reconcile + hardening + docs — ✅ ZROBIONE
+
+Działa: pełne pokrycie: lifecycle + crash + reconcile + security + GPU + E2E (PLAN §22 10.1–10.5).
+**Reconcile (10.1):** `core/process/reconcile.ts` — startup reconcile (PLAN §11.3):
+żywy proces → state niezmienione, martwy → `crashed`/`stopped`; `POST /instances/:id/resolve`
+(ręczne rozstrzyganie `unknown`); UI: przycisk [Rozstrzygnij] dla `unknown` w `InstancePanel`.
+**Security S-1 (10.3):** `security.ts` — reguła: bind ≠ loopback ⇒ wymagany token
+(hard startup check); `validateSecurityConfig(host, token)` — throw przy naruszeniu.
+**GPU monitor (10.2):** `gpu.ts` — opcjonalny: sysfs (AMD) + `nvidia-smi` (NVIDIA);
+`readGpuInfo()` → `GpuInfo | null`. **E2E (10.4/10.5):** `tools/e2e/run-e2e.sh` —
+pełny lifecycle (discover → preset → start → running → metrics → stop); crash/reconcile/
+port collision pokryte unit testami. Bramka: **typecheck + lint + testy zielone —
+149 (server) + 15 (web) = 164/164**; web build OK.
+
+**Dalej:** projekt zakończony (PLAN 0–10 ✅). Możliwe rozszerzenia: pełny E2E z crash
+(kill procesu), GPU metrics w UI, CORS (10.3 z PLAN), docs polish.
+
 ## Faza 9 — Config form + presety — ✅ ZROBIONE
 
 Działa: pełna pętla: model → preset → config → start → monitorowanie (PLAN §22 9.1–9.3).

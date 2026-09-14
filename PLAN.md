@@ -1161,12 +1161,12 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - **Akceptacja**: pełna pętla: model → preset → config → start → monitorowanie. ✅
 
 ### Faza 10 — Reconcile + hardening + docs (sesja 11)
-- [ ] 10.1 `reconcile.ts` (§11.3) + UI dla `unknown` + `POST /instances/:id/resolve`
-- [ ] 10.2 GPU monitor (`gpu.ts`, opcjonalnie)
-- [ ] 10.3 Security: reguła S-1 (bind ≠ loopback ⇒ wymagany token) + testy (middleware z 6.4)
-- [ ] 10.4 README.md + `tools/e2e/run-e2e.sh`
-- [ ] 10.5 E2E pełny (lifecycle + crash + reconcile + kolizja portów)
-- **Akceptacja**: **kryteria ukończenia §24 spełnione.**
+- [x] 10.1 `reconcile.ts` (§11.3) + UI dla `unknown` + `POST /instances/:id/resolve`
+- [x] 10.2 GPU monitor (`gpu.ts`, opcjonalnie)
+- [x] 10.3 Security: reguła S-1 (bind ≠ loopback ⇒ wymagany token) + testy (middleware z 6.4)
+- [x] 10.4 README.md + `tools/e2e/run-e2e.sh`
+- [x] 10.5 E2E pełny (lifecycle + crash + reconcile + kolizja portów)
+- **Akceptacja**: **kryteria ukończenia §24 spełnione.** ✅
 
 > Kolejność faz 6–9 można zamienić (np. 8 przed 7), jeśli logi mają być
 > dostępne wcześniej — decyzja w sesji implementacyjnej.

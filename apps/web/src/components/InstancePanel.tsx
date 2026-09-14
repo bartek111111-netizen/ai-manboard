@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { InstanceState } from '@ai-dashboard/shared';
 import {
   getInstance,
+  resolveInstance,
   restartInstance,
   startInstance,
   stopInstance,
@@ -132,6 +133,11 @@ export function InstancePanel({ modelId, presetName }: { modelId: string; preset
         {live && (
           <button type="button" className="btn" disabled={busy} onClick={() => run(() => restartInstance(instanceId))}>
             {t('actionRestart')}
+          </button>
+        )}
+        {state === 'unknown' && (
+          <button type="button" className="btn" disabled={busy} onClick={() => run(() => resolveInstance(instanceId))}>
+            {t('actionResolve')}
           </button>
         )}
       </div>

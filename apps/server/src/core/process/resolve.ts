@@ -133,8 +133,12 @@ export class InstanceResolver {
     let port: number;
     if (preset.port !== undefined) {
       assertValidPort(preset.port);
-      assertPortFree(preset.port, global.portRange, taken);
-      port = preset.port;
+      // If the pinned port is free, use it; otherwise auto-allocate a free one
+      if (!new Set(taken).has(preset.port)) {
+        port = preset.port;
+      } else {
+        port = allocatePort(global.portRange, taken);
+      }
     } else {
       port = allocatePort(global.portRange, taken);
     }

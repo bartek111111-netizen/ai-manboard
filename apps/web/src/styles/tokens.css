@@ -90,6 +90,41 @@ body {
   margin: 0 auto;
 }
 
+/* --- Settings: model dirs list --- */
+.settings-dir-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.settings-dir-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.settings-dir-path {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.settings-dir-row .btn.danger {
+  color: var(--color-state-error);
+}
+
+/* --- Settings: GPU description --- */
+.settings-gpu-desc {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-bottom: var(--spacing-s);
+}
+
 /* --- GPU selection (Settings) --- */
 .gpu-card {
   display: flex;

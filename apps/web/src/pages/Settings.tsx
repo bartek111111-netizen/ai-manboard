@@ -1,6 +1,6 @@
 /**
- * Settings (Faza 9.3): global config — model dirs, engine binaries, GPU selection,
- * port range, security token.
+ * Settings (Faza 9.3): global config — model dirs (list), engine binaries,
+ * GPU selection, port range, security token.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { getEngines, getConfig, putGlobalConfig } from '../api/client';
@@ -21,7 +21,7 @@ interface GpuInfo {
 }
 
 export function Settings() {
-  const [modelDirs, setModelDirs] = useState('');
+  const [modelDirs, setModelDirs] = useState<string[]>([]);
   const [engines, setEngines] = useState<EngineInfo[]>([]);
   const [binaryMap, setBinaryMap] = useState<Record<string, string>>({});
   const [portStart, setPortStart] = useState(8080);
@@ -38,7 +38,7 @@ export function Settings() {
     Promise.all([getEngines(), getConfig()])
       .then(([engineList, config]) => {
         setEngines(engineList);
-        setModelDirs(config.global.modelDirs.join('\n'));
+        setModelDirs(config.global.modelDirs);
         const binaries: Record<string, string> = {};
         for (const eng of engineList) {
           if (eng.binary) binaries[eng.id] = eng.binary;
@@ -47,7 +47,6 @@ export function Settings() {
         setPortStart(config.global.portRange.start);
         setPortEnd(config.global.portRange.end);
         setToken(config.global.security.token ?? '');
-        // Load GPU preference from config
         setPreferredGpu(config.global.gpu?.preferred ?? null);
         setError(null);
       })
@@ -57,9 +56,7 @@ export function Settings() {
 
     fetch('/api/v1/gpus')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { gpus: GpuInfo[] }) => {
-        setGpus(data.gpus);
-      })
+      .then((data: { gpus: GpuInfo[] }) => setGpus(data.gpus))
       .catch(() => setGpus([]));
   }, []);
 
@@ -70,10 +67,9 @@ export function Settings() {
   const save = (): void => {
     setBusy(true);
     setSaved(false);
-    const dirs = modelDirs.split('\n').map((s) => s.trim()).filter(Boolean);
     const body = {
       version: 1,
-      modelDirs: dirs,
+      modelDirs,
       defaults: {},
       portRange: { start: portStart, end: portEnd },
       engines: Object.fromEntries(
@@ -91,21 +87,21 @@ export function Settings() {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       })
-      .catch((err: unknown) => {
-        setError(errInfo(err));
-      })
+      .catch((err: unknown) => setError(errInfo(err)))
       .finally(() => setBusy(false));
   };
 
   const handlePickerSelect = (path: string): void => {
     if (pickerMode?.type === 'modelDir') {
-      const dirs = modelDirs.split('\n').filter((d) => d.trim() !== '');
-      if (!dirs.includes(path)) dirs.push(path);
-      setModelDirs(dirs.join('\n'));
+      if (!modelDirs.includes(path)) setModelDirs([...modelDirs, path]);
     } else if (pickerMode?.type === 'binary' && pickerMode.engineId) {
       setBinaryMap((prev) => ({ ...prev, [pickerMode.engineId!]: path }));
     }
     setPickerMode(null);
+  };
+
+  const removeDir = (dir: string): void => {
+    setModelDirs(modelDirs.filter((d) => d !== dir));
   };
 
   return (
@@ -123,19 +119,33 @@ export function Settings() {
         />
       )}
 
-      {/* Model directories */}
+      {/* Model directories — list with add/remove */}
       <fieldset>
         <legend>{t('settingsModelDirs')}</legend>
-        <div className="file-input-row">
-          <textarea
-            className="input"
-            rows={4}
-            placeholder={t('settingsModelDirsPlaceholder')}
-            value={modelDirs}
-            onChange={(e) => setModelDirs(e.target.value)}
-          />
-          <button type="button" className="btn small" onClick={() => setPickerMode({ type: 'modelDir' })}>
-            {t('browseBtn')}
+        <div className="settings-dir-list">
+          {modelDirs.length === 0 ? (
+            <p className="muted">{t('noModelDirs')}</p>
+          ) : (
+            modelDirs.map((dir, idx) => (
+              <div key={idx} className="settings-dir-row">
+                <span className="settings-dir-path">{dir}</span>
+                <button
+                  type="button"
+                  className="btn small danger"
+                  onClick={() => removeDir(dir)}
+                  title={t('removeDir')}
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          )}
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => setPickerMode({ type: 'modelDir' })}
+          >
+            + {t('addModelDir')}
           </button>
         </div>
       </fieldset>

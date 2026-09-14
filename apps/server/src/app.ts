@@ -124,7 +124,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
         .type('text/html; charset=utf-8')
         .send(readFileSync(`${distDir}/index.html`, 'utf-8'));
     });
-    await app.register(fastifyStatic, { root: distDir, prefix: '/assets' });
+    await app.register(fastifyStatic, { root: distDir });
   } else {
     // Dev mode: the Vite dev server (port 5173) serves the UI and proxies /api.
     app.get('/', (_request, reply) => {

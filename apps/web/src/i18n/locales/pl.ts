@@ -164,6 +164,11 @@ export const pl = {
   emptyDir: 'Pusty folder',
   selectCurrentDir: 'Wybierz ten folder',
 
+  // Settings — model dirs list
+  noModelDirs: 'Brak katalogów — dodaj pierwszy',
+  addModelDir: 'Dodaj katalog',
+  removeDir: 'Usuń katalog',
+
   // System status
   systemStatusHeading: 'Status systemu',
   systemStatsHeading: 'System',

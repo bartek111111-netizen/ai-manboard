@@ -42,11 +42,13 @@ function buildCommandPreview(schema: ParamSchema[], values: Record<string, unkno
     lines.push(`  --model ${modelPath} \\`);
   }
 
-  // Host and port (always sent)
-  const host = values['host'] ?? '127.0.0.1';
-  const port = values['port'] ?? 8080;
-  lines.push(`  --host ${host} \\`);
-  lines.push(`  --port ${port} \\`);
+  // Host and port (only when set by user)
+  if (values['host'] !== undefined && values['host'] !== null && values['host'] !== '') {
+    lines.push(`  --host ${values['host']} \\`);
+  }
+  if (values['port'] !== undefined && values['port'] !== null && values['port'] !== '') {
+    lines.push(`  --port ${values['port']} \\`);
+  }
 
   // Other params (only when set)
   let last = false;

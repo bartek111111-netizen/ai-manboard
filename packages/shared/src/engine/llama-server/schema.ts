@@ -460,4 +460,15 @@ export const LLAMA_SERVER_SCHEMA: ParamSchema[] = [
     default: true,
     group: 'server',
   },
+  // --- chat/template
+  {
+    key: 'jinja',
+    label: 'Szablon Jinja (chat template)',
+    type: 'bool',
+    flag: '--jinja',
+    offFlag: '--no-jinja',
+    default: true,
+    group: 'chat',
+    description: 'Używa Jinja template engine dla czatu. Wiele modeli tego wymaga.',
+  },
 ];

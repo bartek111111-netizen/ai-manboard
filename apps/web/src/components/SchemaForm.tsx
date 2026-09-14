@@ -29,6 +29,7 @@ const GROUP_LABELS: Record<string, string> = {
   vision: 'Wizja (mmproj)',
   moe: 'MoE',
   server: 'Serwer',
+  chat: 'Czat (template)',
   advanced: 'Zaawansowane',
 };
 

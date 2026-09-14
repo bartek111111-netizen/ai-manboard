@@ -1,8 +1,8 @@
 /**
  * SchemaForm (Faza 9.1, §7.2): generic form rendered declaratively from
  * the engine's `ParamSchema[]`. Groups, types, validation, source layer.
+ * Includes a command preview at the top.
  */
-import { useState } from 'react';
 import type { ParamSchema } from '@ai-dashboard/shared';
 import { t } from '../i18n/index.js';
 
@@ -16,8 +16,6 @@ interface SchemaFormProps {
   errors?: Record<string, string>;
   /** Called when the user edits a value. */
   onChange: (key: string, value: unknown) => void;
-  /** Whether to show the advanced (collapsed) section. */
-  showAdvanced?: boolean;
 }
 
 /** Group label (PL). */
@@ -29,8 +27,43 @@ const GROUP_LABELS: Record<string, string> = {
   vision: 'Wizja (mmproj)',
   moe: 'MoE',
   server: 'Serwer',
-  advanced: 'Zaawansowane',
 };
+
+/** Builds a preview of the launch command from current values. */
+function buildCommandPreview(schema: ParamSchema[], values: Record<string, unknown>): string {
+  const parts: string[] = ['llama-server'];
+
+  for (const param of schema) {
+    const val = values[param.key];
+    if (val === null || val === undefined || val === '') continue;
+
+    const flag = param.flag ?? `--${param.key}`;
+    if (param.type === 'bool') {
+      // Bool: only include when true (or offFlag when false)
+      if (val === true) {
+        parts.push(flag);
+      } else if (val === false && param.offFlag) {
+        parts.push(param.offFlag);
+      }
+    } else if (param.type === 'enum') {
+      if (typeof val === 'number') {
+        parts.push(`${flag}=${val}`);
+      } else {
+        parts.push(`${flag}=${val}`);
+      }
+    } else {
+      parts.push(`${flag}=${val}`);
+    }
+  }
+
+  // Model path last
+  const modelPath = values['model'];
+  if (typeof modelPath === 'string' && modelPath) {
+    parts.push(modelPath);
+  }
+
+  return parts.join(' \\\n  ');
+}
 
 /** A single field rendered per type. */
 function Field({
@@ -47,12 +80,6 @@ function Field({
   onChange: (key: string, value: unknown) => void;
 }) {
   const set = (v: unknown) => onChange(param.key, v);
-
-  // Skip required-engine-feature params (e.g. GPU params without GPU).
-  if (param.requiresEngineFeature) {
-    // MVP: render but mark as unavailable (the real check is server-side).
-  }
-
   const fieldId = `field-${param.key}`;
 
   return (
@@ -65,7 +92,7 @@ function Field({
 
       {error && <p className="field-error">{error}</p>}
 
-      {/* Type-specific input */}
+      {/* int */}
       {param.type === 'int' && (
         <input
           id={fieldId}
@@ -73,13 +100,11 @@ function Field({
           value={value !== null && value !== undefined ? String(value) : ''}
           min={param.min}
           max={param.max}
-          onChange={(e) => {
-            const v = e.target.value === '' ? null : Number(e.target.value);
-            set(v);
-          }}
+          onChange={(e) => set(e.target.value === '' ? null : Number(e.target.value))}
         />
       )}
 
+      {/* float */}
       {param.type === 'float' && (
         <input
           id={fieldId}
@@ -88,13 +113,11 @@ function Field({
           value={value !== null && value !== undefined ? String(value) : ''}
           min={param.min}
           max={param.max}
-          onChange={(e) => {
-            const v = e.target.value === '' ? null : Number(e.target.value);
-            set(v);
-          }}
+          onChange={(e) => set(e.target.value === '' ? null : Number(e.target.value))}
         />
       )}
 
+      {/* string */}
       {param.type === 'string' && (
         <input
           id={fieldId}
@@ -104,6 +127,7 @@ function Field({
         />
       )}
 
+      {/* bool */}
       {param.type === 'bool' && (
         <input
           id={fieldId}
@@ -113,35 +137,47 @@ function Field({
         />
       )}
 
+      {/* enum (with optional number input) */}
       {param.type === 'enum' && (
-        <select
-          id={fieldId}
-          value={value !== null && value !== undefined ? String(value) : ''}
-          onChange={(e) => {
-            const v = e.target.value;
-            // gpu-layers: allowNumber → also accept arbitrary integers
-            if (param.allowNumber && v === '__number__') {
-              // Handle in a separate input (simplification: just set the string)
-              set(v);
-            } else {
-              // Try to parse as number
+        <>
+          <select
+            id={fieldId}
+            value={value !== null && value !== undefined ? String(value) : ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === '__number__' && param.allowNumber) {
+                // Don't set yet — the number input below handles it
+                return;
+              }
               const num = Number(v);
               set(Number.isNaN(num) ? v : num);
-            }
-          }}
-        >
-          <option value="">{t('enumSelect')}</option>
-          {(param.choices ?? []).map((choice) => (
-            <option key={String(choice.value)} value={String(choice.value)}>
-              {choice.label ?? String(choice.value)}
-            </option>
-          ))}
-          {param.allowNumber && (
-            <option value="__number__">{t('enumCustomNumber')}</option>
+            }}
+          >
+            <option value="">{t('enumSelect')}</option>
+            {(param.choices ?? []).map((choice) => (
+              <option key={String(choice.value)} value={String(choice.value)}>
+                {choice.label ?? String(choice.value)}
+              </option>
+            ))}
+            {param.allowNumber && (
+              <option value="__number__">{t('enumCustomNumber')}</option>
+            )}
+          </select>
+          {/* Number input for custom value */}
+          {param.allowNumber && value !== null && value !== undefined && typeof value === 'number' && (
+            <input
+              type="number"
+              className="enum-number-input"
+              value={value}
+              min={param.min}
+              max={param.max}
+              onChange={(e) => set(e.target.value === '' ? null : Number(e.target.value))}
+            />
           )}
-        </select>
+        </>
       )}
 
+      {/* path-model */}
       {param.type === 'path-model' && (
         <input
           id={fieldId}
@@ -152,6 +188,7 @@ function Field({
         />
       )}
 
+      {/* path-file */}
       {param.type === 'path-file' && (
         <input
           id={fieldId}
@@ -170,20 +207,31 @@ export function SchemaForm({
   sources,
   errors,
   onChange,
-  showAdvanced = false,
 }: SchemaFormProps) {
-  const [advancedOpen, setAdvancedOpen] = useState(showAdvanced);
+  // Command preview
+  const command = buildCommandPreview(schema, values);
 
-  // Group params by `group`
+  // Group params by `group` (exclude advanced params from the main view)
   const groups = new Map<string, ParamSchema[]>();
   for (const param of schema) {
+    if (param.advanced) continue; // advanced params shown in the collapsible section
     const arr = groups.get(param.group) ?? [];
     arr.push(param);
     groups.set(param.group, arr);
   }
 
+  // Advanced params (separate section)
+  const advancedParams = schema.filter((p) => p.advanced);
+
   return (
     <div className="schema-form">
+      {/* Command preview */}
+      <div className="command-preview">
+        <h3>{t('commandPreview')}</h3>
+        <pre className="command-preview-code">{command}</pre>
+      </div>
+
+      {/* Main groups */}
       {[...groups.entries()].map(([group, params]) => (
         <fieldset key={group} className={`schema-group group-${group}`}>
           <legend>{GROUP_LABELS[group] ?? group}</legend>
@@ -201,11 +249,19 @@ export function SchemaForm({
       ))}
 
       {/* Advanced section (collapsed by default) */}
-      {schema.some((p) => p.advanced) && (
-        <details className="schema-advanced" open={advancedOpen}>
-          <summary onClick={() => setAdvancedOpen(!advancedOpen)}>
-            {t('advancedSection')}
-          </summary>
+      {advancedParams.length > 0 && (
+        <details className="schema-advanced">
+          <summary>{t('advancedSection')}</summary>
+          {advancedParams.map((param) => (
+            <Field
+              key={param.key}
+              param={param}
+              value={values[param.key]}
+              source={sources?.[param.key]}
+              error={errors?.[param.key]}
+              onChange={onChange}
+            />
+          ))}
         </details>
       )}
     </div>

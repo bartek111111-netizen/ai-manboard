@@ -1243,3 +1243,42 @@ h3 {
 section {
   margin-bottom: var(--spacing-l);
 }
+
+/* --- Schema form: command preview --- */
+.command-preview {
+  margin-bottom: var(--spacing-l);
+  padding: var(--spacing-m);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.command-preview h3 {
+  margin: 0 0 var(--spacing-s);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.command-preview-code {
+  margin: 0;
+  padding: var(--spacing-s);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  font-family: monospace;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* --- Schema form: enum number input --- */
+.enum-number-input {
+  width: 120px;
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: monospace;
+}

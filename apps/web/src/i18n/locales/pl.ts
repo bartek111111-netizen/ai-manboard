@@ -131,6 +131,7 @@ export const pl = {
   enumCustomNumber: 'własna wartość (liczba)',
   pathModelPlaceholder: 'ścieżka do pliku GGUF',
   advancedSection: 'Parametry zaawansowane',
+  commandPreview: 'Podgląd komendy',
 
   // Instance resolve (Faza 10.1)
   actionResolve: 'Rozstrzygnij',

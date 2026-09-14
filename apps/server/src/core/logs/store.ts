@@ -10,7 +10,8 @@ import { homedir } from 'node:os';
 
 const DATA_DIR = process.env.AI_DASHBOARD_HOME ?? join(homedir(), '.ai-dashboard');
 const LOGS_DIR = join(DATA_DIR, 'logs');
-const MAX_RUNS = 5;
+const MAX_AUTO_RUNS = 3; // auto-logs keep last 3 starts
+const MAX_MANUAL_RUNS = 10; // manual saves keep up to 10
 
 /** Returns the log directory for a model. */
 export function logDir(modelId: string): string {
@@ -24,18 +25,28 @@ export function ensureLogDir(modelId: string): string {
   return dir;
 }
 
-/** Writes a new log file for a run. Returns the file path. */
-export function writeRunLog(modelId: string, content: string): string {
+/** Writes a new auto log file for a run. Keeps last 3. Returns the file path. */
+export function writeAutoLog(modelId: string, content: string): string {
   const dir = ensureLogDir(modelId);
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const filePath = join(dir, `${ts}.log`);
+  const filePath = join(dir, `auto-${ts}.log`);
   writeFileSync(filePath, content, 'utf8');
-  cleanupRuns(modelId);
+  cleanupAutoRuns(modelId);
+  return filePath;
+}
+
+/** Writes a new manual log file for a run. Keeps up to 10. Returns the file path. */
+export function writeManualLog(modelId: string, content: string): string {
+  const dir = ensureLogDir(modelId);
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filePath = join(dir, `manual-${ts}.log`);
+  writeFileSync(filePath, content, 'utf8');
+  cleanupManualRuns(modelId);
   return filePath;
 }
 
 /** Lists log files for a model (newest first). */
-export function listRunLogs(modelId: string): { file: string; ts: string; size: number }[] {
+export function listRunLogs(modelId: string): { file: string; ts: string; size: number; type: 'auto' | 'manual' }[] {
   const dir = logDir(modelId);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
@@ -43,7 +54,9 @@ export function listRunLogs(modelId: string): { file: string; ts: string; size: 
     .map((f) => {
       const full = join(dir, f);
       const st = statSync(full);
-      return { file: f, ts: f.replace('.log', ''), size: st.size };
+      const type = f.startsWith('auto-') ? 'auto' as const : 'manual' as const;
+      const ts = f.replace(/^(auto-|manual-)/, '').replace('.log', '');
+      return { file: f, ts, size: st.size, type };
     })
     .sort((a, b) => (a.ts < b.ts ? 1 : -1));
 }
@@ -72,10 +85,20 @@ export function clearModelLogs(modelId: string): void {
   }
 }
 
-/** Removes the oldest run when exceeding MAX_RUNS. */
-function cleanupRuns(modelId: string): void {
-  const logs = listRunLogs(modelId);
-  while (logs.length > MAX_RUNS) {
+/** Removes the oldest auto runs when exceeding MAX_AUTO_RUNS. */
+function cleanupAutoRuns(modelId: string): void {
+  const logs = listRunLogs(modelId).filter((l) => l.type === 'auto');
+  while (logs.length > MAX_AUTO_RUNS) {
+    const oldest = logs[logs.length - 1];
+    deleteRunLog(modelId, oldest.file);
+    logs.pop();
+  }
+}
+
+/** Removes the oldest manual runs when exceeding MAX_MANUAL_RUNS. */
+function cleanupManualRuns(modelId: string): void {
+  const logs = listRunLogs(modelId).filter((l) => l.type === 'manual');
+  while (logs.length > MAX_MANUAL_RUNS) {
     const oldest = logs[logs.length - 1];
     deleteRunLog(modelId, oldest.file);
     logs.pop();

@@ -15,6 +15,7 @@ interface RunLog {
   file: string;
   ts: string;
   size: number;
+  type: 'auto' | 'manual';
 }
 
 interface LogViewerProps {
@@ -166,6 +167,7 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
                   className="log-saved-btn"
                   onClick={() => loadSavedLog(log.file)}
                 >
+                  {log.type === 'auto' ? '🤖 ' : '📝 '}
                   {new Date(log.ts.replace(/-/g, ':')).toLocaleString()}
                 </button>
                 <button type="button" className="btn small" onClick={() => deleteSavedLog(log.file)}>×</button>

@@ -4,7 +4,7 @@
  * DELETE /api/v1/models/:id/logs — clear all logs for a model.
  */
 import { FastifyInstance } from 'fastify';
-import { listRunLogs, readRunLog, deleteRunLog, clearModelLogs, writeRunLog } from '../../core/logs/store.js';
+import { listRunLogs, readRunLog, deleteRunLog, clearModelLogs, writeManualLog, writeAutoLog } from '../../core/logs/store.js';
 
 export function registerLogsHandler(app: FastifyInstance): void {
   app.get<{ params: { id: string } }>(
@@ -15,10 +15,11 @@ export function registerLogsHandler(app: FastifyInstance): void {
     },
   );
 
-  app.post<{ params: { id: string }; body: { content: string } }>(
+  app.post<{ params: { id: string }; body: { content: string; auto?: boolean } }>(
     '/api/v1/models/:id/logs',
     (req, reply) => {
-      const filePath = writeRunLog(req.params.id, req.body.content);
+      const writeFn = req.body.auto ? writeAutoLog : writeManualLog;
+      const filePath = writeFn(req.params.id, req.body.content);
       return reply.send({ ok: true, file: filePath.split('/').pop() ?? null });
     },
   );

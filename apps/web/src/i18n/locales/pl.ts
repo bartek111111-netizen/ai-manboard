@@ -122,13 +122,13 @@ export const pl = {
 
   // MetricsPanel (Faza 8.2)
   metricsHeading: 'Metryki',
-  metricsModelLoaded: 'Model',
-  metricsContextSize: 'Context',
-  metricsSlots: 'Sloty',
-  metricsTokensPerSec: 'Tokens/s',
-  metricsGpuMemory: 'GPU RAM',
+  metricsModelLoaded: 'Załadowany model',
+  metricsContextSize: 'Rozmiar kontekstu',
+  metricsSlots: 'Sloty (używane/total)',
+  metricsTokensPerSec: 'Szybkość generowania (tokens/s)',
+  metricsGpuMemory: 'Pamięć GPU',
   metricsCpu: 'CPU procesu',
-  metricsRss: 'RAM procesu',
+  metricsRss: 'Pamięć RAM procesu',
   metricsNotLive: 'Metryki dostępne tylko dla uruchomionej instancji.',
 
   // SchemaForm (Faza 9.1)

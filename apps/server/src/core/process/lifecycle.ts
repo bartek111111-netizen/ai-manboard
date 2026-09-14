@@ -31,6 +31,7 @@ import { InstanceResolver, resolveInstanceId, type ResolvedInstance } from './re
 import type { ProcessManager } from './manager.js';
 import type { PidRegistry } from './registry.js';
 import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn, isPidAlive } from './reconcile.js';
+import { writeAutoLog } from '../logs/store.js';
 
 export interface LifecycleDeps {
   store: ConfigStore;
@@ -252,6 +253,21 @@ export class LifecycleManager {
         // Child already gone (startup timeout) — settle the registry.
         this.deps.manager.setInstanceState(instanceId, 'stopped');
       }
+    }
+    // Auto-save logs when stopping
+    this.autoSaveLogs(instanceId);
+  }
+
+  /** Saves the instance's logs to disk (auto-log, keeps last 3). */
+  private autoSaveLogs(instanceId: string): void {
+    try {
+      const logs = this.deps.manager.getLogs(instanceId);
+      if (logs.length === 0) return;
+      const modelId = instanceId.split('--')[0];
+      const content = logs.map((l) => `[${new Date(l.ts).toISOString()}] ${l.line}`).join('\n');
+      writeAutoLog(modelId, content);
+    } catch {
+      // Best-effort — don't fail the stop on log errors
     }
   }
 

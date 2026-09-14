@@ -1,6 +1,6 @@
 /**
  * GPU monitoring (Faza 10.2): reads GPU memory from sysfs (Linux AMD GPUs)
- * or `nvidia-smi` (NVIDIA).
+ * or `nvidia-smi` (NVIDIA). Caches detection to avoid repeated failures.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -14,6 +14,43 @@ export interface GpuInfo {
   memoryTotalMB?: number | null;
   /** Utilization percentage (null when not available). */
   utilization?: number | null;
+}
+
+/** Cached result of GPU source detection (avoid repeated nvidia-smi failures). */
+let gpuSourceCache: 'sysfs' | 'nvidia' | 'none' | null = null;
+
+/** Detects which GPU source is available (cached after first detection). */
+function detectGpuSource(): 'sysfs' | 'nvidia' | 'none' {
+  if (gpuSourceCache !== null) return gpuSourceCache;
+
+  // Check if nvidia-smi exists (only once)
+  let hasNvidia = false;
+  try {
+    execSync('nvidia-smi -L', { timeout: 2000, stdio: 'ignore' });
+    hasNvidia = true;
+  } catch {
+    // nvidia-smi not available
+  }
+
+  // Check if AMD sysfs exists (only once)
+  let hasSysfs = false;
+  try {
+    const cards = readdirSync('/sys/class/drm').filter((n) => /^card\d+$/.test(n));
+    for (const card of cards) {
+      try {
+        readFileSync(`/sys/class/drm/${card}/device/mem_info_vram_total`, 'utf8');
+        hasSysfs = true;
+        break;
+      } catch {
+        // this card doesn't have the file
+      }
+    }
+  } catch {
+    // no /sys/class/drm
+  }
+
+  gpuSourceCache = hasSysfs ? 'sysfs' : hasNvidia ? 'nvidia' : 'none';
+  return gpuSourceCache;
 }
 
 /**
@@ -51,12 +88,20 @@ export function readGpuFromSysfs(): GpuInfo | null {
           // utilization not available
         }
 
-        // Get GPU name from uevent (PCI_ID → human-readable)
+        // Get GPU name from lspci (cached)
         let name = 'AMD GPU';
         try {
           const uevent = readFileSync(`${devDir}/uevent`, 'utf8');
-          const pciId = uevent.match(/PCI_ID=([0-9a-f:.]+)/)?.[1] ?? '';
-          if (pciId) name = `AMD GPU (${pciId})`;
+          const pciSlot = uevent.match(/PCI_SLOT_NAME=([0-9a-f:.]+)/)?.[1] ?? '';
+          if (pciSlot) {
+            try {
+              const output = execSync(`lspci -s ${pciSlot}`, { timeout: 1000 }).toString().trim();
+              const match = output.match(/: (.+?)(?: \(rev|$)/);
+              name = match?.[1]?.trim() ?? `AMD GPU (${pciSlot})`;
+            } catch {
+              // lspci failed
+            }
+          }
         } catch {
           // no uevent
         }
@@ -103,9 +148,17 @@ export function readGpuFromNvidiaSmi(): GpuInfo | null {
 }
 
 /**
- * Reads GPU info from all available sources. Tries sysfs (AMD) first,
- * then `nvidia-smi` (NVIDIA). Returns null when no GPU is detected.
+ * Reads GPU info from the detected source. Uses cached detection to avoid
+ * repeated `nvidia-smi` failures on systems without NVIDIA GPUs.
  */
 export function readGpuInfo(): GpuInfo | null {
-  return readGpuFromSysfs() ?? readGpuFromNvidiaSmi();
+  const source = detectGpuSource();
+  switch (source) {
+    case 'sysfs':
+      return readGpuFromSysfs();
+    case 'nvidia':
+      return readGpuFromNvidiaSmi();
+    case 'none':
+      return null;
+  }
 }

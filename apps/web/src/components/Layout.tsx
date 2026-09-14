@@ -31,6 +31,10 @@ export function Layout() {
   useEffect(() => {
     modelStates.forEach((ms) => {
       const prev = prevStates.current[ms.instanceId];
+      // Log state changes for debugging
+      if (prev !== ms.state) {
+        console.log(`State change: ${ms.preset} ${prev ?? 'new'} → ${ms.state}`);
+      }
       if (prev && prev !== ms.state) {
         const stateLabel = ms.state === 'working' ? t('stateWorking') : ms.state === 'idle' ? t('stateIdle') : t('stateReady');
         setToast({ message: `${ms.preset}: ${stateLabel}`, state: ms.state });

@@ -75,9 +75,9 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
           {runtime.extras?.workTimeSec !== undefined && dto?.uptimeSec !== null && dto?.uptimeSec !== undefined && (
             <>
               <dt>{t('metricsWorkTime')}</dt>
-              <dd>{formatUptime(runtime.extras.workTimeSec as number)}</dd>
+              <dd>{(runtime.extras.workTimeSec as number) > 0 ? formatUptime(runtime.extras.workTimeSec as number) : '—'}</dd>
               <dt>{t('metricsWorkPct')}</dt>
-              <dd>{((runtime.extras.workTimeSec as number) / dto.uptimeSec * 100).toFixed(1)}%</dd>
+              <dd>{(runtime.extras.workTimeSec as number) > 0 ? ((runtime.extras.workTimeSec as number) / dto.uptimeSec * 100).toFixed(1) + '%' : '—'}</dd>
             </>
           )}
 

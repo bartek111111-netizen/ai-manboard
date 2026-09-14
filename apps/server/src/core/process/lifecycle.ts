@@ -225,16 +225,16 @@ export class LifecycleManager {
       const pid = entry.child.pid;
 
       // Use systeminformation for CPU% and RSS
-      const procInfo = await si.processInfo(pid, 'cpu', 'mem');
-      if (procInfo.length > 0) {
-        const info = procInfo[0];
+      const allProcs = await si.processes();
+      const proc = allProcs.find((p: Record<string, unknown>) => p.pid === pid);
+      if (proc) {
         return {
-          cpuPct: info.cpu,
-          rssMB: Math.round(info.mem / 1024 / 1024),
+          cpuPct: proc.cpu,
+          rssMB: Math.round(proc.mem / 1024 / 1024),
         };
       }
 
-      // Fallback to /proc if systeminformation fails
+      // Fallback to /proc if not found
       const procMem = readFileSync(`/proc/${pid}/status`, 'utf8');
       const rssMatch = procMem.match(/VmRSS:\s+(\d+)\s+kB/);
       const rssKB = rssMatch ? parseInt(rssMatch[1], 10) : 0;

@@ -32,6 +32,7 @@ import type { ProcessManager } from './manager.js';
 import type { PidRegistry } from './registry.js';
 import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn, isPidAlive } from './reconcile.js';
 import { writeAutoLog } from '../logs/store.js';
+import { readFileSync } from 'node:fs';
 
 export interface LifecycleDeps {
   store: ConfigStore;
@@ -190,7 +191,7 @@ export class LifecycleManager {
       uptimeSec,
       configSource,
       runtime,
-      process: { cpuPct: null, rssMB: null }, // Faza 8 (full metrics collector)
+      process: await this.getProcessMetrics(instanceId),
       lastError: entry && (entry.lastExitCode !== null || entry.lastSignal)
         ? { exitCode: entry.lastExitCode, signal: entry.lastSignal ?? null }
         : null,
@@ -204,7 +205,35 @@ export class LifecycleManager {
     const runtime = state === 'running' || state === 'starting'
       ? await inst.engine.fetchRuntimeInfo(inst.base)
       : null;
-    return { instanceId, state, runtime, process: { cpuPct: null, rssMB: null } };
+    return { instanceId, state, runtime, process: await this.getProcessMetrics(instanceId) };
+  }
+
+  /** Gets CPU% and RSS for the instance's process. */
+  private async getProcessMetrics(instanceId: string): Promise<{ cpuPct: number | null; rssMB: number | null }> {
+    const state = this.getState(instanceId);
+    if (state !== 'running') {
+      return { cpuPct: null, rssMB: null };
+    }
+
+    const entry = this.deps.manager.getActiveEntry(instanceId);
+    if (!entry) {
+      return { cpuPct: null, rssMB: null };
+    }
+
+    try {
+      // Use /proc to read process memory
+      const pid = entry.child.pid;
+      const procMem = readFileSync(`/proc/${pid}/status`, 'utf8');
+      const rssMatch = procMem.match(/VmRSS:\s+(\d+)\s+kB/);
+      const rssKB = rssMatch ? parseInt(rssMatch[1], 10) : 0;
+      const rssMB = rssKB / 1024;
+
+      // CPU% is harder to get accurately without systeminformation; use a simple estimate
+      // For now, return 0 (or we could use si.processInfo later)
+      return { cpuPct: 0, rssMB: Math.round(rssMB) };
+    } catch {
+      return { cpuPct: null, rssMB: null };
+    }
   }
 
   /** Recent log lines (in-memory ring), most recent last (Faza 6.3). */

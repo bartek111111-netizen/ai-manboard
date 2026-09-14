@@ -155,9 +155,11 @@ export function discoverModels(): Promise<DiscoverResult> {
   return request<DiscoverResult>('/api/v1/models/discover', jsonInit('POST', {}));
 }
 
-/** POST /api/v1/models — manual add (FM-3). */
+/** POST /api/v1/models — manual add (FM-3). Auto-detects engine from file extension. */
 export function postModel(body: { path: string; displayName?: string }): Promise<ModelView> {
-  return request<ModelView>('/api/v1/models', jsonInit('POST', body));
+  // Auto-detect engine: .gguf → llama-server
+  const engineId = body.path.endsWith('.gguf') ? 'llama-server' : undefined;
+  return request<ModelView>('/api/v1/models', jsonInit('POST', { ...body, engineId }));
 }
 
 // --- instances (FSM) ---

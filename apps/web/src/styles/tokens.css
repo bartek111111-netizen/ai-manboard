@@ -90,6 +90,64 @@ body {
   margin: 0 auto;
 }
 
+/* --- GPU selection (Settings) --- */
+.gpu-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-s);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  margin-bottom: var(--spacing-s);
+}
+
+.gpu-card:hover {
+  border-color: color-mix(in srgb, var(--color-text) 30%, var(--color-border));
+}
+
+.gpu-card input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-state-running);
+}
+
+.gpu-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gpu-card-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.gpu-card-details {
+  display: flex;
+  gap: var(--spacing-s);
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.gpu-pci-slot {
+  font-family: monospace;
+}
+
+.gpu-memory-badge {
+  background: color-mix(in srgb, var(--color-state-running) 20%, transparent);
+  color: var(--color-state-running);
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+}
+
+.gpu-driver {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* --- Modal --- */
 .modal-overlay {
   position: fixed;

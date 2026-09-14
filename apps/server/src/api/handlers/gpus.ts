@@ -1,5 +1,5 @@
 /**
- * GPU list endpoint (Faza 10+): lists all detected GPUs.
+ * GPU list endpoint (Faza 10+): lists all detected GPUs with names + PCIe slots.
  */
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -8,10 +8,23 @@ import { execSync } from 'node:child_process';
 interface GpuEntry {
   id: string;
   name: string;
+  pciSlot: string;
   memoryTotalMB: number | null;
   memoryUsedMB: number | null;
   utilization: number | null;
   driver: string;
+}
+
+/** Gets the human-readable GPU name from lspci. */
+function getLspciName(pciSlot: string): string | null {
+  try {
+    const output = execSync(`lspci -s ${pciSlot}`, { timeout: 1000 }).toString().trim();
+    // e.g. "03:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Navi 48 [Radeon RX 9070/9070 XT/9070 GRE] (rev c0)"
+    const match = output.match(/: (.+?)(?: \(rev|$)/);
+    return match?.[1]?.trim() ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Reads all AMD GPUs from sysfs. */
@@ -48,11 +61,17 @@ function listAmdGpus(): GpuEntry[] {
         }
 
         const uevent = readFileSync(`${devDir}/uevent`, 'utf8');
+        const pciSlot = uevent.match(/PCI_SLOT_NAME=([0-9a-f:.]+)/)?.[1] ?? 'unknown';
         const pciId = uevent.match(/PCI_ID=([0-9a-f:.]+)/)?.[1] ?? 'unknown';
+
+        // Try to get the real name from lspci
+        const lspciName = getLspciName(pciSlot);
+        const name = lspciName ?? `AMD GPU (${pciId})`;
 
         gpus.push({
           id: card,
-          name: `AMD ${pciId}`,
+          name,
+          pciSlot,
           memoryTotalMB: totalMB,
           memoryUsedMB: usedMB,
           utilization,
@@ -83,6 +102,7 @@ function listNvidiaGpus(): GpuEntry[] {
       gpus.push({
         id: `nvidia_${parts[0]}`,
         name: parts[1],
+        pciSlot: `GPU ${parts[0]}`,
         memoryTotalMB: Number(parts[3]) || null,
         memoryUsedMB: Number(parts[2]) || null,
         utilization: Number(parts[4]) || null,

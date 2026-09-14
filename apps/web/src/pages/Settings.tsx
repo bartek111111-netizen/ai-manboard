@@ -12,6 +12,7 @@ import { errInfo } from '../ui/errors';
 interface GpuInfo {
   id: string;
   name: string;
+  pciSlot: string;
   memoryTotalMB: number | null;
   memoryUsedMB: number | null;
   utilization: number | null;
@@ -167,20 +168,22 @@ export function Settings() {
           <p className="muted">{t('noGpusDetected')}</p>
         ) : (
           gpus.map((gpu) => (
-            <label key={gpu.id} className="checkbox-field">
+            <label key={gpu.id} className="checkbox-field gpu-card">
               <input
                 type="checkbox"
                 checked={selectedGpu === gpu.id}
                 onChange={() => setSelectedGpu(gpu.id)}
               />
-              <span>
-                {gpu.name}
-                {gpu.memoryTotalMB != null && (
-                  <span className="gpu-memory-badge">
-                    {' '}{(gpu.memoryTotalMB / 1024).toFixed(0)} GB
-                  </span>
-                )}
-              </span>
+              <div className="gpu-card-info">
+                <div className="gpu-card-name">{gpu.name}</div>
+                <div className="gpu-card-details">
+                  <span className="gpu-pci-slot">{gpu.pciSlot}</span>
+                  {gpu.memoryTotalMB != null && (
+                    <span className="gpu-memory-badge">{(gpu.memoryTotalMB / 1024).toFixed(0)} GB VRAM</span>
+                  )}
+                  <span className="gpu-driver">{gpu.driver}</span>
+                </div>
+              </div>
             </label>
           ))
         )}

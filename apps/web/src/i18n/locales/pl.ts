@@ -135,6 +135,11 @@ export const pl = {
   // Instance resolve (Faza 10.1)
   actionResolve: 'Rozstrzygnij',
 
+  // Header status
+  modelRunning: 'Aktywny',
+  modelStopped: 'Zatrzymany',
+  noModelLoaded: 'Brak załadowanego modelu',
+
   // System status
   systemStatusHeading: 'Status systemu',
   systemStatsHeading: 'System',

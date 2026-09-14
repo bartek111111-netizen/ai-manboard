@@ -114,20 +114,55 @@ body {
 .app-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: var(--spacing-m) var(--spacing-l);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
+  gap: var(--spacing-m);
 }
 
-.app-header h1 {
+.app-header-title {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
+  margin-left: 15%;
 }
 
-.app-header h1 a {
+.app-header-title a {
   color: var(--color-text);
   text-decoration: none;
+}
+
+.app-header-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  font-size: 0.85rem;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-muted);
+}
+
+.status-dot.on {
+  background: var(--color-state-running);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-state-running) 60%, transparent);
+}
+
+.status-dot.off {
+  background: var(--color-state-error);
+}
+
+.status-label {
+  color: var(--color-muted);
+}
+
+.status-model-name {
+  font-weight: 500;
+  color: var(--color-text);
 }
 
 .sidebar {

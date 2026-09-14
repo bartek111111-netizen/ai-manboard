@@ -243,6 +243,8 @@ export class LifecycleManager {
    */
   async stop(instanceId: string): Promise<void> {
     this.stopRuntime(instanceId);
+    // Capture logs BEFORE stopping (cleanup deletes the active entry)
+    const logs = this.deps.manager.getLogs(instanceId);
     const current = this.getState(instanceId);
     if (isLive(current)) {
       await this.deps.manager.stop(instanceId);
@@ -255,13 +257,12 @@ export class LifecycleManager {
       }
     }
     // Auto-save logs when stopping
-    this.autoSaveLogs(instanceId);
+    this.autoSaveLogs(instanceId, logs);
   }
 
   /** Saves the instance's logs to disk (auto-log, keeps last 3). */
-  private autoSaveLogs(instanceId: string): void {
+  private autoSaveLogs(instanceId: string, logs: any[]): void {
     try {
-      const logs = this.deps.manager.getLogs(instanceId);
       if (logs.length === 0) return;
       const modelId = instanceId.split('--')[0];
       const content = logs.map((l) => `[${new Date(l.ts).toISOString()}] ${l.line}`).join('\n');

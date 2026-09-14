@@ -1,5 +1,5 @@
 /**
- * API DTOs (PLAN §14) — config endpoints (Faza 1).
+ * API DTOs (PLAN §14) — config (Faza 1) + model (Faza 3) endpoints.
  */
 import type {
   EngineConfig,
@@ -47,4 +47,81 @@ export interface ConfigResponse extends ConfigSnapshot {
   effective: Record<string, Record<string, ResolvedConfig>>;
   /** Watch state (P-12 UI warning source). */
   state: ConfigWatchState;
+}
+
+// --------------------------------------------------------------- models (Faza 3)
+
+/** Effective capabilities of one model (FM-6): the flags + where they came from. */
+export interface ModelCapabilitiesView {
+  /** Effective capability flags, e.g. `{ text: true, vision: false }`. */
+  flags: Record<string, boolean>;
+  /** `manual` = the user set them (authoritative); `heuristic` = engine suggestion. */
+  source: 'manual' | 'heuristic';
+}
+
+/** GGUF header metadata (FM-5) — read from the file header only (fast, safe). */
+export interface GgufMetadataView {
+  /** GGUF format version. */
+  version?: number;
+  /** `general.architecture` (e.g. `llama`, `qwen2_vision`). */
+  architecture?: string;
+  /** `llama.context_length`. */
+  contextLength?: number;
+  /** `llama.block_size`. */
+  blockSize?: number;
+  /** `llama.attention.head_count`. */
+  headCount?: number;
+}
+
+/** One model as shown in the API/UI (PLAN §14.1: `GET /models`). */
+export interface ModelView {
+  id: string;
+  /** Model file path (the `model` parameter). */
+  path: string;
+  engineId: string;
+  displayName: string;
+  description?: string;
+  tags: string[];
+  /** Effective capabilities (manual override > heuristic). */
+  capabilities: ModelCapabilitiesView;
+  /** GGUF header (null = not a GGUF file / unreadable). */
+  gguf: GgufMetadataView | null;
+  /** File size in bytes (null when the file is missing). */
+  sizeBytes: number | null;
+  /** Whether the model file still exists on disk. */
+  fileExists: boolean;
+  /** Where the model came from. */
+  origin: 'discover' | 'manual';
+}
+
+/** Manual add (FM-3): the only path input to the API (S-4, file picker). */
+export interface AddModelRequest {
+  /** Absolute local path to the model file. */
+  path: string;
+  /** Engine that runs the model (e.g. `llama-server`). */
+  engineId: string;
+  displayName?: string;
+  /** Manual capabilities (authoritative); omit to rely on heuristics. */
+  capabilities?: Record<string, boolean>;
+}
+
+/** Manual edit (FM-5/6): `PATCH /models/:id`. All fields optional. */
+export interface UpdateModelRequest {
+  displayName?: string;
+  description?: string;
+  tags?: string[];
+  /** Replaces the manual capabilities and marks them authoritative. */
+  capabilities?: Record<string, boolean>;
+  /** Merged into the model-level params (layer 4). */
+  params?: Record<string, unknown>;
+}
+
+/** Result of a discovery scan (FM-2): `POST /models/discover`. */
+export interface DiscoverResponse {
+  /** Model ids created by this scan. */
+  added: string[];
+  /** Model file paths that disappeared since the last scan. */
+  removed: string[];
+  /** Total number of models after the scan. */
+  total: number;
 }

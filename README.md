@@ -118,10 +118,13 @@ progress is tracked in **`STATUS.md`**. Completed so far:
 - **Faza 0** — skeleton (monorepo, dev tooling, i18n PL)
 - **Faza 1** — config store (atomic writes), 6-layer merge with `source` per
   value, `/config` API, config file watch → reload
-- **Faza 2** — engine abstraction + `llama-server` module (29-param schema,
+- **Faza 2** — engine abstraction + `llama-server` module (31-param schema,
   `buildLaunch`, preflight, `checkBinary`, `/engines` API)
+- **Faza 3** — model management: directory discovery (cached, differential),
+  GGUF metadata reader (header only), capabilities (heuristic + manual override),
+  manual add/remove, `/models` API
 
-Next: model management → process manager → lifecycle → API/SSE → frontend.
+Next: process manager + FSM → lifecycle → API/SSE → frontend.
 
 ## Development
 

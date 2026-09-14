@@ -16,6 +16,8 @@ import {
   readFileSync,
   readdirSync,
   renameSync,
+  rmSync,
+  unlinkSync,
   writeSync,
 } from 'node:fs';
 import { dirname, relative } from 'node:path';
@@ -130,6 +132,18 @@ export class ConfigStore {
 
   listModelIds(): string[] {
     return listIds(this.home.modelsDir);
+  }
+
+  /**
+   * Deletes a model from the dashboard (FM-8): the model config + its preset
+   * dir. The model **file** is never touched (S-5, read-only).
+   */
+  deleteModel(modelId: string): void {
+    assertSafeId(modelId, 'modelId');
+    const file = `${this.home.modelsDir}/${modelId}.json`;
+    if (existsSync(file)) unlinkSync(file);
+    const presetDir = `${this.home.presetsDir}/${modelId}`;
+    if (existsSync(presetDir)) rmSync(presetDir, { recursive: true, force: true });
   }
 
   // -------------------------------------------------------------- presets

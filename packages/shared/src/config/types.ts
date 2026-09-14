@@ -76,9 +76,17 @@ export interface ModelConfig {
   displayName?: string;
   description?: string;
   tags: string[];
-  /** Free-form capability map (FM-6): e.g. `{ text: true, vision: false }`. */
+  /**
+   * Capability map (FM-6): e.g. `{ text: true, vision: false }`.
+   * When `capabilitiesManual` is set, these are the authoritative values;
+   * otherwise the engine heuristics apply.
+   */
   capabilities: Record<string, boolean>;
-  /** Model-level parameter defaults (layer 4 of the merge). */
+  /** True when the user set capabilities manually (they win over heuristics). */
+  capabilitiesManual?: boolean;
+  /** Where the model came from: `discover` (scan of modelDirs) or `manual` (POST /models). */
+  origin?: 'discover' | 'manual';
+  /** Model-level parameter defaults (layer 4 of the merge). `model` = file path. */
   params: Record<string, unknown>;
 }
 

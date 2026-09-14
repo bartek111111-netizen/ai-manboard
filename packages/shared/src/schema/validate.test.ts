@@ -105,6 +105,31 @@ describe('validateEngineConfig / validateModelConfig / validatePreset', () => {
     expect(() => validateModelConfig({ version: 1, tags: [], capabilities: {} })).toThrow(AppError);
   });
 
+  it('model: accepts origin and capabilitiesManual (Faza 3)', () => {
+    expect(
+      validateModelConfig({
+        version: 1,
+        tags: [],
+        capabilities: { text: true },
+        capabilitiesManual: true,
+        origin: 'manual',
+        params: { model: '/x/model.gguf' },
+      }),
+    ).toBeDefined();
+    expect(
+      validateModelConfig({
+        version: 1,
+        origin: 'discover',
+        capabilitiesManual: false,
+        params: { model: '/y/model.gguf' },
+      }),
+    ).toBeDefined();
+    // Invalid origin values are rejected.
+    expect(() => validateModelConfig({ version: 1, origin: 'nope', params: {} })).toThrow(AppError);
+    // capabilitiesManual must be a boolean.
+    expect(() => validateModelConfig({ version: 1, capabilitiesManual: 'yes', params: {} })).toThrow(AppError);
+  });
+
   it('preset: port bounds + name required', () => {
     expect(validatePreset({ version: 1, name: 'szybka', port: 8081, params: {} })).toBeDefined();
     expect(() => validatePreset({ version: 1, name: '', params: {} })).toThrow(AppError);

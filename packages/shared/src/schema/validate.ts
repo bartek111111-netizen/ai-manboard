@@ -177,6 +177,12 @@ export function validateModelConfig(data: unknown, modelId = '<model>'): ModelCo
       problems.push('capabilities: expected an object of booleans');
     }
   }
+  if (data.capabilitiesManual !== undefined && typeof data.capabilitiesManual !== 'boolean') {
+    problems.push('capabilitiesManual: not a boolean');
+  }
+  if (data.origin !== undefined && data.origin !== 'discover' && data.origin !== 'manual') {
+    problems.push(`origin: expected 'discover' or 'manual' (got ${String(data.origin)})`);
+  }
   if (!isRecord(data.params)) problems.push('params: expected an object');
 
   if (problems.length > 0) {

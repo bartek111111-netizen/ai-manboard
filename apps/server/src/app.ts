@@ -5,6 +5,7 @@ import { AppError, type ConfigWatchState } from '@ai-dashboard/shared';
 import { makeStatusHandler } from './api/handlers/status.js';
 import { makeConfigHandlers } from './api/handlers/config.js';
 import { makeEngineHandlers } from './api/handlers/engines.js';
+import { makeModelHandlers } from './api/handlers/models.js';
 import type { ConfigStore } from './core/config/store.js';
 import { WEB_DIST_DIR } from './web-dist.js';
 
@@ -41,12 +42,19 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const { store, getConfigState } = options;
   const configHandlers = makeConfigHandlers(store, getConfigState);
   const engineHandlers = makeEngineHandlers(store);
+  const modelHandlers = makeModelHandlers(store);
   app.get('/api/v1/status', makeStatusHandler(getConfigState));
   app.get('/api/v1/config', configHandlers.getConfig);
   app.put('/api/v1/config/global', configHandlers.putGlobalConfig);
   app.get('/api/v1/engines', engineHandlers.getEngines);
   app.get('/api/v1/engines/:id/schema', engineHandlers.getEngineSchema);
   app.put('/api/v1/engines/:id', engineHandlers.putEngine);
+  app.get('/api/v1/models', modelHandlers.listModels);
+  app.post('/api/v1/models/discover', modelHandlers.discover);
+  app.post('/api/v1/models', modelHandlers.addModel);
+  app.get('/api/v1/models/:modelId', modelHandlers.getModel);
+  app.patch('/api/v1/models/:modelId', modelHandlers.updateModel);
+  app.delete('/api/v1/models/:modelId', modelHandlers.removeModel);
   // Plain liveness check (the token middleware from phase 6 will cover the API).
   app.get('/healthz', async () => ({ ok: true }));
 

@@ -1,5 +1,51 @@
 # STATUS
 
+## Faza 4 — Process Manager + FSM — ✅ ZROBIONE
+
+Działa: rdzeń zarządzania procesami (PLAN §22 4.1–4.5, §11.2–11.5, TT-9).
+FSM (4.1, §11.2): `packages/shared/src/process/states.ts` — stany `starting /
+running / stopping / stopped / error / crashed / unknown`, tabela
+`TRANSITIONS`, `transition(state, event)` rzuca `AppError('INVALID_STATE')` na
+parę spoza tabeli (bez try/catch w UI), `canTransition()`, `STABLE_STATES`
+(`stopped/error/crashed`), `isLive()` (`starting/running/stopping` = trzyma
+dziecko), `STATE_LABELS` po polsku (startuje/uruchomiony/zatrzymywanie/…/kraksza/
+nieznany), `STATE_COLORS` → `var(--state-<s>)`. **Uwaga umieszczenia:** FSM celowo
+w **shared** (nie w serverze jak w §19) — czysta logika FSM ma być współdzielona
+przez FE `StatusBadge` i SSE. Manager (4.1, §11.5): `apps/server/src/core/process/
+manager.ts` — `ProcessManager` per `instanceId`: `spawn(instanceId, cmd, port)`
+startuje `LaunchCommand` z `stdio: ['pipe','pipe','pipe']` (własne stdio — wyjście
+procesu nie wycieka do konsoli dashboardu, TT-9), zapisuje PID w rejestrze (stan
+`starting`), `error` (binary brak → `error`), strumienie stdout/stderr → ring
+buffer + plik na dysku (linijki z buforem nieukończonego wiersza, `flushPartial`
+na końcu); `stop()` = **grace**: `SIGTERM` → czekam `stopTimeoutSec` (10 s, opcja
+managera — nie w `GlobalConfig`) → `SIGKILL`; watchdog (4.2, event `exit` —
+event-driven, nie polling) sam aktualizuje FSM + rejestr: czysty (code 0, bez
+sygnału) → `stopped`, nieczysty → `crashed`, a gdy `stop` w toku → `stopped`;
+`lastExitCode`/`lastSignal` do rejestru; `awaitExit()` do czekania.
+PID registry (4.2, §11.3): `core/process/registry.ts` — `PidRegistry`,
+`state/registry.json` `{instances: {<id>:{instanceId,pid,port,state,startedAt,
+lastExitCode,lastSignal?}}}`, **zapis atomowy przy każdym przejściu** (tmp+fsync+
+rename), uszkodzony plik → traktowany pusty (reconcile odbuduje, bez crasha boota),
+`takenPorts()` = porty żywych instancji. Porty (4.3, §11.4): `core/process/ports.ts`
+— `allocatePort` (pierwszy wolny w `global.portRange`, poza `taken`), `assertPortFree`
+(pinned kolizja → głośne `PORT_IN_USE` ze `suggestion`), `assertValidPort` (S-9
+1024–65535 → `VALIDATION_FAILED`). Logi (4.4, §13): `core/logs/ringbuffer.ts` —
+`RingBuffer<T>` (fixed-size, O(1) push, `lines(limit)` = najnowsze N), `core/logs/
+writer.ts` — `LogWriter` per-start `logs/<instanceId>/<epoch-ms>.log` + `prune`
+(utrzymuje `retentionFiles`=10, najnowsze) + cap ~10 MB per plik (truncate z
+markerem `[log truncated…`). Testy (4.5): **60 (shared) + 83 (server) = 143/143
+zielone**; FSM (każde legalne przejście + guard INVALID_STATE), registry (atomic
+set/update/remove/takenPorts + SAFE_ID), ports (alokacja/kolizja/valid), ringbuffer
+(FIFO wrap + newest-N), writer (start/append/prune/truncate), **manager (spawn/kill
+dummy `node -e setTimeout` → starting→stopped, watchdog `process.exit(3)` → crashed,
+czysty exit(0) → stopped z `lastExitCode`, brak binary → error, logi stdout/stderr
+do ring + dysku)**.
+
+**Dalej:** Faza 5 — Health + lifecycle: `prober.ts` (readiness `/v1/models`,
+runtime `/slots`/`/health`/`/metrics`), lifecycle start/stop/restart połączony z
+FSM + managerem, warstwa 6 (instance overrides) do `buildEffective`
+(`state/instances/`) — warstwy 1–5 już działają.
+
 ## Faza 3 — Model Management — ✅ ZROBIONE
 
 Działa: zarządzanie modelami (PLAN §8, §14.1, checklist §22 3.1–3.6). Discovery

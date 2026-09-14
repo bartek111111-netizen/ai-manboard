@@ -110,6 +110,32 @@ Inference engines are plugins behind a single `InferenceEngine` interface
 The first engine is `llama-server`; new backends register themselves in the
 engine registry without touching the core.
 
+## Process Management
+
+Each running model is a **child process** of the dashboard (process isolation,
+PLAN §11.5 / TT-9): it gets its own `stdio` pipes, so its console output never
+leaks into the dashboard. State is a finite-state machine
+(`packages/shared/src/process/states.ts`) with the states
+`starting / running / stopping / stopped / error / crashed / unknown`; any
+(state, event) pair not in the transition table is rejected as `INVALID_STATE`,
+so an illegal operation can never reach a process.
+
+`apps/server/src/core/process/manager.ts` (`ProcessManager`) owns the lifecycle:
+
+- **spawn** — launches the `LaunchCommand`, records the PID (state → `starting`),
+  captures stdout/stderr into an in-memory **ring buffer** (last `ringLines`) and
+  a per-start log file, and wires the child's `exit` to a **watchdog** — so a crash
+  updates the registry/state automatically (event-driven, no polling).
+- **stop (grace)** — `SIGTERM` → wait `stopTimeoutSec` (10 s) → `SIGKILL`.
+
+The **PID registry** (`state/registry.json`) is written atomically on every state
+transition (tmp + fsync + rename), so a dashboard restart can tell `crashed` /
+`stopped` / `unknown` apart from the stored `lastExitCode` / signal. Ports are
+auto-allocated as the first free in `global.portRange` (`ports.ts`); a pinned
+collision is a loud `PORT_IN_USE` with a free-port suggestion. Per-instance logs
+live under `logs/<instanceId>/`, keeping the newest `retentionFiles` (10) per
+start and capping each file (~10 MB) with a truncation marker.
+
 ## Roadmap / Status
 
 Development proceeds in phases defined in **`PLAN.md`** (source of truth);
@@ -123,8 +149,12 @@ progress is tracked in **`STATUS.md`**. Completed so far:
 - **Faza 3** — model management: directory discovery (cached, differential),
   GGUF metadata reader (header only), capabilities (heuristic + manual override),
   manual add/remove, `/models` API
+- **Faza 4** — process manager + FSM: state machine (`INVALID_STATE` guard),
+  `ProcessManager` (spawn with isolated stdio, grace `SIGTERM`→`SIGKILL`),
+  PID registry (atomic on every transition) + `exit` watchdog, port allocation /
+  collisions, per-instance logs (ring buffer + retention + truncation)
 
-Next: process manager + FSM → lifecycle → API/SSE → frontend.
+Next: health + lifecycle (prober, start/stop/restart) → API/SSE → frontend.
 
 ## Development
 

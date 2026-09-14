@@ -1115,11 +1115,11 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - **Akceptacja**: katalog z modelami → lista w API + metadane.
 
 ### Faza 4 — Process Manager + FSM (sesja 5)
-- [ ] 4.1 `states.ts` FSM (§11.2) + `manager.ts` (spawn/kill grace)
-- [ ] 4.2 PID registry + watchdog (child `exit`)
-- [ ] 4.3 `ports.ts`: alokacja + kolizje
-- [ ] 4.4 Logi: ring buffer + writer + retention
-- [ ] 4.5 Testy unit: FSM (transycje), spawn/kill (dummy process), registry
+- [x] 4.1 `states.ts` FSM (§11.2) + `manager.ts` (spawn/kill grace)
+- [x] 4.2 PID registry + watchdog (child `exit`)
+- [x] 4.3 `ports.ts`: alokacja + kolizje
+- [x] 4.4 Logi: ring buffer + writer + retention
+- [x] 4.5 Testy unit: FSM (transycje), spawn/kill (dummy process), registry
 - **Akceptacja**: spawn/kill dummy'ego procesu + poprawna zmiana stanów.
 
 ### Faza 5 — Health + lifecycle start/stop/restart (sesja 6)

@@ -9,6 +9,12 @@ import { MetricsPanel } from '../components/MetricsPanel';
 import { PresetSelect } from '../components/PresetSelect';
 import { t } from '../i18n';
 
+/** Extracts a human-readable name from a model filename. */
+function nameFromPath(path: string): string {
+  const base = path.split('/').pop() ?? '';
+  return base.replace(/\.gguf$/i, '').replace(/[-_]/g, ' ').trim();
+}
+
 type Tab = 'preview' | 'config' | 'instance' | 'logs' | 'metrics';
 
 /**
@@ -21,6 +27,8 @@ export function ModelDetail() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('instance');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [editName, setEditName] = useState<string>('');
+  const [savingName, setSavingName] = useState(false);
   // Guards the one-time default so we don't overwrite the user's choice.
   const presetDefaulted = useRef(false);
 
@@ -33,6 +41,10 @@ export function ModelDetail() {
       .then((models) => {
         const found = models.find((m) => m.id === modelId) ?? null;
         setModel(found);
+        // Auto-detect name from filename (or use existing displayName)
+        if (found) {
+          setEditName(found.displayName || nameFromPath(found.path));
+        }
         if (!found) setError(t('modelNotFound'));
       })
       .catch((err: unknown) => setError(err instanceof ApiError ? err.message : String(err)));
@@ -49,6 +61,26 @@ export function ModelDetail() {
         // presets unavailable — the PresetSelect shows its own error
       });
   }, [modelId]);
+
+  const saveName = async (): Promise<void> => {
+    if (!model) return;
+    setSavingName(true);
+    try {
+      await fetch(`/api/v1/models/${model.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: editName }),
+      }).then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      });
+      setModel((prev) => (prev ? { ...prev, displayName: editName } : prev));
+    } catch (err: unknown) {
+      setError(err instanceof ApiError ? err.message : String(err));
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const tabs: Array<{ id: Tab; label: string; disabled?: boolean }> = [
     { id: 'preview', label: t('tabPreview') },
@@ -86,6 +118,20 @@ export function ModelDetail() {
           {tab === 'preview' && (
             <section>
               <h3>{t('tabPreview')}</h3>
+              <div className="form-field">
+                <label className="form-field-label">{t('fieldName')}</label>
+                <div className="form-field-row">
+                  <input
+                    type="text"
+                    className="input"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                  <button type="button" className="btn small" disabled={savingName} onClick={saveName}>
+                    {t('actionSave')}
+                  </button>
+                </div>
+              </div>
               <dl className="kv">
                 <dt>{t('fieldEngine')}</dt>
                 <dd>{model.engineId}</dd>

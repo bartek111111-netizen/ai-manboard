@@ -1,9 +1,11 @@
 /**
  * GPU list endpoint (Faza 10+): lists all detected GPUs with names + PCIe slots.
+ * Uses cached GPU source detection to avoid repeated nvidia-smi failures.
  */
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { readFileSync, readdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { detectGpuSource } from '../../gpu.js';
 
 interface GpuEntry {
   id: string;
@@ -87,9 +89,11 @@ function listAmdGpus(): GpuEntry[] {
   return gpus;
 }
 
-/** Reads NVIDIA GPUs from nvidia-smi. */
+/** Reads NVIDIA GPUs from nvidia-smi (only when the source is 'nvidia'). */
 function listNvidiaGpus(): GpuEntry[] {
   const gpus: GpuEntry[] = [];
+  // Only call nvidia-smi when detection says it's available
+  if (detectGpuSource() !== 'nvidia') return gpus;
   try {
     const output = execSync(
       'nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu,driver_version --format=csv,noheader,nounits',

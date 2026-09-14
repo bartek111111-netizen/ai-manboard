@@ -181,6 +181,22 @@ export function Settings() {
                 >
                   {t('browseBtn')}
                 </button>
+                <button
+                  type="button"
+                  className="btn small"
+                  onClick={() => {
+                    fetch('/api/v1/engines/detect')
+                      .then((r) => r.json())
+                      .then((data: { found: boolean; binary: string | null }) => {
+                        if (data.found && data.binary) {
+                          setBinaryMap((prev) => ({ ...prev, [eng.id]: data.binary as string }));
+                        }
+                      })
+                      .catch(() => {});
+                  }}
+                >
+                  {t('autoDetectBtn')}
+                </button>
               </div>
             </label>
           </div>

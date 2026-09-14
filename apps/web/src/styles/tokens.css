@@ -1283,6 +1283,17 @@ section {
   font-family: monospace;
 }
 
+/* --- Form field row (input + button) --- */
+.form-field-row {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: center;
+}
+
+.form-field-row .input {
+  flex: 1;
+}
+
 /* --- Preset meta (port + auto-assign) --- */
 .preset-meta {
   margin-bottom: var(--spacing-m);

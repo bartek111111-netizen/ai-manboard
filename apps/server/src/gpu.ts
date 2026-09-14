@@ -20,7 +20,7 @@ export interface GpuInfo {
 let gpuSourceCache: 'sysfs' | 'nvidia' | 'none' | null = null;
 
 /** Detects which GPU source is available (cached after first detection). */
-function detectGpuSource(): 'sysfs' | 'nvidia' | 'none' {
+export function detectGpuSource(): 'sysfs' | 'nvidia' | 'none' {
   if (gpuSourceCache !== null) return gpuSourceCache;
 
   // Check if nvidia-smi exists (only once)

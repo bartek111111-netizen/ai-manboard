@@ -55,6 +55,7 @@ export const pl = {
   fieldPid: 'PID',
   fieldEndpoint: 'Endpoint',
   fieldEngine: 'Engine',
+  fieldName: 'Nazwa (wyświetlana)',
   fieldPath: 'Ścieżka',
   fieldSize: 'Rozmiar',
   fieldArch: 'Architektura',
@@ -81,6 +82,7 @@ export const pl = {
   newPresetPlaceholder: 'nazwa presetu',
   newPresetPortPlaceholder: 'port (opcjonalnie)',
   autoAssign: 'Przypisz automatycznie jako domyślny',
+  defaultTag: 'domyślny',
 
   // Detail tabs
   tabPreview: 'Podgląd',
@@ -177,6 +179,9 @@ export const pl = {
   noHiddenModels: 'Brak ukrytych modeli',
   unhideModel: 'Pokaż',
   hideModel: 'Ukryj',
+
+  // Engine auto-detect
+  autoDetectBtn: 'Wykryj',
 
   // Engine status
   engineHeading: 'Engine (backendy)',

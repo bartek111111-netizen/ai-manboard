@@ -25,15 +25,19 @@ export function PresetSelect({
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newPort, setNewPort] = useState('');
   const [editParams, setEditParams] = useState<Record<string, unknown>>({});
   const [savingParams, setSavingParams] = useState(false);
-  const [autoAssign, setAutoAssign] = useState(false);
 
   const refresh = useCallback((): void => {
     getPresets(modelId)
       .then((list) => {
-        setPresets(list);
+        // Sort: "default" first (if exists), then alphabetical
+        const sorted = [...list].sort((a, b) => {
+          if (a.name === 'default') return -1;
+          if (b.name === 'default') return 1;
+          return a.name.localeCompare(b.name);
+        });
+        setPresets(sorted);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -67,11 +71,8 @@ export function PresetSelect({
   useEffect(() => {
     if (current) {
       setEditParams({ ...current.params });
-      // Auto-assign checkbox: check if this preset is the default
-      setAutoAssign(current.name === 'default');
     } else {
       setEditParams({});
-      setAutoAssign(false);
     }
   }, [selected, current]);
 
@@ -89,20 +90,15 @@ export function PresetSelect({
   };
 
   const createPreset = (): void => {
-    const name = newName.trim() || 'default';
-    const port = newPort.trim() !== '' ? Number(newPort) : 8080;
-    void run(() => putPreset(modelId, name, { version: 1, name, port, params: {} })).then(() => {
+    const name = newName.trim() || `preset-${Date.now()}`;
+    void run(() => putPreset(modelId, name, { version: 1, name, port: 8080, params: {} })).then(() => {
       setNewName('');
-      setNewPort('');
       onSelect(name);
     });
   };
 
   const createDefaultPreset = (): void => {
-    // Create a preset with the name "default" and schema defaults
-    const port = newPort.trim() !== '' ? Number(newPort) : 8080;
-    void run(() => putPreset(modelId, 'default', { version: 1, name: 'default', port, params: {} })).then(() => {
-      setNewPort('');
+    void run(() => putPreset(modelId, 'default', { version: 1, name: 'default', port: 8080, params: {} })).then(() => {
       onSelect('default');
     });
   };
@@ -118,19 +114,6 @@ export function PresetSelect({
     if (!current) return;
     if (!window.confirm(t('delConfirm'))) return;
     void run(() => deletePreset(modelId, current.name)).then(() => onSelect(null));
-  };
-
-  const saveMeta = (): void => {
-    if (!current) return;
-    const port = newPort.trim() !== '' ? Number(newPort) : current.port;
-    void run(() =>
-      putPreset(modelId, current.name, {
-        version: current.version,
-        name: current.name,
-        port,
-        params: current.params,
-      }),
-    );
   };
 
   const saveParams = (): void => {
@@ -159,13 +142,14 @@ export function PresetSelect({
         <p className="muted">{t('presetsEmpty')}</p>
       ) : (
         <>
+          {/* Preset selector */}
           <label className="field">
             <span>{t('presetSelect')}</span>
             <select className="preset-select" value={selected ?? ''} onChange={(e) => onSelect(e.target.value || null)}>
               {presets.map((preset) => (
                 <option key={preset.name} value={preset.name}>
                   {preset.name}
-                  {preset.port ? ` (${preset.port})` : ''}
+                  {preset.name === 'default' ? ` (${t('defaultTag')})` : ''}
                 </option>
               ))}
             </select>
@@ -173,32 +157,6 @@ export function PresetSelect({
 
           {current && (
             <>
-              {/* Port + auto-assign */}
-              <div className="preset-meta">
-                <dl className="kv">
-                  <dt>{t('fieldPort')}</dt>
-                  <dd>
-                    <input
-                      type="number"
-                      className="input"
-                      value={newPort !== '' ? newPort : (current.port ?? 0).toString()}
-                      onChange={(e) => setNewPort(e.target.value)}
-                    />
-                    <button type="button" className="btn small" onClick={saveMeta}>
-                      {t('actionSave')}
-                    </button>
-                  </dd>
-                </dl>
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={autoAssign}
-                    onChange={(e) => setAutoAssign(e.target.checked)}
-                  />
-                  {t('autoAssign')}
-                </label>
-              </div>
-
               {/* SchemaForm: full parameter editing (Faza 9.2) */}
               {schema.length > 0 && (
                 <div className="preset-params">
@@ -230,6 +188,7 @@ export function PresetSelect({
             </>
           )}
 
+          {/* Action buttons */}
           <div className="instance-actions">
             {current && (
               <button type="button" className="btn small" disabled={busy} onClick={duplicate}>
@@ -253,13 +212,6 @@ export function PresetSelect({
           placeholder={t('newPresetPlaceholder')}
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-        />
-        <input
-          type="number"
-          className="input"
-          placeholder={t('newPresetPortPlaceholder')}
-          value={newPort}
-          onChange={(e) => setNewPort(e.target.value)}
         />
         <button type="button" className="btn" disabled={busy} onClick={createPreset}>
           {t('actionNewPreset')}

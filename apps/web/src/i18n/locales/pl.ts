@@ -169,6 +169,16 @@ export const pl = {
   addModelDir: 'Dodaj katalog',
   removeDir: 'Usuń katalog',
 
+  // Engine status
+  engineHeading: 'Engine (backendy)',
+  engineConfigured: 'Skonfigurowany',
+  engineNotConfigured: 'Brak binarki',
+  engineBinary: 'Binarka',
+  engineSourceEngine: 'engine',
+  engineSourceGlobal: 'global',
+  testEngineBtn: 'Testuj',
+  testingEngine: 'Testowanie...',
+
   // System status
   systemStatusHeading: 'Status systemu',
   systemStatsHeading: 'System',

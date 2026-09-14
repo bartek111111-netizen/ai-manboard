@@ -98,5 +98,37 @@ export function makeEngineHandlers(store: ConfigStore) {
         },
       });
     },
+
+    /** GET /api/v1/engines/:id/check — test the configured binary. */
+    checkEngine: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      const id = String((request.params as Record<string, string>).id);
+      const engine = getEngine(id);
+      if (!engine) {
+        throw new AppError('ENGINE_NOT_FOUND', `engine not registered: ${id}`, undefined, 404);
+      }
+
+      const resolved = engineBinaryFor(store, id);
+      if (!resolved) {
+        reply.send({ ok: false, message: 'No binary configured' });
+        return;
+      }
+
+      const check = await engine.checkBinary?.(resolved.binary);
+      if (!check) {
+        reply.send({ ok: false, message: 'checkBinary not implemented' });
+        return;
+      }
+
+      if (check.errors.length > 0) {
+        reply.send({ ok: false, message: check.errors.join('; ') });
+        return;
+      }
+
+      reply.send({
+        ok: true,
+        message: `OK — ${check.versionLine ?? 'binary valid'}`,
+        vulkan: check.vulkan,
+      });
+    },
   };
 }

@@ -1,23 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getStatus, type DashboardStatus } from '../api/client';
+import { getStatus, getEngines, type DashboardStatus, type EngineInfo } from '../api/client';
 import { t } from '../i18n';
 
 const REFRESH_INTERVAL_MS = 5000;
 
 /**
- * Home view (Faza 1): dashboard API status + config watch state (P-12).
- * Polls the status every 5 s so on-disk config changes surface in the UI.
- * From phase 3 on this view becomes the model list.
+ * Status view: dashboard API status + engine readiness + config watch state.
  */
 export function StatusPage() {
   const [status, setStatus] = useState<DashboardStatus | null>(null);
+  const [engines, setEngines] = useState<EngineInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [engineTest, setEngineTest] = useState<Record<string, { running: boolean; result: string | null }>>({});
 
   const refresh = useCallback((): void => {
-    getStatus()
-      .then((result) => {
-        setStatus(result);
+    Promise.all([getStatus(), getEngines()])
+      .then(([statusResult, engineList]) => {
+        setStatus(statusResult);
+        setEngines(engineList);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -31,6 +32,24 @@ export function StatusPage() {
     const timer = setInterval(refresh, REFRESH_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [refresh]);
+
+  const testEngine = (engineId: string): void => {
+    setEngineTest((prev) => ({ ...prev, [engineId]: { running: true, result: null } }));
+    fetch(`/api/v1/engines/${engineId}/check`)
+      .then((r) => r.json())
+      .then((data: { ok: boolean; message: string }) => {
+        setEngineTest((prev) => ({
+          ...prev,
+          [engineId]: { running: false, result: data.ok ? data.message : data.message },
+        }));
+      })
+      .catch((err: unknown) => {
+        setEngineTest((prev) => ({
+          ...prev,
+          [engineId]: { running: false, result: err instanceof Error ? err.message : String(err) },
+        }));
+      });
+  };
 
   if (loading) {
     return <p className="muted">{t('statusLoading')}</p>;
@@ -50,6 +69,51 @@ export function StatusPage() {
 
   return (
     <>
+      {/* Engine status */}
+      <section>
+        <h2>{t('engineHeading')}</h2>
+        {engines.length === 0 ? (
+          <p className="muted">{t('enginesEmpty')}</p>
+        ) : (
+          engines.map((eng) => {
+            const test = engineTest[eng.id];
+            return (
+              <div key={eng.id} className="engine-card">
+                <div className="engine-card-header">
+                  <span className="engine-name">{eng.displayName}</span>
+                  <span className={`engine-status-badge ${eng.configured ? 'ok' : 'warn'}`}>
+                    {eng.configured ? t('engineConfigured') : t('engineNotConfigured')}
+                  </span>
+                </div>
+                {eng.binary && (
+                  <div className="engine-binary">
+                    <span className="muted">{t('engineBinary')}:</span>
+                    <code className="engine-path">{eng.binary}</code>
+                    <span className={`engine-source ${eng.binarySource}`}>
+                      ({eng.binarySource === 'engine' ? t('engineSourceEngine') : t('engineSourceGlobal')})
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="btn small"
+                  disabled={test?.running ?? false}
+                  onClick={() => testEngine(eng.id)}
+                >
+                  {test?.running ? t('testingEngine') : t('testEngineBtn')}
+                </button>
+                {test?.result && (
+                  <p className={`engine-test-result ${test.result.startsWith('OK') ? 'ok' : 'error'}`}>
+                    {test.result}
+                  </p>
+                )}
+              </div>
+            );
+          })
+        )}
+      </section>
+
+      {/* Dashboard status */}
       <section>
         <h2>{t('statusHeading')}</h2>
         <p className="status-ok">{t('statusOk')}</p>
@@ -62,14 +126,11 @@ export function StatusPage() {
           <dd>{status.state}</dd>
           <dt>{t('fieldUptime')}</dt>
           <dd>{status.uptimeSec} s</dd>
-          <dt>{t('fieldEngines')}</dt>
-          <dd>
-            {status.engines.length === 0 ? t('enginesEmpty') : String(status.engines.length)}
-          </dd>
         </dl>
         <p className="muted small">{t('statusAutoRefresh')}</p>
       </section>
 
+      {/* Config watch */}
       {config && (
         <section>
           <h2>{t('configHeading')}</h2>

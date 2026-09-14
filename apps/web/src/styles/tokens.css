@@ -90,6 +90,78 @@ body {
   margin: 0 auto;
 }
 
+/* --- Engine status cards --- */
+.engine-card {
+  padding: var(--spacing-s);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  margin-bottom: var(--spacing-s);
+}
+
+.engine-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-xs);
+}
+
+.engine-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.engine-status-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.engine-status-badge.ok {
+  background: color-mix(in srgb, var(--color-state-running) 20%, transparent);
+  color: var(--color-state-running);
+}
+
+.engine-status-badge.warn {
+  background: color-mix(in srgb, var(--color-state-stopping) 20%, transparent);
+  color: var(--color-state-stopping);
+}
+
+.engine-binary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.85rem;
+  margin-bottom: var(--spacing-s);
+  flex-wrap: wrap;
+}
+
+.engine-path {
+  font-family: monospace;
+  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--color-text) 5%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.engine-source {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.engine-test-result {
+  font-size: 0.85rem;
+  margin-top: var(--spacing-s);
+}
+
+.engine-test-result.ok {
+  color: var(--color-state-running);
+}
+
+.engine-test-result.error {
+  color: var(--color-state-error);
+}
+
 /* --- Settings: model dirs list --- */
 .settings-dir-list {
   display: flex;

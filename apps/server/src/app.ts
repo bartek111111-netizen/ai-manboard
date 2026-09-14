@@ -76,6 +76,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   app.get('/api/v1/engines', engineHandlers.getEngines);
   app.get('/api/v1/engines/:id/schema', engineHandlers.getEngineSchema);
   app.put('/api/v1/engines/:id', engineHandlers.putEngine);
+  app.get('/api/v1/engines/:id/check', engineHandlers.checkEngine);
   app.get('/api/v1/models', modelHandlers.listModels);
   app.post('/api/v1/models/discover', modelHandlers.discover);
   app.post('/api/v1/models', modelHandlers.addModel);

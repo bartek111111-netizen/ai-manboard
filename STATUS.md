@@ -1,5 +1,21 @@
 # STATUS
 
+## Faza 9 — Config form + presety — ✅ ZROBIONE
+
+Działa: pełna pętla: model → preset → config → start → monitorowanie (PLAN §22 9.1–9.3).
+**SchemaForm (9.1):** `components/SchemaForm.tsx` — generyczny formularz renderowany
+deklaratywnie ze schematu engine (`ParamSchema[]`): grupy (model/performance/sampling/
+speculative/server/advanced), typy (int/float/string/bool/enum/path-model), walidacja
+(min/max), źródło wartości; `advanced` params w `<details>` (collapsed). **Edycja
+presetów (9.2):** `PresetSelect` — pełny formularz parametrów (SchemaForm) per preset,
+[Zapisz] / [Anuluj]; CRUD (nowy/duplikuj/usuń) + port. **Settings (9.3):**
+`pages/Settings.tsx` — globalne: katalogi modeli (textarea), binarki engine
+(per-engine), zakres portów (start/end), security (token); [Zapisz] → `putGlobalConfig`.
+`getEngineSchema` w `api/client.ts` (GET `/engines/:id/schema`). Bramka: **typecheck
++ lint + testy zielone — 129 (server) + 15 (web) = 144/144**; web build OK.
+
+**Dalej:** Faza 10 — reconciler + S-1 + GPU monitor + E2E pełny + docs.
+
 ## Faza 8 — Logi + monitoring — ✅ ZROBIONE
 
 Działa: logi na żywo (SSE) + metryki runtime (PLAN §22 8.1–8.3).

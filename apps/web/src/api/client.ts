@@ -217,6 +217,13 @@ export function getEngines(): Promise<EngineInfo[]> {
   return request<{ engines: EngineInfo[] }>('/api/v1/engines').then((r) => r.engines);
 }
 
+/** GET /api/v1/engines/:id/schema → declarative param schema (drives SchemaForm). */
+export function getEngineSchema(engineId: string): Promise<import('@ai-dashboard/shared').ParamSchema[]> {
+  return request<{ engineId: string; schema: import('@ai-dashboard/shared').ParamSchema[] }>(
+    `/api/v1/engines/${encodeURIComponent(engineId)}/schema`,
+  ).then((r) => r.schema);
+}
+
 /** PUT /api/v1/engines/:id — set binary (+ validated against `--version`/vulkan). */
 export function putEngine(
   id: string,

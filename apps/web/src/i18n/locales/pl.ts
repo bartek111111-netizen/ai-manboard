@@ -124,4 +124,33 @@ export const pl = {
   metricsCpu: 'CPU procesu',
   metricsRss: 'RAM procesu',
   metricsNotLive: 'Metryki dostępne tylko dla uruchomionej instancji.',
+
+  // SchemaForm (Faza 9.1)
+  enumSelect: '— wybierz —',
+  enumCustomNumber: 'własna wartość (liczba)',
+  pathModelPlaceholder: 'ścieżka do pliku GGUF',
+  advancedSection: 'Parametry zaawansowane',
+
+  // Preset editor (Faza 9.2)
+  presetEditHeading: 'Edycja presetu',
+  presetSave: 'Zapisz',
+  presetCancel: 'Anuluj',
+  presetPortLabel: 'Port',
+  presetParamsHeading: 'Parametry',
+  presetResetToDefault: 'Przywróć domyślne',
+
+  // Settings (Faza 9.3)
+  settingsHeading: 'Ustawienia globalne',
+  settingsModelDirs: 'Katalogi modeli',
+  settingsModelDirsPlaceholder: 'jeden na wiersz',
+  settingsEngines: 'Binarki engine',
+  settingsEngineBinary: 'Ścieżka binarki',
+  settingsPortRange: 'Zakres portów',
+  settingsPortStart: 'Start',
+  settingsPortEnd: 'Koniec',
+  settingsSecurity: 'Security',
+  settingsToken: 'Token dostępu',
+  settingsTokenPlaceholder: 'pusty = wyłączone',
+  settingsSave: 'Zapisz',
+  settingsSaved: 'Zapisano',
 } as const;

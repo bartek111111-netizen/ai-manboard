@@ -169,9 +169,13 @@ progress is tracked in **`STATUS.md`**. Completed so far:
   auto-scroll), `MetricsPanel` (runtime: slots, tokens/s, model, context + process
   CPU/RSS), `fetchRuntimeInfo` for llama-server (`/v1/models`, `/slots`, `/health`,
   `/metrics`)
+- **Faza 9** — config form + presets: `SchemaForm` (declarative form from engine
+  schema: groups, types, validation, source layer), preset editing (full parameter
+  form per preset, [Zapisz]/[Anuluj]), `Settings` (global: model dirs, engine
+  binaries, port range, security token)
 
-Next: config editor + dashboard (per `PLAN.md` Faza 9 — `SchemaForm` from engine
-schema, preset editing, global `Settings`), then reconciler + E2E (Faza 10).
+Next: reconciler + hardening + E2E (per `PLAN.md` Faza 10 — `reconcile.ts`, S-1
+security rule, GPU monitor, full E2E script, README polish).
 
 ## Development
 

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Preset } from '@ai-dashboard/shared';
-import { deletePreset, duplicatePreset, getPresets, putPreset } from '../api/client';
+import type { ParamSchema, Preset } from '@ai-dashboard/shared';
+import { deletePreset, duplicatePreset, getEngineSchema, getModels, getPresets, putPreset } from '../api/client';
 import { ErrorNotice } from './ErrorNotice';
+import { SchemaForm } from './SchemaForm';
 import { t } from '../i18n';
 import { errInfo } from '../ui/errors';
 
 /**
- * Preset selector + CRUD (Faza 7.3, PLAN §20.2/Konfiguracja): choose a preset
- * and manage the preset set (new / duplicate / delete; port + description edit).
- * The full parameter form is Faza 9 (SchemaForm).
+ * Preset selector + CRUD (Faza 7.3 + 9.2): choose a preset, manage the set
+ * (new / duplicate / delete), and edit the full parameter form (SchemaForm).
  */
 export function PresetSelect({
   modelId,
@@ -20,10 +20,13 @@ export function PresetSelect({
   onSelect: (name: string | null) => void;
 }) {
   const [presets, setPresets] = useState<Preset[]>([]);
+  const [schema, setSchema] = useState<ParamSchema[]>([]);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPort, setNewPort] = useState('');
+  const [editParams, setEditParams] = useState<Record<string, unknown>>({});
+  const [savingParams, setSavingParams] = useState(false);
 
   const refresh = useCallback((): void => {
     getPresets(modelId)
@@ -40,7 +43,31 @@ export function PresetSelect({
     refresh();
   }, [refresh]);
 
+  // Fetch the model's engine schema (for the SchemaForm).
+  useEffect(() => {
+    getModels()
+      .then((models) => {
+        const model = models.find((m) => m.id === modelId);
+        if (model) {
+          return getEngineSchema(model.engineId).then(setSchema);
+        }
+        return null;
+      })
+      .catch(() => {
+        // schema unavailable — the form will be empty
+      });
+  }, [modelId]);
+
   const current = presets.find((p) => p.name === selected) ?? null;
+
+  // Sync editParams when the preset changes.
+  useEffect(() => {
+    if (current) {
+      setEditParams({ ...current.params });
+    } else {
+      setEditParams({});
+    }
+  }, [selected, current]);
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true);
@@ -85,6 +112,23 @@ export function PresetSelect({
     void run(() => putPreset(modelId, current.name, { version: current.version, name: current.name, port }));
   };
 
+  const saveParams = (): void => {
+    if (!current) return;
+    setSavingParams(true);
+    void run(() =>
+      putPreset(modelId, current.name, {
+        version: current.version,
+        name: current.name,
+        port: current.port,
+        params: editParams,
+      }),
+    ).finally(() => setSavingParams(false));
+  };
+
+  const handleParamChange = (key: string, value: unknown): void => {
+    setEditParams((prev) => ({ ...prev, [key]: value }));
+  };
+
   return (
     <section>
       <h3>{t('presetHeading')}</h3>
@@ -107,20 +151,50 @@ export function PresetSelect({
           </label>
 
           {current && (
-            <dl className="kv">
-              <dt>{t('fieldPort')}</dt>
-              <dd>
-                <input
-                  type="number"
-                  className="input"
-                  value={newPort !== '' ? newPort : (current.port ?? 0).toString()}
-                  onChange={(e) => setNewPort(e.target.value)}
-                />
-                <button type="button" className="btn small" onClick={saveMeta}>
-                  {t('actionSave')}
-                </button>
-              </dd>
-            </dl>
+            <>
+              <dl className="kv">
+                <dt>{t('fieldPort')}</dt>
+                <dd>
+                  <input
+                    type="number"
+                    className="input"
+                    value={newPort !== '' ? newPort : (current.port ?? 0).toString()}
+                    onChange={(e) => setNewPort(e.target.value)}
+                  />
+                  <button type="button" className="btn small" onClick={saveMeta}>
+                    {t('actionSave')}
+                  </button>
+                </dd>
+              </dl>
+
+              {/* SchemaForm: full parameter editing (Faza 9.2) */}
+              {schema.length > 0 && (
+                <div className="preset-params">
+                  <h4>{t('presetParamsHeading')}</h4>
+                  <SchemaForm
+                    schema={schema}
+                    values={editParams}
+                    onChange={handleParamChange}
+                  />
+                  <div className="instance-actions">
+                    <button type="button" className="btn" disabled={savingParams} onClick={saveParams}>
+                      {t('presetSave')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={savingParams}
+                      onClick={() => {
+                        // Reset to the preset's current params
+                        setEditParams({ ...current.params });
+                      }}
+                    >
+                      {t('presetCancel')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="instance-actions">

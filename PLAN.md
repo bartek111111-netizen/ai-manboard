@@ -1155,10 +1155,10 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - **Akceptacja**: monitoring działający dla uruchomionego modelu. ✅
 
 ### Faza 9 — Config form + presety (sesja 10)
-- [ ] 9.1 `SchemaForm` (rendering ze schematu: grupy, typy, walidacja, źródła)
-- [ ] 9.2 Edycja presetów z UI (formularz per preset)
-- [ ] 9.3 `Settings` (globalne: katalogi, binarki, porty, security)
-- **Akceptacja**: pełna pętla: model → preset → config → start → monitorowanie.
+- [x] 9.1 `SchemaForm` (rendering ze schematu: grupy, typy, walidacja, źródła)
+- [x] 9.2 Edycja presetów z UI (formularz per preset)
+- [x] 9.3 `Settings` (globalne: katalogi, binarki, porty, security)
+- **Akceptacja**: pełna pętla: model → preset → config → start → monitorowanie. ✅
 
 ### Faza 10 — Reconcile + hardening + docs (sesja 11)
 - [ ] 10.1 `reconcile.ts` (§11.3) + UI dla `unknown` + `POST /instances/:id/resolve`

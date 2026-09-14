@@ -21,12 +21,14 @@ export function PresetSelect({
 }) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [schema, setSchema] = useState<ParamSchema[]>([]);
+  const [modelPath, setModelPath] = useState<string>('');
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPort, setNewPort] = useState('');
   const [editParams, setEditParams] = useState<Record<string, unknown>>({});
   const [savingParams, setSavingParams] = useState(false);
+  const [autoAssign, setAutoAssign] = useState(false);
 
   const refresh = useCallback((): void => {
     getPresets(modelId)
@@ -43,12 +45,13 @@ export function PresetSelect({
     refresh();
   }, [refresh]);
 
-  // Fetch the model's engine schema (for the SchemaForm).
+  // Fetch the model's engine schema + path (for the SchemaForm).
   useEffect(() => {
     getModels()
       .then((models) => {
         const model = models.find((m) => m.id === modelId);
         if (model) {
+          setModelPath(model.path);
           return getEngineSchema(model.engineId).then(setSchema);
         }
         return null;
@@ -64,8 +67,11 @@ export function PresetSelect({
   useEffect(() => {
     if (current) {
       setEditParams({ ...current.params });
+      // Auto-assign checkbox: check if this preset is the default
+      setAutoAssign(current.name === 'default');
     } else {
       setEditParams({});
+      setAutoAssign(false);
     }
   }, [selected, current]);
 
@@ -83,13 +89,21 @@ export function PresetSelect({
   };
 
   const createPreset = (): void => {
-    const name = newName.trim();
-    if (!name) return;
-    const port = newPort.trim() !== '' ? Number(newPort) : undefined;
+    const name = newName.trim() || 'default';
+    const port = newPort.trim() !== '' ? Number(newPort) : 8080;
     void run(() => putPreset(modelId, name, { version: 1, name, port, params: {} })).then(() => {
       setNewName('');
       setNewPort('');
       onSelect(name);
+    });
+  };
+
+  const createDefaultPreset = (): void => {
+    // Create a preset with the name "default" and schema defaults
+    const port = newPort.trim() !== '' ? Number(newPort) : 8080;
+    void run(() => putPreset(modelId, 'default', { version: 1, name: 'default', port, params: {} })).then(() => {
+      setNewPort('');
+      onSelect('default');
     });
   };
 
@@ -159,29 +173,41 @@ export function PresetSelect({
 
           {current && (
             <>
-              <dl className="kv">
-                <dt>{t('fieldPort')}</dt>
-                <dd>
+              {/* Port + auto-assign */}
+              <div className="preset-meta">
+                <dl className="kv">
+                  <dt>{t('fieldPort')}</dt>
+                  <dd>
+                    <input
+                      type="number"
+                      className="input"
+                      value={newPort !== '' ? newPort : (current.port ?? 0).toString()}
+                      onChange={(e) => setNewPort(e.target.value)}
+                    />
+                    <button type="button" className="btn small" onClick={saveMeta}>
+                      {t('actionSave')}
+                    </button>
+                  </dd>
+                </dl>
+                <label className="checkbox-label">
                   <input
-                    type="number"
-                    className="input"
-                    value={newPort !== '' ? newPort : (current.port ?? 0).toString()}
-                    onChange={(e) => setNewPort(e.target.value)}
+                    type="checkbox"
+                    checked={autoAssign}
+                    onChange={(e) => setAutoAssign(e.target.checked)}
                   />
-                  <button type="button" className="btn small" onClick={saveMeta}>
-                    {t('actionSave')}
-                  </button>
-                </dd>
-              </dl>
+                  {t('autoAssign')}
+                </label>
+              </div>
 
               {/* SchemaForm: full parameter editing (Faza 9.2) */}
               {schema.length > 0 && (
                 <div className="preset-params">
                   <h4>{t('presetParamsHeading')}</h4>
                   <SchemaForm
-                    schema={schema.filter((p) => p.key !== 'model')}
+                    schema={schema}
                     values={editParams}
                     onChange={handleParamChange}
+                    modelPath={modelPath}
                   />
                   <div className="instance-actions">
                     <button type="button" className="btn" disabled={savingParams} onClick={saveParams}>
@@ -219,6 +245,7 @@ export function PresetSelect({
         </>
       )}
 
+      {/* Create new preset */}
       <div className="preset-create">
         <input
           type="text"
@@ -234,8 +261,11 @@ export function PresetSelect({
           value={newPort}
           onChange={(e) => setNewPort(e.target.value)}
         />
-        <button type="button" className="btn" disabled={busy || newName.trim() === ''} onClick={createPreset}>
+        <button type="button" className="btn" disabled={busy} onClick={createPreset}>
           {t('actionNewPreset')}
+        </button>
+        <button type="button" className="btn" disabled={busy} onClick={createDefaultPreset}>
+          {t('actionNewDefaultPreset')}
         </button>
       </div>
     </section>

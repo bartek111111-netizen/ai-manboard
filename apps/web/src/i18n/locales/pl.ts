@@ -75,10 +75,12 @@ export const pl = {
   actionDuplicate: 'Duplikuj',
   actionDelete: 'Usuń',
   actionNewPreset: 'Nowy',
+  actionNewDefaultPreset: 'Nowy (domyślny)',
   dupPrompt: 'Nazwa kopii presetu:',
   delConfirm: 'Usunąć ten preset?',
   newPresetPlaceholder: 'nazwa presetu',
   newPresetPortPlaceholder: 'port (opcjonalnie)',
+  autoAssign: 'Przypisz automatycznie jako domyślny',
 
   // Detail tabs
   tabPreview: 'Podgląd',

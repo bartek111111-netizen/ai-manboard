@@ -1,7 +1,7 @@
 /**
  * SchemaForm (Faza 9.1, §7.2): generic form rendered declaratively from
  * the engine's `ParamSchema[]`. Groups, types, validation, source layer.
- * Includes a command preview at the top.
+ * Includes a command preview and proper advanced section formatting.
  */
 import type { ParamSchema } from '@ai-dashboard/shared';
 import { t } from '../i18n/index.js';
@@ -16,6 +16,8 @@ interface SchemaFormProps {
   errors?: Record<string, string>;
   /** Called when the user edits a value. */
   onChange: (key: string, value: unknown) => void;
+  /** The model's path (pre-filled for the `model` param). */
+  modelPath?: string;
 }
 
 /** Group label (PL). */
@@ -27,6 +29,7 @@ const GROUP_LABELS: Record<string, string> = {
   vision: 'Wizja (mmproj)',
   moe: 'MoE',
   server: 'Serwer',
+  advanced: 'Zaawansowane',
 };
 
 /** Builds a preview of the launch command from current values. */
@@ -39,18 +42,14 @@ function buildCommandPreview(schema: ParamSchema[], values: Record<string, unkno
 
     const flag = param.flag ?? `--${param.key}`;
     if (param.type === 'bool') {
-      // Bool: only include when true (or offFlag when false)
       if (val === true) {
         parts.push(flag);
       } else if (val === false && param.offFlag) {
         parts.push(param.offFlag);
       }
-    } else if (param.type === 'enum') {
-      if (typeof val === 'number') {
-        parts.push(`${flag}=${val}`);
-      } else {
-        parts.push(`${flag}=${val}`);
-      }
+    } else if (param.key === 'model') {
+      // Model path goes last
+      continue;
     } else {
       parts.push(`${flag}=${val}`);
     }
@@ -83,12 +82,12 @@ function Field({
   const fieldId = `field-${param.key}`;
 
   return (
-    <div className={`schema-field type-${param.type}${param.advanced ? ' advanced' : ''}`}>
+    <div className={`schema-field type-${param.type}`}>
       <label htmlFor={fieldId}>
         {param.label}
         {source && <span className="field-source"> ({source})</span>}
-        {param.description && <span className="field-desc"> — {param.description}</span>}
       </label>
+      {param.description && <p className="field-desc">{param.description}</p>}
 
       {error && <p className="field-error">{error}</p>}
 
@@ -201,27 +200,78 @@ function Field({
   );
 }
 
+/** Renders a group of params with proper formatting. */
+function ParamGroup({
+  group,
+  params,
+  values,
+  sources,
+  errors,
+  onChange,
+  modelPath,
+}: {
+  group: string;
+  params: ParamSchema[];
+  values: Record<string, unknown>;
+  sources?: Record<string, string>;
+  errors?: Record<string, string>;
+  onChange: (key: string, value: unknown) => void;
+  modelPath?: string;
+}) {
+  return (
+    <fieldset className={`schema-group group-${group}`}>
+      <legend>{GROUP_LABELS[group] ?? group}</legend>
+      {params.map((param) => {
+        // Pre-fill the model path
+        let val = values[param.key];
+        if (param.key === 'model' && (val === undefined || val === null || val === '') && modelPath) {
+          val = modelPath;
+        }
+        return (
+          <Field
+            key={param.key}
+            param={param}
+            value={val}
+            source={sources?.[param.key]}
+            error={errors?.[param.key]}
+            onChange={onChange}
+          />
+        );
+      })}
+    </fieldset>
+  );
+}
+
 export function SchemaForm({
   schema,
   values,
   sources,
   errors,
   onChange,
+  modelPath,
 }: SchemaFormProps) {
   // Command preview
   const command = buildCommandPreview(schema, values);
 
-  // Group params by `group` (exclude advanced params from the main view)
-  const groups = new Map<string, ParamSchema[]>();
-  for (const param of schema) {
-    if (param.advanced) continue; // advanced params shown in the collapsible section
-    const arr = groups.get(param.group) ?? [];
+  // Separate advanced params from main params
+  const mainParams = schema.filter((p) => !p.advanced);
+  const advancedParams = schema.filter((p) => p.advanced);
+
+  // Group main params by `group`
+  const mainGroups = new Map<string, ParamSchema[]>();
+  for (const param of mainParams) {
+    const arr = mainGroups.get(param.group) ?? [];
     arr.push(param);
-    groups.set(param.group, arr);
+    mainGroups.set(param.group, arr);
   }
 
-  // Advanced params (separate section)
-  const advancedParams = schema.filter((p) => p.advanced);
+  // Group advanced params by `group`
+  const advancedGroups = new Map<string, ParamSchema[]>();
+  for (const param of advancedParams) {
+    const arr = advancedGroups.get(param.group) ?? [];
+    arr.push(param);
+    advancedGroups.set(param.group, arr);
+  }
 
   return (
     <div className="schema-form">
@@ -232,36 +282,37 @@ export function SchemaForm({
       </div>
 
       {/* Main groups */}
-      {[...groups.entries()].map(([group, params]) => (
-        <fieldset key={group} className={`schema-group group-${group}`}>
-          <legend>{GROUP_LABELS[group] ?? group}</legend>
-          {params.map((param) => (
-            <Field
-              key={param.key}
-              param={param}
-              value={values[param.key]}
-              source={sources?.[param.key]}
-              error={errors?.[param.key]}
-              onChange={onChange}
-            />
-          ))}
-        </fieldset>
+      {[...mainGroups.entries()].map(([group, params]) => (
+        <ParamGroup
+          key={group}
+          group={group}
+          params={params}
+          values={values}
+          sources={sources}
+          errors={errors}
+          onChange={onChange}
+          modelPath={modelPath}
+        />
       ))}
 
       {/* Advanced section (collapsed by default) */}
       {advancedParams.length > 0 && (
         <details className="schema-advanced">
           <summary>{t('advancedSection')}</summary>
-          {advancedParams.map((param) => (
-            <Field
-              key={param.key}
-              param={param}
-              value={values[param.key]}
-              source={sources?.[param.key]}
-              error={errors?.[param.key]}
-              onChange={onChange}
-            />
-          ))}
+          <div className="schema-advanced-content">
+            {[...advancedGroups.entries()].map(([group, params]) => (
+              <ParamGroup
+                key={group}
+                group={group}
+                params={params}
+                values={values}
+                sources={sources}
+                errors={errors}
+                onChange={onChange}
+                modelPath={modelPath}
+              />
+            ))}
+          </div>
         </details>
       )}
     </div>

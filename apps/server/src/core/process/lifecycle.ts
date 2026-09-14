@@ -226,11 +226,12 @@ export class LifecycleManager {
 
       // Use systeminformation for CPU% and RSS
       const allProcs = await si.processes();
-      const proc = allProcs.find((p: Record<string, unknown>) => p.pid === pid);
+      const procList = allProcs.list;
+      const proc = procList?.find((p: Record<string, unknown>) => p.pid === pid);
       if (proc) {
         return {
-          cpuPct: proc.cpu,
-          rssMB: Math.round(proc.mem / 1024 / 1024),
+          cpuPct: (proc as { cpu?: number }).cpu ?? 0,
+          rssMB: Math.round((proc as { mem?: number }).mem / 1024 / 1024),
         };
       }
 

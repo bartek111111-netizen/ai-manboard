@@ -143,9 +143,10 @@ export const pl = {
   // System status
   systemStatusHeading: 'Status systemu',
   systemStatsHeading: 'System',
+  gpuUtilization: 'GPU',
+  gpuMemory: 'VRAM',
+  gpuMemoryDetail: 'Pamięć',
   gpuHeading: 'GPU',
-  gpuUtilization: 'Wykorzystanie',
-  gpuMemory: 'Pamięć VRAM',
   gpuNotAvailable: 'GPU nie wykryte',
   cpuHeading: 'CPU',
   cpuUsage: 'Wykorzystanie',

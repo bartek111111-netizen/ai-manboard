@@ -54,6 +54,12 @@ function StatRow({
   );
 }
 
+function colorForPct(pct: number): string {
+  if (pct > 90) return 'var(--color-state-error)';
+  if (pct > 70) return 'var(--color-state-stopping)';
+  return 'var(--color-state-running)';
+}
+
 export function Sidebar() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
 
@@ -75,12 +81,16 @@ export function Sidebar() {
   const ram = metrics?.ram ?? null;
 
   const gpuPct = gpu?.utilization ?? 0;
+  const vramPct = gpu && gpu.memoryUsedMB != null && gpu.memoryTotalMB != null
+    ? (gpu.memoryUsedMB / gpu.memoryTotalMB) * 100
+    : 0;
   const cpuPct = cpu?.usagePct ?? 0;
   const ramPct = ram ? (ram.usedMB / ram.totalMB) * 100 : 0;
 
-  const gpuColor = gpuPct > 90 ? 'var(--color-state-error)' : gpuPct > 70 ? 'var(--color-state-stopping)' : 'var(--color-state-running)';
-  const cpuColor = cpuPct > 90 ? 'var(--color-state-error)' : cpuPct > 70 ? 'var(--color-state-stopping)' : 'var(--color-state-running)';
-  const ramColor = ramPct > 90 ? 'var(--color-state-error)' : ramPct > 70 ? 'var(--color-state-stopping)' : 'var(--color-state-running)';
+  const gpuColor = colorForPct(gpuPct);
+  const vramColor = colorForPct(vramPct);
+  const cpuColor = colorForPct(cpuPct);
+  const ramColor = colorForPct(ramPct);
 
   return (
     <aside className="sidebar">
@@ -91,43 +101,70 @@ export function Sidebar() {
       </nav>
 
       <div className="sidebar-stats">
-        <h3>{t('systemStatsHeading')}</h3>
+        {/* GPU section */}
+        <div className="sidebar-section">
+          <h3 className="sidebar-section-title">{t('gpuHeading')}</h3>
+          {gpu ? (
+            <>
+              <StatRow
+                label={t('gpuUtilization')}
+                value={`${gpuPct.toFixed(0)}%`}
+                pct={gpuPct}
+                color={gpuColor}
+              />
+              <StatRow
+                label={t('gpuMemory')}
+                value={`${vramPct.toFixed(0)}%`}
+                pct={vramPct}
+                color={vramColor}
+              />
+              <div className="sidebar-substat">
+                <span>{t('gpuMemoryDetail')}</span>
+                <span>
+                  {(gpu.memoryUsedMB! / 1024).toFixed(1)} / {(gpu.memoryTotalMB! / 1024).toFixed(1)} GB
+                </span>
+              </div>
+            </>
+          ) : (
+            <p className="sidebar-section-empty">{t('gpuNotAvailable')}</p>
+          )}
+        </div>
 
-        {/* GPU */}
-        <StatRow
-          label={t('gpuHeading')}
-          value={gpu ? `${gpu.utilization ?? 0}%` : '—'}
-          pct={gpuPct}
-          color={gpuColor}
-        />
-        {gpu && gpu.memoryUsedMB != null && gpu.memoryTotalMB != null && (
-          <div className="sidebar-substat">
-            <span>{t('gpuMemory')}</span>
-            <span>{(gpu.memoryUsedMB / 1024).toFixed(1)} / {(gpu.memoryTotalMB / 1024).toFixed(1)} GB</span>
-          </div>
-        )}
+        {/* CPU section */}
+        <div className="sidebar-section">
+          <h3 className="sidebar-section-title">{t('cpuHeading')}</h3>
+          <StatRow
+            label={t('cpuUsage')}
+            value={`${cpuPct.toFixed(0)}%`}
+            pct={cpuPct}
+            color={cpuColor}
+          />
+          {cpu?.temperatureC != null && (
+            <div className="sidebar-substat">
+              <span>{t('cpuTemperature')}</span>
+              <span>{cpu.temperatureC.toFixed(0)}°C</span>
+            </div>
+          )}
+        </div>
 
-        {/* CPU */}
-        <StatRow
-          label={t('cpuHeading')}
-          value={`${cpuPct.toFixed(0)}%`}
-          pct={cpuPct}
-          color={cpuColor}
-        />
-
-        {/* RAM */}
-        <StatRow
-          label={t('ramHeading')}
-          value={ram ? `${ramPct.toFixed(0)}%` : '—'}
-          pct={ramPct}
-          color={ramColor}
-        />
-        {ram && (
-          <div className="sidebar-substat">
-            <span>{t('ramUsed')}</span>
-            <span>{(ram.usedMB / 1024).toFixed(1)} / {(ram.totalMB / 1024).toFixed(1)} GB</span>
-          </div>
-        )}
+        {/* RAM section */}
+        <div className="sidebar-section">
+          <h3 className="sidebar-section-title">{t('ramHeading')}</h3>
+          <StatRow
+            label={t('ramUsage')}
+            value={ram ? `${ramPct.toFixed(0)}%` : '—'}
+            pct={ramPct}
+            color={ramColor}
+          />
+          {ram && (
+            <div className="sidebar-substat">
+              <span>{t('ramUsed')}</span>
+              <span>
+                {(ram.usedMB / 1024).toFixed(1)} / {(ram.totalMB / 1024).toFixed(1)} GB
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

@@ -204,14 +204,33 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-m);
+  gap: var(--spacing-l);
 }
 
-.sidebar-stats h3 {
-  font-size: 0.8rem;
+.sidebar-section {
+  padding-bottom: var(--spacing-m);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.sidebar-section-title {
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--color-muted);
+  margin: 0 0 var(--spacing-s);
+  padding-bottom: var(--spacing-s);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.sidebar-section-empty {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-style: italic;
   margin: 0;
 }
 

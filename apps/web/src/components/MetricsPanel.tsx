@@ -71,15 +71,21 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
             </>
           )}
 
-          {/* Process metrics (Faza 8.2: CPU/RSS from systeminformation) */}
-          {dto?.process && (
+          {/* Work time: actual generation time */}
+          {runtime.extras?.workTimeSec !== undefined && dto?.uptimeSec !== null && dto?.uptimeSec !== undefined && (
             <>
-              <dt>{t('metricsCpu')}</dt>
-              <dd>{dto.process.cpuPct !== null ? `${dto.process.cpuPct.toFixed(1)}%` : '—'}</dd>
-              <dt>{t('metricsRss')}</dt>
-              <dd>{dto.process.rssMB !== null ? `${dto.process.rssMB.toFixed(0)} MB` : '—'}</dd>
+              <dt>{t('metricsWorkTime')}</dt>
+              <dd>{formatUptime(runtime.extras.workTimeSec as number)}</dd>
+              <dt>{t('metricsWorkPct')}</dt>
+              <dd>{((runtime.extras.workTimeSec as number) / dto.uptimeSec * 100).toFixed(1)}%</dd>
             </>
           )}
+
+          {/* Faza 8.2: CPU/RAM (pending) */}
+          <dt>{t('metricsCpu')}</dt>
+          <dd className="muted">Faza 8.2</dd>
+          <dt>{t('metricsRss')}</dt>
+          <dd className="muted">Faza 8.2</dd>
         </dl>
       )}
 
@@ -88,4 +94,11 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
       )}
     </section>
   );
+}
+
+function formatUptime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
 }

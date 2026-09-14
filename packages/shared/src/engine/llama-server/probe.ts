@@ -104,6 +104,11 @@ export async function fetchLlamaServerRuntimeInfo(base: string): Promise<Runtime
       if (ctxSize !== undefined) {
         info.contextSize = Math.round(ctxSize);
       }
+
+      // Work time: total seconds spent generating (from metrics)
+      if (tokensTime !== undefined) {
+        info.extras.workTimeSec = tokensTime;
+      }
     }
   } catch {
     // unavailable — ignore

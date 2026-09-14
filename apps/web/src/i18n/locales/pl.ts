@@ -148,6 +148,8 @@ export const pl = {
   metricsGpuMemory: 'Pamięć GPU',
   metricsCpu: 'CPU procesu',
   metricsRss: 'Pamięć RAM procesu',
+  metricsWorkTime: 'Czas pracy (generowanie)',
+  metricsWorkPct: '% czasu pracy',
   metricsNotLive: 'Metryki dostępne tylko dla uruchomionej instancji.',
 
   // SchemaForm (Faza 9.1)

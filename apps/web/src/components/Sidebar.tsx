@@ -138,7 +138,7 @@ export function Sidebar() {
                 label={t('gpuMemory')}
                 value={
                   gpu.memoryTotalMB != null && gpu.memoryUsedMB != null
-                    ? `${Math.round((gpu.memoryUsedMB / gpu.memoryTotalMB) * 100)}%`
+                    ? `${(gpu.memoryUsedMB / 1024).toFixed(1)} / ${(gpu.memoryTotalMB / 1024).toFixed(0)} GB`
                     : '—'
                 }
                 pct={
@@ -152,10 +152,6 @@ export function Sidebar() {
                     : 0,
                 )}
               />
-              <div className="sidebar-substat">
-                <span>{gpu.name}</span>
-                <span>{(gpu.memoryUsedMB ?? 0) / 1024 >= 1 ? `${((gpu.memoryUsedMB ?? 0) / 1024).toFixed(1)} GB` : `${gpu.memoryUsedMB ?? 0} MB`}</span>
-              </div>
             </>
           ) : (
             <p className="sidebar-section-empty">{t('gpuNotSelected')}</p>

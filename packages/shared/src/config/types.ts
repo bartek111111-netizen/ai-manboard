@@ -52,6 +52,8 @@ export interface GlobalConfig {
   monitoring: { probeIntervalSec: number; startupTimeoutSec: number };
   /** Log retention (FMK-2). */
   logs: { ringLines: number; retentionFiles: number };
+  /** GPU preferences: which GPU to use for models and show in sidebar stats. */
+  gpu?: { preferred?: string | null };
 }
 
 /**

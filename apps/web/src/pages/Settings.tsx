@@ -28,7 +28,7 @@ export function Settings() {
   const [portEnd, setPortEnd] = useState(8090);
   const [token, setToken] = useState('');
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
-  const [selectedGpu, setSelectedGpu] = useState<string | null>(null);
+  const [preferredGpu, setPreferredGpu] = useState<string | null>(null);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -47,6 +47,8 @@ export function Settings() {
         setPortStart(config.global.portRange.start);
         setPortEnd(config.global.portRange.end);
         setToken(config.global.security.token ?? '');
+        // Load GPU preference from config
+        setPreferredGpu(config.global.gpu?.preferred ?? null);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -81,7 +83,7 @@ export function Settings() {
       security: { token: token.trim() !== '' ? token.trim() : null },
       monitoring: { probeIntervalSec: 2, startupTimeoutSec: 30 },
       logs: { ringLines: 200, retentionFiles: 5 },
-      gpu: { preferred: selectedGpu },
+      gpu: { preferred: preferredGpu },
     };
     putGlobalConfig(body)
       .then(() => {
@@ -178,8 +180,8 @@ export function Settings() {
             <label key={gpu.id} className="checkbox-field gpu-card">
               <input
                 type="checkbox"
-                checked={selectedGpu === gpu.id}
-                onChange={() => setSelectedGpu(gpu.id)}
+                checked={preferredGpu === gpu.id}
+                onChange={() => setPreferredGpu(gpu.id)}
               />
               <div className="gpu-card-info">
                 <div className="gpu-card-name">{gpu.name}</div>

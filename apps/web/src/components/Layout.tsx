@@ -7,35 +7,25 @@ import { getInstances, getModels } from '../api/client';
 /**
  * App shell: left sidebar (nav + always-on system stats) + main content.
  * Header: app title (shifted right) + current model status indicator.
+ * Only shows model name when an instance is actually running.
  */
 export function Layout() {
-  const [model, setModel] = useState<{ name: string; running: boolean } | null>(null);
+  const [runningModel, setRunningModel] = useState<string | null>(null);
 
   useEffect(() => {
-    getModels()
-      .then((models) => {
-        if (models.length === 0) {
-          setModel(null);
-          return;
+    Promise.all([getInstances(), getModels()])
+      .then(([instances, models]) => {
+        const running = instances.find((i) => i.state === 'running');
+        if (running) {
+          // Find the model display name
+          const model = models.find((m) => m.id === running.modelId);
+          setRunningModel(model?.displayName ?? running.modelId);
+        } else {
+          setRunningModel(null);
         }
-        // Check if any instance is running
-        getInstances()
-          .then((instances) => {
-            const running = instances.find((i) => i.state === 'running');
-            setModel({
-              name: models[0].displayName,
-              running: running !== undefined,
-            });
-          })
-          .catch(() => {
-            setModel({ name: models[0].displayName, running: false });
-          });
       })
-      .catch(() => setModel(null));
+      .catch(() => setRunningModel(null));
   }, []);
-
-  const hasModel = model !== null;
-  const isRunning = model?.running ?? false;
 
   return (
     <div className="app-layout">
@@ -46,13 +36,11 @@ export function Layout() {
             <NavLink to="/">{t('appTitle')}</NavLink>
           </h1>
           <div className="app-header-status">
-            {hasModel ? (
+            {runningModel ? (
               <>
-                <span className={`status-dot ${isRunning ? 'on' : 'off'}`} />
-                <span className="status-label">
-                  {isRunning ? t('modelRunning') : t('modelStopped')}
-                </span>
-                <span className="status-model-name">{model.name}</span>
+                <span className="status-dot on" />
+                <span className="status-label">{t('modelRunning')}</span>
+                <span className="status-model-name">{runningModel}</span>
               </>
             ) : (
               <>

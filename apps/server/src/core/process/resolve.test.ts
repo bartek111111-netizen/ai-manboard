@@ -54,7 +54,7 @@ describe('resolveInstanceId', () => {
 
 /** A mock registry that returns null (no instance) for all `get` calls. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock signature
-const mockRegistry = { get: (instanceId: string): { port: number } | null => null };
+const mockRegistry = { get: (_instanceId: string): { port: number } | null => null };
 
 describe('InstanceResolver', () => {
   afterEach(clearHome);

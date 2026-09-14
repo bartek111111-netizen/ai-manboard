@@ -1,5 +1,22 @@
 # STATUS
 
+## Faza 8 — Logi + monitoring — ✅ ZROBIONE
+
+Działa: logi na żywo (SSE) + metryki runtime (PLAN §22 8.1–8.3).
+**LogViewer (8.1):** `components/LogViewer.tsx` — linie logów z SSE
+(`openLogStream`), filtry (poziom: all/info/warn/error, wyszukiwarka), auto-scroll
+(odczepia się gdy scrolluje w górę), limit 500 linii; zintegrowany w `ModelDetail`
+(zakładka "Logi"). **MetricsPanel (8.2):** `components/MetricsPanel.tsx` — metryki
+runtime: `fetchRuntimeInfo` (slots, tokens/s, model loaded, context) + `process`
+(CPU/RSS — Faza 10 pełny collector); polling DTO 3 s; zintegrowany w `ModelDetail`
+(zakładka "Metryki"). **fetchRuntimeInfo (8.3):** `probe.ts` — `/v1/models`
+(modelLoaded), `/slots` (total/used), `/health` (extras), `/metrics`
+(availability + sample); `RuntimeInfo` typ w `shared/engine/types.ts`. Bramka:
+**typecheck + lint + testy zielone — 129 (server) + 15 (web) = 144/144**; web build OK.
+
+**Dalej:** Faza 9 — `SchemaForm` (31 parametrów ze schematu) + edycja presetów +
+`Settings` (globalne); Faza 10 — reconciler + S-1 + E2E pełny.
+
 ## Faza 7 — Frontend: modele + start/stop — ✅ ZROBIONE
 
 Działa: UI (React) — lista modeli, panel instancji, presety, onboarding (PLAN §22 7.1–7.5, §20).

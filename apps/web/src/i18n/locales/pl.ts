@@ -106,4 +106,22 @@ export const pl = {
   errActionEngineBinary: 'Sprawdź ścieżkę do binarki i uprawnienia (czy jest wykonywalna, czy ma --version, libvulkan).',
   errActionUnauthorized: 'Podaj token dostępu w Ustawieniach (S-2).',
   errActionPrefix: 'Co zrobić',
+
+  // LogViewer (Faza 8.1)
+  logFilterLevel: 'Filtruj po poziomie',
+  logFilterAll: 'Wszystkie',
+  logSearchPlaceholder: 'szukaj w logach…',
+  logAutoScroll: 'auto-scroll',
+  logEmpty: 'Brak linii logów (instancja nie działa albo filtr pusty).',
+
+  // MetricsPanel (Faza 8.2)
+  metricsHeading: 'Metryki',
+  metricsModelLoaded: 'Model',
+  metricsContextSize: 'Context',
+  metricsSlots: 'Sloty',
+  metricsTokensPerSec: 'Tokens/s',
+  metricsGpuMemory: 'GPU RAM',
+  metricsCpu: 'CPU procesu',
+  metricsRss: 'RAM procesu',
+  metricsNotLive: 'Metryki dostępne tylko dla uruchomionej instancji.',
 } as const;

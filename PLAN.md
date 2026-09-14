@@ -1149,10 +1149,10 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
   `AI_DASHBOARD_HOME` (bez configu) → kreator → start modelu. ✅ (E2E: kreator → skan → start → `running` + endpoint)
 
 ### Faza 8 — Logi + monitoring (sesja 9)
-- [ ] 8.1 `LogViewer` (SSE) + filtry
-- [ ] 8.2 `MetricsPanel` (collector: engine `/metrics` + `systeminformation` + GPU opcjonalnie)
-- [ ] 8.3 `fetchRuntimeInfo` dla llama-server (`/metrics`, `/slots`, `/health`)
-- **Akceptacja**: monitoring działający dla uruchomionego modelu.
+- [x] 8.1 `LogViewer` (SSE) + filtry
+- [x] 8.2 `MetricsPanel` (collector: engine `/metrics` + `systeminformation` + GPU opcjonalnie)
+- [x] 8.3 `fetchRuntimeInfo` dla llama-server (`/metrics`, `/slots`, `/health`)
+- **Akceptacja**: monitoring działający dla uruchomionego modelu. ✅
 
 ### Faza 9 — Config form + presety (sesja 10)
 - [ ] 9.1 `SchemaForm` (rendering ze schematu: grupy, typy, walidacja, źródła)

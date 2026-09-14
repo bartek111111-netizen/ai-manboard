@@ -165,9 +165,13 @@ progress is tracked in **`STATUS.md`**. Completed so far:
   actions), instance panel (start/stop/restart + PID + uptime + endpoint, SSE live
   state), preset CRUD (new/duplicate/delete + port edit), error notices (message +
   action), onboarding wizard (binary + model dirs, [Sprawdź] preflight, [Pomiń])
+- **Faza 8** — logs + monitoring: `LogViewer` (SSE live logs + level/search filters +
+  auto-scroll), `MetricsPanel` (runtime: slots, tokens/s, model, context + process
+  CPU/RSS), `fetchRuntimeInfo` for llama-server (`/v1/models`, `/slots`, `/health`,
+  `/metrics`)
 
-Next: logs + metrics UI (per `PLAN.md` Faza 8 — `LogViewer` from SSE, `MetricsPanel`
-with CPU/RSS/GPU), then config editor + dashboard (Faza 9), reconciler (Faza 10).
+Next: config editor + dashboard (per `PLAN.md` Faza 9 — `SchemaForm` from engine
+schema, preset editing, global `Settings`), then reconciler + E2E (Faza 10).
 
 ## Development
 

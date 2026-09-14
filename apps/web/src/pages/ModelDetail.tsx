@@ -4,6 +4,8 @@ import type { ModelView } from '@ai-dashboard/shared';
 import { ApiError, getModels, getPresets } from '../api/client';
 import { CapabilityIcons } from '../components/CapabilityIcons';
 import { InstancePanel } from '../components/InstancePanel';
+import { LogViewer } from '../components/LogViewer';
+import { MetricsPanel } from '../components/MetricsPanel';
 import { PresetSelect } from '../components/PresetSelect';
 import { t } from '../i18n';
 
@@ -52,8 +54,8 @@ export function ModelDetail() {
     { id: 'preview', label: t('tabPreview') },
     { id: 'config', label: t('tabConfig') },
     { id: 'instance', label: t('tabInstance') },
-    { id: 'logs', label: t('tabLogs'), disabled: true },
-    { id: 'metrics', label: t('tabMetrics'), disabled: true },
+    { id: 'logs', label: t('tabLogs') },
+    { id: 'metrics', label: t('tabMetrics') },
   ];
 
   return (
@@ -77,7 +79,6 @@ export function ModelDetail() {
                 onClick={() => setTab(tabDef.id)}
               >
                 {tabDef.label}
-                {tabDef.disabled && <span className="muted"> (Faza 8)</span>}
               </button>
             ))}
           </div>
@@ -130,8 +131,18 @@ export function ModelDetail() {
               <p className="muted">{t('presetRequired')}</p>
             ))}
 
-          {tab === 'logs' && <p className="muted">{t('comingFaza8')}</p>}
-          {tab === 'metrics' && <p className="muted">{t('comingFaza8')}</p>}
+          {tab === 'logs' &&
+            (selectedPreset ? (
+              <LogViewer instanceId={`${model.id}--${selectedPreset}`} />
+            ) : (
+              <p className="muted">{t('presetRequired')}</p>
+            ))}
+          {tab === 'metrics' &&
+            (selectedPreset ? (
+              <MetricsPanel instanceId={`${model.id}--${selectedPreset}`} />
+            ) : (
+              <p className="muted">{t('presetRequired')}</p>
+            ))}
         </>
       )}
     </>

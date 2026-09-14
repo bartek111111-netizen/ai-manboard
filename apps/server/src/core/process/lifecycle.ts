@@ -30,7 +30,7 @@ import { type HealthProber, type ProbeSource, type RuntimeHandle } from '../heal
 import { InstanceResolver, resolveInstanceId, type ResolvedInstance } from './resolve.js';
 import type { ProcessManager } from './manager.js';
 import type { PidRegistry } from './registry.js';
-import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn } from './reconcile.js';
+import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn, isPidAlive } from './reconcile.js';
 
 export interface LifecycleDeps {
   store: ConfigStore;
@@ -157,7 +157,15 @@ export class LifecycleManager {
   async getFullDto(instanceId: string): Promise<InstanceDto> {
     const inst = await this.resolver.resolve(instanceId);
     const entry = this.deps.registry.get(instanceId);
-    const state = this.getState(instanceId);
+    let state = this.getState(instanceId);
+    // Check if the process is actually alive (prevents stale 'running' state)
+    if ((state === 'running' || state === 'starting') && entry?.pid) {
+      const alive = isPidAlive(entry.pid);
+      if (!alive) {
+        state = 'error';
+        this.deps.manager.setInstanceState(instanceId, 'error');
+      }
+    }
     // configSource: which layer supplied each param (§14.2 "pełne DTO").
     const configSource: Record<string, string> = {};
     for (const [key, resolved] of Object.entries(inst.resolved)) {

@@ -84,8 +84,6 @@ export class ProcessManager {
   getActiveEntry(instanceId: string): ActiveInstance | null {
     return this.active.get(instanceId) ?? null;
   }
-    return this.opts.registry.get(instanceId)?.state;
-  }
 
   /** The instance's in-memory log lines (live view), most recent last. */
   getLogs(instanceId: string, limit?: number): LogLine[] {

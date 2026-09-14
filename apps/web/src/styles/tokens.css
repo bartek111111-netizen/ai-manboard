@@ -1673,3 +1673,15 @@ section {
   gap: 8px;
   margin-bottom: 8px;
 }
+
+/* --- Status card: model name + preset subtitle --- */
+.status-card-names {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-card-preset {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-top: 2px;
+}

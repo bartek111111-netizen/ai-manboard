@@ -3,7 +3,7 @@
  * Polls every 3s for real-time updates.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { getInstances, getInstance, type InstanceInfo, type InstanceDto } from '../api/client';
+import { getInstances, getInstance, getModels, type InstanceInfo, type InstanceDto, type ModelInfo } from '../api/client';
 import { t } from '../i18n';
 
 const REFRESH_INTERVAL_MS = 3000;
@@ -26,18 +26,20 @@ interface ModelMetrics {
 
 export function StatusPage() {
   const [instances, setInstances] = useState<InstanceInfo[]>([]);
+  const [models, setModels] = useState<ModelInfo[]>([]);
   const [metrics, setMetrics] = useState<Record<string, ModelMetrics>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback((): void => {
-    getInstances()
-      .then((list) => {
-        setInstances(list);
+    Promise.all([getInstances(), getModels()])
+      .then(([instanceList, modelList]) => {
+        setInstances(instanceList);
+        setModels(modelList);
         setError(null);
 
         // Fetch metrics for each running instance
-        const running = list.filter((i) => i.state === 'running' || i.state === 'starting');
+        const running = instanceList.filter((i) => i.state === 'running' || i.state === 'starting');
         running.forEach((inst) => {
           getInstance(inst.instanceId)
             .then((dto: InstanceDto) => {
@@ -100,12 +102,17 @@ export function StatusPage() {
       <div className="status-grid">
         {running.map((inst) => {
           const m = metrics[inst.instanceId];
+          const model = models.find((mdl) => mdl.id === inst.modelId);
+          const modelName = model?.displayName ?? inst.modelId;
           return (
             <div key={inst.instanceId} className="status-card">
               <div className="status-card-header">
-                <span className="status-card-title">
-                  {m ? m.preset : inst.preset}
-                </span>
+                <div className="status-card-names">
+                  <span className="status-card-title">
+                    {modelName}
+                  </span>
+                  <span className="status-card-preset">{inst.preset}</span>
+                </div>
                 <span className="status-card-state running">
                   {t('stateRunning')}
                 </span>

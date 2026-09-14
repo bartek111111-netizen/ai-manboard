@@ -57,10 +57,13 @@ export function ModelList() {
     setScanResult(null);
     try {
       const result = await discoverModels();
-      // Count hidden models from the current list
-      const hiddenCount = models.filter((m) => m.hidden).length;
-      setScanResult({ added: result.added.length, removed: result.removed.length, total: result.total, hidden: hiddenCount });
+      // Refresh first, then count hidden from the updated list
       await refresh();
+      // Use the models state (which is now updated by refresh)
+      setTimeout(() => {
+        const hiddenCount = models.filter((m) => m.hidden).length;
+        setScanResult({ added: result.added.length, removed: result.removed.length, total: result.total, hidden: hiddenCount });
+      }, 100);
     } catch (err) {
       setError(errInfo(err));
     } finally {

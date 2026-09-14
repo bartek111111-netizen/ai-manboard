@@ -179,7 +179,7 @@ export function ModelDetail() {
 
           {tab === 'logs' &&
             (selectedPreset ? (
-              <LogViewer instanceId={`${model.id}--${selectedPreset}`} />
+              <LogViewer instanceId={`${model.id}--${selectedPreset}`} modelId={model.id} />
             ) : (
               <p className="muted">{t('presetRequired')}</p>
             ))}

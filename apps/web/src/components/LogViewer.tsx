@@ -1,5 +1,7 @@
 /**
- * LogViewer (Faza 8.1): live log lines from SSE + filters + auto-scroll.
+ * LogViewer (Faza 8.3): live log lines from SSE + persisted run logs.
+ * - Live view: SSE stream with filters + auto-scroll
+ * - Saved runs: list of previous runs, click to view
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { openLogStream } from '../api/sse.js';
@@ -9,17 +11,97 @@ import { ErrorNotice } from './ErrorNotice.js';
 
 const MAX_LINES = 500;
 
-interface LogViewerProps {
-  instanceId: string;
+interface RunLog {
+  file: string;
+  ts: string;
+  size: number;
 }
 
-export function LogViewer({ instanceId }: LogViewerProps) {
+interface LogViewerProps {
+  instanceId: string;
+  modelId: string;
+}
+
+export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   const [lines, setLines] = useState<LogLine[]>([]);
   const [levelFilter, setLevelFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
   const [search, setSearch] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Persisted logs
+  const [savedLogs, setSavedLogs] = useState<RunLog[]>([]);
+  const [viewingLog, setViewingLog] = useState<string | null>(null);
+  const [logContent, setLogContent] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Load saved logs list
+  useEffect(() => {
+    fetch(`/api/v1/models/${modelId}/logs`)
+      .then((r) => r.json())
+      .then((data) => setSavedLogs(data.logs))
+      .catch(() => setSavedLogs([]));
+  }, [modelId]);
+
+  // Load a specific saved log
+  const loadSavedLog = useCallback((file: string) => {
+    setBusy(true);
+    fetch(`/api/v1/models/${modelId}/logs/${file}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setLogContent(data.content);
+        setViewingLog(file);
+      })
+      .catch(() => setLogContent(null))
+      .finally(() => setBusy(false));
+  }, [modelId]);
+
+  // Save current log
+  const saveCurrentLog = useCallback(() => {
+    if (lines.length === 0) return;
+    setBusy(true);
+    const content = lines
+      .map((l) => `[${new Date(l.ts).toISOString()}] ${l.line}`)
+      .join('\n');
+    fetch(`/api/v1/models/${modelId}/logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    })
+      .then(() => {
+        // Refresh saved logs
+        fetch(`/api/v1/models/${modelId}/logs`)
+          .then((r) => r.json())
+          .then((data) => setSavedLogs(data.logs));
+      })
+      .catch(() => setError('Nie udało się zapisać logu'))
+      .finally(() => setBusy(false));
+  }, [lines, modelId]);
+
+  // Delete a saved log
+  const deleteSavedLog = useCallback((file: string) => {
+    fetch(`/api/v1/models/${modelId}/logs/${file}`, { method: 'DELETE' })
+      .then(() => {
+        setSavedLogs((prev) => prev.filter((l) => l.file !== file));
+        if (viewingLog === file) {
+          setViewingLog(null);
+          setLogContent(null);
+        }
+      })
+      .catch(() => {});
+  }, [modelId, viewingLog]);
+
+  // Clear all logs
+  const clearAllLogs = useCallback(() => {
+    fetch(`/api/v1/models/${modelId}/logs`, { method: 'DELETE' })
+      .then(() => {
+        setSavedLogs([]);
+        setViewingLog(null);
+        setLogContent(null);
+      })
+      .catch(() => {});
+  }, [modelId]);
 
   useEffect(() => {
     setError(null);
@@ -31,7 +113,6 @@ export function LogViewer({ instanceId }: LogViewerProps) {
         buffer = [...buffer, line].slice(-MAX_LINES);
       },
     );
-    // Flush buffer periodically (batch SSE events)
     const interval = setInterval(() => {
       if (buffer.length > 0) {
         setLines(buffer);
@@ -65,39 +146,82 @@ export function LogViewer({ instanceId }: LogViewerProps) {
     return true;
   });
 
+  // When viewing a saved log, show its content instead of live
+  const displayContent = viewingLog ? logContent : null;
+
   return (
     <div className="log-viewer">
-      {/* Filters */}
-      <div className="log-viewer-filters">
-        <select
-          value={levelFilter}
-          onChange={(e) => setLevelFilter(e.target.value as 'all' | 'info' | 'warn' | 'error')}
-          aria-label={t('logFilterLevel')}
-        >
-          <option value="all">{t('logFilterAll')}</option>
-          <option value="info">info</option>
-          <option value="warn">warn</option>
-          <option value="error">error</option>
-        </select>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('logSearchPlaceholder')}
-          aria-label={t('logSearchPlaceholder')}
-        />
-        <label className="log-autoscroll">
+      {/* Saved logs panel */}
+      {savedLogs.length > 0 && (
+        <div className="log-saved-panel">
+          <div className="log-saved-header">
+            <span>Zapisane uruchomienia ({savedLogs.length})</span>
+            <button type="button" className="btn small" onClick={clearAllLogs}>Wyczyść wszystkie</button>
+          </div>
+          <div className="log-saved-list">
+            {savedLogs.map((log) => (
+              <div key={log.file} className={`log-saved-item ${viewingLog === log.file ? 'active' : ''}`}>
+                <button
+                  type="button"
+                  className="log-saved-btn"
+                  onClick={() => loadSavedLog(log.file)}
+                >
+                  {new Date(log.ts.replace(/-/g, ':')).toLocaleString()}
+                </button>
+                <button type="button" className="btn small" onClick={() => deleteSavedLog(log.file)}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Save button */}
+      {lines.length > 0 && !viewingLog && (
+        <button type="button" className="btn small" disabled={busy} onClick={saveCurrentLog}>
+          💾 Zapisz obecny log
+        </button>
+      )}
+
+      {/* Filters (only when viewing live) */}
+      {!viewingLog && (
+        <div className="log-viewer-filters">
+          <select
+            value={levelFilter}
+            onChange={(e) => setLevelFilter(e.target.value as 'all' | 'info' | 'warn' | 'error')}
+            aria-label={t('logFilterLevel')}
+          >
+            <option value="all">{t('logFilterAll')}</option>
+            <option value="info">info</option>
+            <option value="warn">warn</option>
+            <option value="error">error</option>
+          </select>
           <input
-            type="checkbox"
-            checked={autoScroll}
-            onChange={(e) => setAutoScroll(e.target.checked)}
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('logSearchPlaceholder')}
+            aria-label={t('logSearchPlaceholder')}
           />
-          {t('logAutoScroll')}
-        </label>
-        <span className="log-line-count">
-          {filtered.length}/{lines.length}
-        </span>
-      </div>
+          <label className="log-autoscroll">
+            <input
+              type="checkbox"
+              checked={autoScroll}
+              onChange={(e) => setAutoScroll(e.target.checked)}
+            />
+            {t('logAutoScroll')}
+          </label>
+          <span className="log-line-count">
+            {filtered.length}/{lines.length}
+          </span>
+        </div>
+      )}
+
+      {/* Viewing saved log */}
+      {viewingLog && displayContent !== null && (
+        <div className="log-viewer-container">
+          <pre className="log-saved-content">{displayContent}</pre>
+        </div>
+      )}
 
       {/* Error notice */}
       {error && (
@@ -106,27 +230,29 @@ export function LogViewer({ instanceId }: LogViewerProps) {
         />
       )}
 
-      {/* Log lines */}
-      <div
-        className="log-viewer-container"
-        ref={containerRef}
-        onScroll={handleScroll}
-      >
-        {filtered.length === 0 ? (
-          <div className="log-viewer-empty">{t('logEmpty')}</div>
-        ) : (
-          filtered.map((line, i) => (
-            <div
-              key={`${line.ts}-${i}`}
-              className={`log-line log-line-${line.level}`}
-            >
-              <span className="log-timestamp">{new Date(line.ts).toLocaleTimeString()}</span>
-              <span className={`log-level log-level-${line.level}`}>{line.level.toUpperCase()}</span>
-              <span className="log-text">{line.line}</span>
-            </div>
-          ))
-        )}
-      </div>
+      {/* Live log lines */}
+      {!viewingLog && (
+        <div
+          className="log-viewer-container"
+          ref={containerRef}
+          onScroll={handleScroll}
+        >
+          {filtered.length === 0 ? (
+            <div className="log-viewer-empty">{t('logEmpty')}</div>
+          ) : (
+            filtered.map((line, i) => (
+              <div
+                key={`${line.ts}-${i}`}
+                className={`log-line log-line-${line.level}`}
+              >
+                <span className="log-timestamp">{new Date(line.ts).toLocaleTimeString()}</span>
+                <span className={`log-level log-level-${line.level}`}>{line.level.toUpperCase()}</span>
+                <span className="log-text">{line.line}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

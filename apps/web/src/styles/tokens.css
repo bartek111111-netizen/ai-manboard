@@ -1483,3 +1483,67 @@ section {
 .btn-dirty:hover {
   background: color-mix(in srgb, var(--color-accent) 80%, var(--color-bg));
 }
+
+/* --- Saved logs panel --- */
+.log-saved-panel {
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.log-saved-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.log-saved-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.log-saved-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.log-saved-item.active {
+  background: var(--color-accent-bg);
+}
+
+.log-saved-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.log-saved-btn:hover {
+  background: var(--color-accent-bg);
+}
+
+.log-saved-content {
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 16px;
+  background: var(--color-bg-alt);
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}

@@ -175,6 +175,14 @@ export class ConfigStore {
     return listIds(dir);
   }
 
+  /** Deletes a preset (Faza 6.1). No-op when absent. */
+  deletePreset(modelId: string, presetName: string): void {
+    assertSafeId(modelId, 'modelId');
+    assertSafeId(presetName, 'presetName');
+    const file = `${this.home.presetsDir}/${modelId}/${presetName}.json`;
+    if (existsSync(file)) unlinkSync(file);
+  }
+
   // ------------------------------------------------------------- snapshot
 
   /** Reads every layer into one snapshot (for `GET /api/v1/config`). */

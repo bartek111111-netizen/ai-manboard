@@ -1,5 +1,36 @@
 # STATUS
 
+## Faza 6 — API uzupełnieniowe + SSE + auth — ✅ ZROBIONE
+
+Działa: API uzupełnieniowe (PLAN §22 6.1–6.5, §14.1) + SSE + token.
+**Presety CRUD (6.1):** `api/handlers/presets.ts` — `makePresetHandlers(store)`:
+`GET /api/v1/models/:modelId/presets` (lista), `PUT …/presets/:name` (create/update,
+`validatePreset`, `version:1` default, `name` z URL), `DELETE …/presets/:name`
+(`PRESET_NOT_FOUND` 404), `POST …/presets/:name/duplicate` (klon pod nowym
+`{name}`, 201); `deletePreset` w `ConfigStore`. **SSE hub (6.2):** `core/sse/hub.ts` —
+`SseHub` (pub/sub): `subscribeLog(instanceId, cb)` / `subscribeEvents(cb)`
+(zwracają unsubscribe), `publishLog`/`publishState` (hooki managera);
+`api/handlers/sse.ts` — `GET /api/v1/stream/:instanceId/logs` (replay ring +
+live linie `event: log`), `GET /api/v1/stream/events` (`event: state`);
+manager publikuje przez `onStateChange` + `onLogLine` (dodane hooki),
+`reply.hijack()` + `text/event-stream`. **Pełne DTO (6.3):** `getFullDto`
+w `lifecycle.ts` (typ `InstanceDto`): `instanceId/modelId/preset/state/pid/port/
+endpoint/startedAt/uptimeSec` + `configSource` (per-param layer z `resolved`) +
+`runtime` (`engine.fetchRuntimeInfo`, null gdy nie-live) + `process`
+(`{cpuPct,rssMB}` = null, Faza 8) + `lastError` (exitCode/signal z rejestru);
+handlery `get`/`metrics`/`logs` (`?limit=`) w `instances.ts`. **Auth (6.4, S-2):**
+`api/auth.ts` — `sha256` + `makeAuthMiddleware(getTokenHash)`: `onRequest` hook,
+`Authorization: Bearer <token>` (REST) albo `?token=` (SSE, S-7), `null` = no-op,
+`/healthz`+`/`+`/assets/` exempt, `UNAUTHORIZED` 401; `getTokenHash` w
+`buildApp` (`store.readGlobal().security.token`). **Testy (6.5):** presety (5),
+SSE (hub 2 + stream 2), auth (7: 401 brak/źle, 200 poprawnie, `?token=`, no-op,
+healthz exempt), DTO/metrics/logs (4). Bramka: **typecheck + lint + testy
+zielone — 60 (shared) + 129 (server) = 189/189**.
+
+**Dalej:** Faza 7 — UI (React): `InstancePanel` (start/stop/restart + endpoint +
+PID + uptime + logi na żywo z SSE) + `ConfigEditor` + `PresetList`; Faza 8 —
+metryki (CPU/RSS/GPU); Faza 9 — dashboard; Faza 10 — reconciler + S-1.
+
 ## Faza 5 — Health + lifecycle start/stop/restart — ✅ ZROBIONE
 
 Działa: health + pełny lifecycle instancji (PLAN §22 5.1–5.5, §11.2, §5.3)

@@ -21,6 +21,7 @@ import {
   type InstanceState,
   type InstanceView,
   type ModelInfo,
+  type RuntimeInfo,
 } from '@ai-dashboard/shared';
 import type { LogLine } from '../logs/ringbuffer.js';
 import type { LogWriter } from '../logs/writer.js';
@@ -50,6 +51,31 @@ export interface StartupDiagnostic {
   logTail: string[];
   /** Log tail lines classified as `error` by the engine (the error patterns). */
   errorLines: string[];
+}
+
+/**
+ * Full instance DTO (Faza 6.3, PLAN §14.2): identity + FSM state + the
+ * resolved config (with per-value provenance) + runtime + last error.
+ */
+export interface InstanceDto {
+  instanceId: string;
+  modelId: string;
+  preset: string;
+  state: InstanceState;
+  pid: number | null;
+  port: number;
+  /** OpenAI-compatible endpoint base (`http://<host>:<port>/v1/`). */
+  endpoint: string;
+  startedAt: string | null;
+  uptimeSec: number | null;
+  /** Which config layer supplied each param (§14.2 "pełne DTO"). */
+  configSource: Record<string, string>;
+  /** Engine runtime info (null when the instance is not live). */
+  runtime: RuntimeInfo | null;
+  /** Process metrics (Faza 8). */
+  process: { cpuPct: number | null; rssMB: number | null };
+  /** The last abnormal exit (null when none since start). */
+  lastError: { exitCode: number | null; signal: string | null } | null;
 }
 
 export class LifecycleManager {
@@ -119,6 +145,60 @@ export class LifecycleManager {
       pid: entry?.pid ?? null,
       startedAt: entry?.startedAt ?? null,
     };
+  }
+
+  /**
+   * Full instance DTO (Faza 6.3, PLAN §14.2): identity + FSM state + the
+   * resolved config (with per-value provenance) + the engine's runtime info +
+   * the last error. `process` metrics (CPU/RSS) are Faza 8 (null for now).
+   */
+  async getFullDto(instanceId: string): Promise<InstanceDto> {
+    const inst = await this.resolver.resolve(instanceId);
+    const entry = this.deps.registry.get(instanceId);
+    const state = this.getState(instanceId);
+    // configSource: which layer supplied each param (§14.2 "pełne DTO").
+    const configSource: Record<string, string> = {};
+    for (const [key, resolved] of Object.entries(inst.resolved)) {
+      configSource[key] = resolved.source;
+    }
+    // Runtime info (slots/tokensPerSec/gpu) — best-effort (null when not live).
+    const runtime = state === 'running' || state === 'starting'
+      ? await inst.engine.fetchRuntimeInfo(inst.base)
+      : null;
+    const startedAt = entry?.startedAt ?? null;
+    const uptimeSec = startedAt ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000) : null;
+    return {
+      instanceId,
+      modelId: inst.modelId,
+      preset: inst.presetName,
+      state,
+      pid: entry?.pid ?? null,
+      port: inst.port,
+      endpoint: `${inst.base}/v1/`,
+      startedAt,
+      uptimeSec,
+      configSource,
+      runtime,
+      process: { cpuPct: null, rssMB: null }, // Faza 8 (full metrics collector)
+      lastError: entry && (entry.lastExitCode !== null || entry.lastSignal)
+        ? { exitCode: entry.lastExitCode, signal: entry.lastSignal ?? null }
+        : null,
+    };
+  }
+
+  /** Runtime metrics for the UI (Faza 6.3, §14.1 `metrics` endpoint). */
+  async getMetrics(instanceId: string): Promise<Record<string, unknown>> {
+    const inst = await this.resolver.resolve(instanceId);
+    const state = this.getState(instanceId);
+    const runtime = state === 'running' || state === 'starting'
+      ? await inst.engine.fetchRuntimeInfo(inst.base)
+      : null;
+    return { instanceId, state, runtime, process: { cpuPct: null, rssMB: null } };
+  }
+
+  /** Recent log lines (in-memory ring), most recent last (Faza 6.3). */
+  getLogs(instanceId: string, limit?: number): LogLine[] {
+    return this.deps.manager.getLogs(instanceId, limit);
   }
 
   // -------------------------------------------------------------- commands

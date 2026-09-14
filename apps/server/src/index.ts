@@ -15,6 +15,7 @@ import { LogWriter } from './core/logs/writer.js';
 import { LifecycleManager } from './core/process/lifecycle.js';
 import { ProcessManager } from './core/process/manager.js';
 import { PidRegistry } from './core/process/registry.js';
+import { SseHub } from './core/sse/hub.js';
 import { WEB_DIST_DIR } from './web-dist.js';
 
 function snapshotHash(snapshot: ConfigSnapshot): string {
@@ -74,7 +75,16 @@ async function main(): Promise<void> {
     retentionFiles: 10,
     maxFileBytes: 10_000_000,
   });
-  const manager = new ProcessManager({ registry, logs, ringLines: 1000, stopTimeoutSec: 10 });
+  // Faza 6.2: SSE hub — the manager publishes state changes + log lines to it.
+  const hub = new SseHub();
+  const manager = new ProcessManager({
+    registry,
+    logs,
+    ringLines: 1000,
+    stopTimeoutSec: 10,
+    onStateChange: (id, state) => hub.publishState(id, state),
+    onLogLine: (id, line) => hub.publishLog(id, line),
+  });
   const prober = new HealthProber();
   const lifecycle = new LifecycleManager({ store, engines: listEngines(), manager, registry, prober, logs });
 
@@ -83,6 +93,9 @@ async function main(): Promise<void> {
     getConfigState: () => configState,
     staticDir: WEB_DIST_DIR,
     lifecycle,
+    sse: hub,
+    manager,
+    getTokenHash: () => store.readGlobal().security.token,
   });
 
   let shuttingDown = false;

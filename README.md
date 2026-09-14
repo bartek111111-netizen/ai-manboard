@@ -157,9 +157,13 @@ progress is tracked in **`STATUS.md`**. Completed so far:
   `LifecycleManager` (start/stop/restart driving the FSM), startup-error
   detection (exit code, log tail, error patterns), `/instances` API, E2E with a
   real `llama-server` + small GGUF
+- **Faza 6** — supplementary API + SSE + auth: preset CRUD (list/put/delete/
+  duplicate), SSE hub (`stream/:id/logs` + `stream/events`), full instance DTO
+  (`GET /instances/:id` + metrics + logs), bearer-token auth (S-2, `?token=` for
+  SSE)
 
-Next: API/SSE + frontend (per-instance DTO, metrics, logs, token security,
-`InstancePanel`).
+Next: frontend (per `PLAN.md` Faza 7 — `InstancePanel` with live logs from SSE,
+config editor, preset list).
 
 ## Development
 

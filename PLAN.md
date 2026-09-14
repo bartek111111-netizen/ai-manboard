@@ -1131,11 +1131,11 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - **Akceptacja**: pełny lifecycle z prawdziwą `llama-server` + małym gguf.
 
 ### Faza 6 — API uzupełnieniowe + SSE (sesja 7)
-- [ ] 6.1 API: presety CRUD (`GET/PUT/DELETE` + `duplicate`) + testy
-- [ ] 6.2 SSE hub: `stream/:id/logs` + `stream/events`
-- [ ] 6.3 `GET /instances/:id` (pełne DTO §14.2), `metrics`, `logs`
-- [ ] 6.4 Auth token (S-2): middleware + SSE `?token=`
-- [ ] 6.5 Testy: SSE (stream test), auth (testy)
+- [x] 6.1 API: presety CRUD (`GET/PUT/DELETE` + `duplicate`) + testy
+- [x] 6.2 SSE hub: `stream/:id/logs` + `stream/events`
+- [x] 6.3 `GET /instances/:id` (pełne DTO §14.2), `metrics`, `logs`
+- [x] 6.4 Auth token (S-2): middleware + SSE `?token=`
+- [x] 6.5 Testy: SSE (stream test), auth (testy)
 - **Akceptacja**: logi na żywo + auth działają.
 
 ### Faza 7 — Frontend: modele + start/stop (sesja 8)

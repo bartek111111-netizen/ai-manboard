@@ -35,6 +35,8 @@ export interface ProcessManagerOptions {
   stopTimeoutSec?: number;
   /** Optional hook on every state change (SSE events, Faza 6). */
   onStateChange?: (instanceId: string, state: InstanceState) => void;
+  /** Optional hook on every captured log line (SSE live logs, Faza 6). */
+  onLogLine?: (instanceId: string, line: LogLine) => void;
 }
 
 interface ActiveInstance {
@@ -321,6 +323,7 @@ export class ProcessManager {
     };
     active.ring.push(logLine);
     if (active.logFile) this.opts.logs?.append(active.logFile, line);
+    this.opts.onLogLine?.(instanceId, logLine);
   }
 
   private cleanup(instanceId: string): void {

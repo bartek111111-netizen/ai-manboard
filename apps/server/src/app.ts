@@ -5,8 +5,13 @@ import { AppError, type ConfigWatchState } from '@ai-dashboard/shared';
 import { makeStatusHandler } from './api/handlers/status.js';
 import { makeConfigHandlers } from './api/handlers/config.js';
 import { makeEngineHandlers } from './api/handlers/engines.js';
+import { makeAuthMiddleware } from './api/auth.js';
 import { makeModelHandlers } from './api/handlers/models.js';
+import { makePresetHandlers } from './api/handlers/presets.js';
+import { makeSseHandlers } from './api/handlers/sse.js';
 import { makeInstanceHandlers } from './api/handlers/instances.js';
+import type { SseHub } from './core/sse/hub.js';
+import type { ProcessManager } from './core/process/manager.js';
 import type { ConfigStore } from './core/config/store.js';
 import type { LifecycleManager } from './core/process/lifecycle.js';
 import { WEB_DIST_DIR } from './web-dist.js';
@@ -23,6 +28,11 @@ export interface BuildAppOptions {
    * registered. Omitted in tests that only exercise the config/model APIs.
    */
   lifecycle?: LifecycleManager;
+  /** SSE hub + process manager → registers the `stream/*` routes (Faza 6.2). */
+  sse?: SseHub;
+  manager?: ProcessManager;
+  /** Returns the configured token hash (SHA-256) or null (auth off) (S-2). */
+  getTokenHash?: () => string | null;
 }
 
 /**
@@ -45,11 +55,18 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     reply.code(error.status).send(error.toBody());
   });
 
+  // Bearer-token auth (Faza 6.4, S-2): only when a token hash is configured.
+  if (options.getTokenHash) {
+    const authMiddleware = makeAuthMiddleware(options.getTokenHash);
+    app.addHook('onRequest', authMiddleware);
+  }
+
   // API.
   const { store, getConfigState } = options;
   const configHandlers = makeConfigHandlers(store, getConfigState);
   const engineHandlers = makeEngineHandlers(store);
   const modelHandlers = makeModelHandlers(store);
+  const presetHandlers = makePresetHandlers(store);
   app.get('/api/v1/status', makeStatusHandler(getConfigState));
   app.get('/api/v1/config', configHandlers.getConfig);
   app.put('/api/v1/config/global', configHandlers.putGlobalConfig);
@@ -62,13 +79,27 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   app.get('/api/v1/models/:modelId', modelHandlers.getModel);
   app.patch('/api/v1/models/:modelId', modelHandlers.updateModel);
   app.delete('/api/v1/models/:modelId', modelHandlers.removeModel);
+  // Presets CRUD (Faza 6.1).
+  app.get('/api/v1/models/:modelId/presets', presetHandlers.list);
+  app.put('/api/v1/models/:modelId/presets/:name', presetHandlers.put);
+  app.delete('/api/v1/models/:modelId/presets/:name', presetHandlers.remove);
+  app.post('/api/v1/models/:modelId/presets/:name/duplicate', presetHandlers.duplicate);
   // Instances (Faza 5): only when the lifecycle manager is wired in.
   if (options.lifecycle) {
     const instanceHandlers = makeInstanceHandlers(options.lifecycle);
     app.get('/api/v1/instances', instanceHandlers.list);
+    app.get('/api/v1/instances/:instanceId', instanceHandlers.get);
+    app.get('/api/v1/instances/:instanceId/metrics', instanceHandlers.metrics);
+    app.get('/api/v1/instances/:instanceId/logs', instanceHandlers.logs);
     app.post('/api/v1/instances/:instanceId/start', instanceHandlers.start);
     app.post('/api/v1/instances/:instanceId/stop', instanceHandlers.stop);
     app.post('/api/v1/instances/:instanceId/restart', instanceHandlers.restart);
+  }
+  // SSE streams (Faza 6.2): only when the hub + manager are wired in.
+  if (options.sse && options.manager) {
+    const sseHandlers = makeSseHandlers(options.sse, options.manager);
+    app.get('/api/v1/stream/:instanceId/logs', sseHandlers.logs);
+    app.get('/api/v1/stream/events', sseHandlers.events);
   }
   // Plain liveness check (the token middleware from phase 6 will cover the API).
   app.get('/healthz', async () => ({ ok: true }));

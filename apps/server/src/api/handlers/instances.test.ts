@@ -117,6 +117,69 @@ describe('instance endpoints (PLAN §14.1, Faza 5.4)', () => {
     }
   });
 
+  it('GET /api/v1/instances/:id → full DTO (Faza 6.3, §14.2)', async () => {
+    const { app, lifecycle } = await tempApp(8088);
+    try {
+      const res = await app.inject({ method: 'GET', url: `/api/v1/instances/${INSTANCE}` });
+      expect(res.statusCode).toBe(200);
+      const dto = res.json();
+      expect(dto.instanceId).toBe(INSTANCE);
+      expect(dto.modelId).toBe(MODEL_ID);
+      expect(dto.preset).toBe('fast');
+      expect(dto.state).toBe('unknown'); // not started
+      expect(dto.port).toBe(8088);
+      expect(dto.endpoint).toContain('8088');
+      expect(dto.configSource).toBeTypeOf('object');
+      expect(dto.runtime).toBe(null); // not live
+      expect(dto.process).toEqual({ cpuPct: null, rssMB: null });
+      expect(dto.lastError).toBe(null);
+    } finally {
+      lifecycle.shutdown();
+      await app.close();
+    }
+  });
+
+  it('GET /api/v1/instances/:id/metrics → runtime metrics (Faza 6.3)', async () => {
+    const { app, lifecycle } = await tempApp(8089);
+    try {
+      const res = await app.inject({ method: 'GET', url: `/api/v1/instances/${INSTANCE}/metrics` });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.instanceId).toBe(INSTANCE);
+      expect(body.state).toBe('unknown');
+      expect(body.runtime).toBe(null); // not live
+      expect(body.process).toEqual({ cpuPct: null, rssMB: null });
+    } finally {
+      lifecycle.shutdown();
+      await app.close();
+    }
+  });
+
+  it('GET /api/v1/instances/:id/logs → recent log lines (Faza 6.3)', async () => {
+    const { app, lifecycle } = await tempApp(8090);
+    try {
+      const res = await app.inject({ method: 'GET', url: `/api/v1/instances/${INSTANCE}/logs` });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.instanceId).toBe(INSTANCE);
+      expect(body.lines).toEqual([]); // no logs yet
+    } finally {
+      lifecycle.shutdown();
+      await app.close();
+    }
+  });
+
+  it('GET /api/v1/instances/:id on an unknown instance → 404 (Faza 6.3)', async () => {
+    const { app, lifecycle } = await tempApp();
+    try {
+      const res = await app.inject({ method: 'GET', url: '/api/v1/instances/unknown--preset' });
+      expect(res.statusCode).toBe(404);
+    } finally {
+      lifecycle.shutdown();
+      await app.close();
+    }
+  });
+
   it('POST start while running → 409', async () => {
     const { app, lifecycle } = await tempApp(8087);
     try {

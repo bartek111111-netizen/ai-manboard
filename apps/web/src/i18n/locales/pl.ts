@@ -90,10 +90,19 @@ export const pl = {
   stateRunning: 'działa',
   stateStarting: 'startuje',
   fieldPort: 'Port',
+  stateWorking: 'generuje',
+  stateIdle: 'wolny',
+  stateReady: 'gotowy',
 
   // Info page
   navInfo: 'Info',
   infoHeading: 'Informacje o aplikacji',
+
+  // Notifications settings
+  settingsNotifications: 'Powiadomienia',
+  notificationsDesc: 'Opcje dotyczące powiadomień o zmianie stanu modeli.',
+  stateChangeDelayLabel: 'Opóźnienie zmiany stanu (s)',
+  stateChangeDelayHint: 'Gdy model często przeskakuje między stanami (idle/working), opóźnienie uniemożliwia spam powiadomeń. Np. 5 = komunikat pojawi się po 5s stabilnego stanu.',
 
   // Detail tabs
   tabPreview: 'Podgląd',

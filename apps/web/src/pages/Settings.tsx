@@ -35,6 +35,7 @@ export function Settings() {
   const [dirty, setDirty] = useState(false);
   const [pickerMode, setPickerMode] = useState<{ type: 'modelDir' | 'binary'; engineId?: string } | null>(null);
   const [hiddenModels, setHiddenModels] = useState<{ id: string; displayName: string; path: string }[]>([]);
+  const [stateChangeDelay, setStateChangeDelay] = useState(0);
 
   const load = useCallback((): void => {
     Promise.all([getEngines(), getConfig()])
@@ -50,6 +51,7 @@ export function Settings() {
         setPortEnd(config.global.portRange.end);
         setToken(config.global.security.token ?? '');
         setPreferredGpu(config.global.gpu?.preferred ?? null);
+        setStateChangeDelay(config.global.notifications?.stateChangeDelaySec ?? 0);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -90,6 +92,7 @@ export function Settings() {
       monitoring: { probeIntervalSec: 2, startupTimeoutSec: 30 },
       logs: { ringLines: 200, retentionFiles: 5 },
       gpu: { preferred: preferredGpu },
+      notifications: { stateChangeDelaySec: stateChangeDelay },
     };
     putGlobalConfig(body)
       .then(() => {
@@ -272,6 +275,26 @@ export function Settings() {
             </label>
           ))
         )}
+      </fieldset>
+
+      {/* Notifications */}
+      <fieldset>
+        <legend>{t('settingsNotifications')}</legend>
+        <p className="settings-notifications-desc">{t('notificationsDesc')}</p>
+        <label className="field">
+          <span>{t('stateChangeDelayLabel')}</span>
+          <input
+            type="number"
+            className="input"
+            value={stateChangeDelay}
+            min={0}
+            onChange={(e) => {
+              setStateChangeDelay(Number(e.target.value));
+              setDirty(true);
+            }}
+          />
+        </label>
+        <p className="muted small">{t('stateChangeDelayHint')}</p>
       </fieldset>
 
       {/* Port range */}

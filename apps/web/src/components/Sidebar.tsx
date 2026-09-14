@@ -70,11 +70,10 @@ function colorForPct(pct: number): string {
   return 'var(--color-state-running)';
 }
 
-export function Sidebar() {
+export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [gpus, setGpus] = useState<GpuEntry[]>([]);
   const [preferredGpu, setPreferredGpu] = useState<string | null>(null);
-  const [runningCount, setRunningCount] = useState(0);
 
   const load = useCallback(() => {
     // Load metrics
@@ -96,15 +95,6 @@ export function Sidebar() {
         setPreferredGpu(data.global.gpu?.preferred ?? null);
       })
       .catch(() => setPreferredGpu(null));
-
-    // Load running instance count
-    fetch('/api/v1/instances')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { instances: { state: string }[] }) => {
-        const count = data.instances.filter((i) => i.state === 'running' || i.state === 'starting').length;
-        setRunningCount(count);
-      })
-      .catch(() => setRunningCount(0));
   }, []);
 
   useEffect(() => {

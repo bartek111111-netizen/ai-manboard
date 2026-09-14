@@ -140,6 +140,16 @@ export const pl = {
   modelStopped: 'Zatrzymany',
   noModelLoaded: 'Brak załadowanego modelu',
 
+  // Add model modal
+  addModelTitle: 'Dodaj model',
+  modelPathLabel: 'Ścieżka do pliku modelu',
+  displayNameLabel: 'Nazwa wyświetlana',
+  browseBtn: 'Przeglądaj',
+  filePathPrompt: 'Wpisz ścieżkę do pliku modelu (.gguf):',
+  addModelBtn: 'Dodaj',
+  addingBtn: 'Dodawanie...',
+  cancelBtn: 'Anuluj',
+
   // System status
   systemStatusHeading: 'Status systemu',
   systemStatsHeading: 'System',

@@ -90,6 +90,65 @@ body {
   margin: 0 auto;
 }
 
+/* --- Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-l);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.modal h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.modal .form-field label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.modal .error-notice {
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-s);
+}
+
+.file-input-row {
+  display: flex;
+  gap: var(--spacing-s);
+}
+
+.file-input-row .input {
+  flex: 1;
+}
+
 /* --- Sidebar layout --- */
 .app-layout {
   display: grid;
@@ -154,6 +213,20 @@ body {
 
 .status-dot.off {
   background: var(--color-state-error);
+}
+
+.status-dot.blink {
+  background: var(--color-muted);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    box-shadow: 0 0 4px color-mix(in srgb, var(--color-muted) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-muted) 60%, transparent);
+  }
 }
 
 .status-label {

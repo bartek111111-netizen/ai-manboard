@@ -155,6 +155,11 @@ export function discoverModels(): Promise<DiscoverResult> {
   return request<DiscoverResult>('/api/v1/models/discover', jsonInit('POST', {}));
 }
 
+/** POST /api/v1/models — manual add (FM-3). */
+export function postModel(body: { path: string; displayName?: string }): Promise<ModelView> {
+  return request<ModelView>('/api/v1/models', jsonInit('POST', body));
+}
+
 // --- instances (FSM) ---
 
 /** GET /api/v1/instances */

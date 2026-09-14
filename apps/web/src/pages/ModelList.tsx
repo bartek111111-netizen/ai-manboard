@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { InstanceInfo, ModelView, Preset } from '@ai-dashboard/shared';
-import { restartInstance, startInstance, stopInstance } from '../api/client';
+import { AddModelModal } from '../components/AddModelModal';
 import { CapabilityIcons } from '../components/CapabilityIcons';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { StatusBadge } from '../components/StatusBadge';
+import { restartInstance, startInstance, stopInstance } from '../api/client';
 import { t } from '../i18n';
 import { useModelData } from '../hooks/useModelData';
 import { errInfo } from '../ui/errors';
@@ -31,6 +32,7 @@ export function ModelList() {
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [actionError, setActionError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true);
@@ -58,7 +60,7 @@ export function ModelList() {
         <button type="button" onClick={handleScan} className="btn">
           {t('actionScan')}
         </button>
-        <button type="button" className="btn" onClick={() => window.dispatchEvent(new Event('add-model'))}>
+        <button type="button" className="btn" onClick={() => setShowAddModal(true)}>
           {t('actionAddModel')}
         </button>
         <Link to="/settings" className="btn">
@@ -69,6 +71,13 @@ export function ModelList() {
       <ErrorNotice message={actionError?.message ?? null} code={actionError?.code} />
       {error && (
         <ErrorNotice message={error} />
+      )}
+
+      {showAddModal && (
+        <AddModelModal
+          onClose={() => setShowAddModal(false)}
+          onAdded={refresh}
+        />
       )}
 
       {models.length === 0 ? (

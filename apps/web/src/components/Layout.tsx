@@ -56,7 +56,7 @@ export function Layout() {
               </>
             ) : (
               <>
-                <span className="status-dot off" />
+                <span className="status-dot blink" />
                 <span className="status-label">{t('noModelLoaded')}</span>
               </>
             )}

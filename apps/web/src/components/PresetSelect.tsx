@@ -27,17 +27,13 @@ export function PresetSelect({
   const [newName, setNewName] = useState('');
   const [editParams, setEditParams] = useState<Record<string, unknown>>({});
   const [savingParams, setSavingParams] = useState(false);
-  const [autoAssign, setAutoAssign] = useState(false);
+  const [isDefault, setIsDefault] = useState(false);
 
   const refresh = useCallback((): void => {
     getPresets(modelId)
       .then((list) => {
-        // Sort: "default" first (if exists), then alphabetical
-        const sorted = [...list].sort((a, b) => {
-          if (a.name === 'default') return -1;
-          if (b.name === 'default') return 1;
-          return a.name.localeCompare(b.name);
-        });
+        // Sort alphabetically
+        const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
         setPresets(sorted);
         setError(null);
       })
@@ -72,11 +68,11 @@ export function PresetSelect({
   useEffect(() => {
     if (current) {
       setEditParams({ ...current.params });
-      // Auto-assign checkbox: check if this preset is the default
-      setAutoAssign(current.name === 'default');
+      // isDefault: check if this preset has `default: true` in its params
+      setIsDefault(current.params?.default === true);
     } else {
       setEditParams({});
-      setAutoAssign(false);
+      setIsDefault(false);
     }
   }, [selected, current]);
 
@@ -94,16 +90,11 @@ export function PresetSelect({
   };
 
   const createPreset = (): void => {
-    const name = newName.trim() || `preset-${Date.now()}`;
+    const name = newName.trim();
+    if (!name) return;
     void run(() => putPreset(modelId, name, { version: 1, name, port: 8080, params: {} })).then(() => {
       setNewName('');
       onSelect(name);
-    });
-  };
-
-  const createDefaultPreset = (): void => {
-    void run(() => putPreset(modelId, 'default', { version: 1, name: 'default', port: 8080, params: {} })).then(() => {
-      onSelect('default');
     });
   };
 
@@ -133,6 +124,22 @@ export function PresetSelect({
     ).finally(() => setSavingParams(false));
   };
 
+  const toggleDefault = (checked: boolean): void => {
+    if (!current) return;
+    // Set default: true/false in the preset's params
+    const newParams = { ...editParams, default: checked };
+    setEditParams(newParams);
+    setIsDefault(checked);
+    void run(() =>
+      putPreset(modelId, current.name, {
+        version: current.version,
+        name: current.name,
+        port: current.port,
+        params: newParams,
+      }),
+    );
+  };
+
   const handleParamChange = (key: string, value: unknown): void => {
     setEditParams((prev) => ({ ...prev, [key]: value }));
   };
@@ -158,7 +165,7 @@ export function PresetSelect({
                 {presets.map((preset) => (
                   <option key={preset.name} value={preset.name}>
                     {preset.name}
-                    {preset.name === 'default' ? ` (${t('defaultTag')})` : ''}
+                    {preset.params?.default === true ? ` (${t('defaultTag')})` : ''}
                   </option>
                 ))}
               </select>
@@ -167,9 +174,6 @@ export function PresetSelect({
             <div className="preset-toolbar-actions">
               <button type="button" className="btn small" disabled={busy} onClick={createPreset}>
                 {t('actionNewPreset')}
-              </button>
-              <button type="button" className="btn small" disabled={busy} onClick={createDefaultPreset}>
-                {t('actionNewDefaultPreset')}
               </button>
               {current && (
                 <>
@@ -184,13 +188,27 @@ export function PresetSelect({
             </div>
           </div>
 
+          {/* New preset name input (inline in toolbar) */}
+          <div className="preset-create-inline">
+            <input
+              type="text"
+              className="input"
+              placeholder={t('newPresetPlaceholder')}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <button type="button" className="btn" disabled={busy || newName.trim() === ''} onClick={createPreset}>
+              {t('actionNewPreset')}
+            </button>
+          </div>
+
           {/* Auto-assign checkbox */}
           {current && (
             <label className="checkbox-label">
               <input
                 type="checkbox"
-                checked={autoAssign}
-                onChange={(e) => setAutoAssign(e.target.checked)}
+                checked={isDefault}
+                onChange={(e) => toggleDefault(e.target.checked)}
               />
               {t('autoAssign')}
             </label>
@@ -230,20 +248,6 @@ export function PresetSelect({
           )}
         </>
       )}
-
-      {/* New preset name input (only when creating) */}
-      <div className="preset-create">
-        <input
-          type="text"
-          className="input"
-          placeholder={t('newPresetPlaceholder')}
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-        />
-        <button type="button" className="btn" disabled={busy || newName.trim() === ''} onClick={createPreset}>
-          {t('actionNewPreset')}
-        </button>
-      </div>
     </section>
   );
 }

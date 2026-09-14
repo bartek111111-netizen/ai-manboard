@@ -1317,6 +1317,17 @@ section {
   flex-shrink: 0;
 }
 
+/* --- Preset create inline (in toolbar) --- */
+.preset-create-inline {
+  display: flex;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-m);
+}
+
+.preset-create-inline .input {
+  flex: 1;
+}
+
 /* --- Preset meta (port + auto-assign) --- */
 .preset-meta {
   margin-bottom: var(--spacing-m);

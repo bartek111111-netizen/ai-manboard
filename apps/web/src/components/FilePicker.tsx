@@ -35,10 +35,11 @@ export function FilePicker({
   const [loading, setLoading] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
 
-  const load = (path: string): void => {
+  const load = (path: string, hidden = false): void => {
     setLoading(true);
     setError(null);
-    fetch(`/api/v1/browse?path=${encodeURIComponent(path)}`)
+    const showParam = hidden ? '&showHidden=true' : '';
+    fetch(`/api/v1/browse?path=${encodeURIComponent(path)}${showParam}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: BrowseResponse) => {
         setEntries(data.entries);
@@ -52,11 +53,11 @@ export function FilePicker({
   };
 
   useEffect(() => {
-    load(initialPath);
-  }, [initialPath]);
+    load(initialPath, showHidden);
+  }, [initialPath, showHidden]);
 
   const navigate = (path: string): void => {
-    load(path);
+    load(path, showHidden);
   };
 
   return (

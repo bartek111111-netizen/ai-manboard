@@ -16,6 +16,7 @@ interface DirEntry {
 export async function browseHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const query = request.query as Record<string, string>;
   const dirPath = query.path || '/';
+  const showHidden = query.showHidden === 'true';
 
   try {
     const realPath = realpathSync(dirPath);
@@ -29,7 +30,7 @@ export async function browseHandler(request: FastifyRequest, reply: FastifyReply
 
     const entries = readdirSync(realPath, { withFileTypes: true });
     const result: DirEntry[] = entries
-      .filter((e) => !e.name.startsWith('.'))
+      .filter((e) => showHidden || !e.name.startsWith('.'))
       .map((e) => {
         const fullPath = resolve(realPath, e.name);
         return {

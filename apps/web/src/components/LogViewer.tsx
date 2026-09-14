@@ -80,6 +80,21 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
       .finally(() => setBusy(false));
   }, [lines, modelId]);
 
+  // Copy last 40 lines to clipboard
+  const copyLastLines = useCallback(() => {
+    const lastLines = lines.slice(-40);
+    const text = lastLines.map((l) => `[${new Date(l.ts).toISOString()}] ${l.line}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      // Show a brief confirmation
+      const btn = document.querySelector('.log-actions .btn:last-child');
+      if (btn) {
+        const original = btn.textContent;
+        btn.textContent = '✅ Skopiowano!';
+        setTimeout(() => { btn.textContent = original; }, 2000);
+      }
+    });
+  }, [lines]);
+
   // Delete a saved log
   const deleteSavedLog = useCallback((file: string) => {
     fetch(`/api/v1/models/${modelId}/logs/${file}`, { method: 'DELETE' })
@@ -177,11 +192,16 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
         </div>
       )}
 
-      {/* Save button */}
+      {/* Save + Copy buttons */}
       {lines.length > 0 && !viewingLog && (
-        <button type="button" className="btn small" disabled={busy} onClick={saveCurrentLog}>
-          💾 Zapisz obecny log
-        </button>
+        <div className="log-actions">
+          <button type="button" className="btn small" disabled={busy} onClick={saveCurrentLog}>
+            💾 Zapisz
+          </button>
+          <button type="button" className="btn small" onClick={copyLastLines}>
+            📋 Kopiuj ostatnie 40
+          </button>
+        </div>
       )}
 
       {/* Filters (only when viewing live) */}

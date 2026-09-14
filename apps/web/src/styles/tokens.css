@@ -1666,3 +1666,10 @@ section {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- Log actions row --- */
+.log-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}

@@ -3,7 +3,7 @@
  * Polls every 3s for live instances.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { getInstances, getInstance, type InstanceInfo } from '../api/client';
+import { getInstances, getInstance, getModels, type InstanceInfo } from '../api/client';
 
 export type ModelState = 'ready' | 'idle' | 'working' | 'unknown';
 

@@ -223,15 +223,12 @@ export class LifecycleManager {
 
     try {
       const pid = entry.child.pid;
-      console.log(`[process-metrics] Looking for PID ${pid}`);
 
       // Use systeminformation for CPU% and RSS
       const allProcs = await si.processes();
       const procList = allProcs.list;
-      console.log(`[process-metrics] Found ${procList?.length ?? 0} processes`);
       const proc = procList?.find((p: Record<string, unknown>) => p.pid === pid);
       if (proc) {
-        console.log(`[process-metrics] Found process:`, proc);
         // memRss is in KB
         const memRssKB = (proc as { memRss?: number }).memRss ?? 0;
         return {

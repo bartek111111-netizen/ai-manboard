@@ -45,7 +45,7 @@ export function readGpuFromSysfs(): GpuInfo | null {
 
         let utilization: number | null = null;
         try {
-          const busy = Number(readFileSync(`${devDir}/mem_busy_percent`, 'utf8').trim());
+          const busy = Number(readFileSync(`${devDir}/gpu_busy_percent`, 'utf8').trim());
           if (Number.isFinite(busy)) utilization = busy;
         } catch {
           // utilization not available

@@ -25,7 +25,7 @@ export async function systemMetricsHandler(_request: FastifyRequest, reply: Fast
       temperatureC: temp.main ?? null,
     },
     ram: {
-      usedMB: Math.round(mem.used / 1024 / 1024),
+      usedMB: Math.round((mem.total - mem.available) / 1024 / 1024),
       totalMB: Math.round(mem.total / 1024 / 1024),
     },
     os: process.platform,

@@ -15,16 +15,16 @@ import { SystemStatus } from './pages/SystemStatus';
 export default function App() {
   return (
     <HashRouter>
-      <Layout>
-        <Routes>
+      <Routes>
+        <Route element={<Layout />}>
           <Route path="/" element={<HomeView />} />
           <Route path="/models/:modelId" element={<ModelDetail />} />
           <Route path="/status" element={<StatusPage />} />
           <Route path="/system" element={<SystemStatus />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<PlaceholderPage />} />
-        </Routes>
-      </Layout>
+        </Route>
+      </Routes>
     </HashRouter>
   );
 }

@@ -90,6 +90,128 @@ body {
   margin: 0 auto;
 }
 
+/* --- Sidebar layout --- */
+.app-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.app-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-m) var(--spacing-l);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.app-header h1 a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: var(--spacing-m);
+  gap: var(--spacing-l);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-link {
+  display: block;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.sidebar-stats {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.sidebar-stats h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.sidebar-stat {
+  margin-bottom: var(--spacing-s);
+}
+
+.sidebar-stat-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.sidebar-stat-label {
+  color: var(--color-muted);
+}
+
+.sidebar-stat-value {
+  font-weight: 600;
+}
+
+.sidebar-bar-track {
+  height: 6px;
+  background: var(--color-bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sidebar-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.sidebar-substat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+
 .muted {
   color: var(--color-muted);
 }

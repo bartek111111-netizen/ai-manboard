@@ -1,32 +1,22 @@
-import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
 import { t } from '../i18n';
 
-/** App shell: header + navigation (hash routing) + content area. */
-export function Layout({ children }: { children: ReactNode }) {
-  const linkClass = ({ isActive }: { isActive: boolean }): string =>
-    `nav-link${isActive ? ' active' : ''}`;
-
+/**
+ * App shell: left sidebar (nav + always-on system stats) + main content.
+ */
+export function Layout() {
   return (
-    <div className="layout">
-      <header className="header">
-        <span className="app-title">{t('appTitle')}</span>
-        <nav className="nav">
-          <NavLink to="/" className={linkClass} end>
-            {t('navDashboard')}
-          </NavLink>
-          <NavLink to="/status" className={linkClass}>
-            {t('navStatus')}
-          </NavLink>
-          <NavLink to="/system" className={linkClass}>
-            {t('navSystem')}
-          </NavLink>
-          <NavLink to="/settings" className={linkClass}>
-            {t('navSettings')}
-          </NavLink>
-        </nav>
-      </header>
-      <main className="main">{children}</main>
+    <div className="app-layout">
+      <Sidebar />
+      <main className="app-main">
+        <header className="app-header">
+          <h1>
+            <NavLink to="/">{t('appTitle')}</NavLink>
+          </h1>
+        </header>
+        <Outlet />
+      </main>
     </div>
   );
 }

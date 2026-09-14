@@ -1726,3 +1726,19 @@ section {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* --- Sidebar: DSH control button --- */
+.sidebar-dsh {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.dsh-btn {
+  width: 100%;
+  font-size: 12px;
+}
+
+.dsh-btn.running {
+  background: var(--color-state-running-bg);
+  color: var(--color-state-running);
+}

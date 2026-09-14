@@ -114,6 +114,32 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
   // Find the preferred GPU from the config
   const gpu = gpus.find((g) => g.id === preferredGpu) ?? null;
 
+  // DSH status
+  const [dshStatus, setDshStatus] = useState<{ running: boolean; pid: number | null } | null>(null);
+  const checkDsh = useCallback(() => {
+    fetch('/api/v1/dsh/status')
+      .then((r) => r.json())
+      .then((data) => setDshStatus(data))
+      .catch(() => setDshStatus(null));
+  }, []);
+
+  useEffect(() => {
+    checkDsh();
+    const interval = setInterval(checkDsh, 10000);
+    return () => clearInterval(interval);
+  }, [checkDsh]);
+
+  const toggleDsh = async (): Promise<void> => {
+    if (dshStatus?.running) {
+      // Stop DSH
+      await fetch('/api/v1/dsh/stop', { method: 'POST' });
+    } else {
+      // Start DSH
+      await fetch('/api/v1/dsh/start', { method: 'POST' });
+    }
+    checkDsh();
+  };
+
   return (
     <aside className="sidebar">
       <nav className="sidebar-nav">
@@ -125,6 +151,19 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
         <a href="#/settings" className="sidebar-link">{t('navSettings')}</a>
         <a href="#/info" className="sidebar-link sidebar-info-link">ℹ️ {t('navInfo')}</a>
       </nav>
+
+      {/* DSH control */}
+      <div className="sidebar-dsh">
+        <button
+          type="button"
+          className={`btn small dsh-btn ${dshStatus?.running ? 'running' : ''}`}
+          onClick={toggleDsh}
+        >
+          {dshStatus?.running
+            ? `⏹ Stop DSH (PID ${dshStatus.pid})`
+            : '▶ Start DSH'}
+        </button>
+      </div>
 
       <div className="sidebar-stats">
         {/* GPU section */}

@@ -81,6 +81,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   app.get('/api/v1/engines/detect', detectEngineHandler);
   const { registerLogsHandler } = await import('./api/handlers/logs.js');
   registerLogsHandler(app);
+
+  const { registerDshHandler } = await import('./api/handlers/dsh.js');
+  registerDshHandler(app);
   app.get('/api/v1/models', modelHandlers.listModels);
   app.post('/api/v1/models/discover', modelHandlers.discover);
   app.post('/api/v1/models', modelHandlers.addModel);

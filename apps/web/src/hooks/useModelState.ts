@@ -11,6 +11,7 @@ export interface ModelStateInfo {
   instanceId: string;
   modelId: string;
   preset: string;
+  displayName: string;
   state: ModelState;
   slotsUsed: number;
   slotsTotal: number;
@@ -26,9 +27,10 @@ export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
   }, []);
 
   const refresh = useCallback(() => {
-    getInstances()
-      .then((list: InstanceInfo[]) => {
+    Promise.all([getInstances(), getModels()])
+      .then(([list, models]) => {
         const running = list.filter((i) => i.state === 'running' || i.state === 'starting');
+        const modelMap = new Map(models.map((m) => [m.id, m.displayName]));
 
         // For each running instance, fetch its runtime info
         running.forEach((inst) => {
@@ -43,10 +45,12 @@ export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
                 const filtered = prev.filter((s) => running.some((i) => i.instanceId === s.instanceId));
                 // Update or add the current instance
                 const existing = filtered.find((s) => s.instanceId === inst.instanceId);
+                const displayName = modelMap.get(inst.modelId) ?? inst.modelId;
                 const item = {
                   instanceId: inst.instanceId,
                   modelId: inst.modelId,
                   preset: inst.preset,
+                  displayName,
                   state: newState,
                   slotsUsed,
                   slotsTotal,

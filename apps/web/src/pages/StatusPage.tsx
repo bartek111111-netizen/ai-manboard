@@ -174,6 +174,16 @@ export function StatusPage() {
 
 /** Formats uptime in seconds to a readable string. */
 function formatUptime(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.round(sec % 60); // round to whole seconds
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+/** Formats uptime in seconds to a readable string. (old, unused) */
+function formatUptimeOld(sec: number): string {
   if (sec < 60) return `${sec}s`;
   if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
   const hours = Math.floor(sec / 3600);

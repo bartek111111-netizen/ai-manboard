@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { t } from '../i18n';
-import { getInstances } from '../api/client';
+import { getInstances, getModels, getConfig } from '../api/client';
 import { useModelState } from '../hooks/useModelState';
-import { getConfig } from '../api/client';
 
 /**
  * App shell: left sidebar (nav + always-on system stats) + main content.
@@ -37,7 +36,7 @@ export function Layout() {
       }
       if (prev && prev !== ms.state) {
         const stateLabel = ms.state === 'working' ? t('stateWorking') : ms.state === 'idle' ? t('stateIdle') : t('stateReady');
-        setToast({ message: `${ms.preset}: ${stateLabel}`, state: ms.state });
+        setToast({ message: `${ms.displayName}: ${stateLabel}`, state: ms.state });
 
         // Auto-dismiss after 5s
         if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -95,9 +94,9 @@ export function Layout() {
                   <span
                     className="state-dot blink"
                     style={{ background: getStateColor(ms.state) }}
-                    title={`${ms.preset}: ${ms.state} (${ms.slotsUsed}/${ms.slotsTotal})`}
+                    title={`${ms.displayName}: ${ms.state} (${ms.slotsUsed}/${ms.slotsTotal})`}
                   />
-                  <span className="state-dot-name">{ms.preset}</span>
+                  <span className="state-dot-name">{ms.displayName}</span>
                 </span>
               ))}
             </div>

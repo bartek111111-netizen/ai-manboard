@@ -1123,11 +1123,11 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
 - **Akceptacja**: spawn/kill dummy'ego procesu + poprawna zmiana stanów.
 
 ### Faza 5 — Health + lifecycle start/stop/restart (sesja 6)
-- [ ] 5.1 `prober.ts`: readiness (start) + runtime (ciągły)
-- [ ] 5.2 Lifecycle: `start` (walidacja→spawn→probe→running), `stop`, `restart`
-- [ ] 5.3 Detekcja błędów startu (exit code, tail, log patterns)
-- [ ] 5.4 API: `instances` + `start/stop/restart`
-- [ ] 5.5 **E2E z małym modelem**: start → readiness → running → stop (sesja z prawdziwą binarką)
+- [x] 5.1 `prober.ts`: readiness (start) + runtime (ciągły)
+- [x] 5.2 Lifecycle: `start` (walidacja→spawn→probe→running), `stop`, `restart`
+- [x] 5.3 Detekcja błędów startu (exit code, tail, log patterns)
+- [x] 5.4 API: `instances` + `start/stop/restart`
+- [x] 5.5 **E2E z małym modelem**: start → readiness → running → stop (sesja z prawdziwą binarką)
 - **Akceptacja**: pełny lifecycle z prawdziwą `llama-server` + małym gguf.
 
 ### Faza 6 — API uzupełnieniowe + SSE (sesja 7)

@@ -1,3 +1,6 @@
 node_modules/
 dist/
 *.tsbuildinfo
+
+# E2E small model (downloaded, ~85 MB) — not committed
+.e2e-models/

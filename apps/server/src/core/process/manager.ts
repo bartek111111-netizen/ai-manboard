@@ -45,6 +45,12 @@ interface ActiveInstance {
   state: InstanceState;
   /** True once `stop()` has begun signaling the child. */
   stopping: boolean;
+  /**
+   * When set (by the lifecycle, e.g. a startup timeout → `error`), the exit
+   * handler settles on this state instead of recomputing from the exit code
+   * (which would yield `crashed` for a SIGKILL we sent on purpose).
+   */
+  forcedState?: InstanceState;
   /** Residual (not-yet-newline-terminated) output per stream. */
   partial: Record<'stdout' | 'stderr', string>;
   /** Resolves when the child exits. */
@@ -136,7 +142,7 @@ export class ProcessManager {
     child.on('exit', (code: number | null, signal: string | null) => {
       if (settled) return;
       settled = true;
-      const next = this.finalState(active, code, signal);
+      const next = active.forcedState ?? this.finalState(active, code, signal);
       active.state = next;
       this.opts.registry.update(instanceId, {
         state: next,
@@ -161,6 +167,46 @@ export class ProcessManager {
     this.opts.onStateChange?.(instanceId, 'starting');
 
     return child.pid ?? 0;
+  }
+
+  /**
+   * Sets the instance's state directly (lifecycle-driven FSM moves the manager
+   * does not know: `probe-ok` → `running`, `hang` → `error`). The caller has
+   * validated the transition against the FSM. No-op for an unknown instance.
+   */
+  setInstanceState(instanceId: string, state: InstanceState): void {
+    const active = this.active.get(instanceId);
+    if (active) active.state = state;
+    this.opts.registry.update(instanceId, { state });
+    this.opts.onStateChange?.(instanceId, state);
+  }
+
+  /** True while the instance has a live child in this manager's process. */
+  isTracked(instanceId: string): boolean {
+    return this.active.has(instanceId);
+  }
+
+  /**
+   * Settles a live child on a forced state (startup timeout → `error`, or
+   * stopping an `error`/hang instance → `stopped`): kills the child (SIGTERM →
+   * grace → SIGKILL) and pins the exit watchdog to `finalState` so the
+   * deliberate SIGKILL is not read as a crash. No-op when not tracked.
+   */
+  async terminate(instanceId: string, finalState: InstanceState): Promise<void> {
+    const active = this.active.get(instanceId);
+    if (!active) return;
+    active.forcedState = finalState;
+    active.state = finalState;
+    this.opts.registry.update(instanceId, { state: finalState });
+    this.opts.onStateChange?.(instanceId, finalState);
+    if (active.child.exitCode === null && !active.child.killed) {
+      active.child.kill('SIGTERM');
+    }
+    await this.awaitExit(instanceId, this.stopTimeoutMs);
+    if (active.child.exitCode === null) {
+      active.child.kill('SIGKILL');
+      await this.awaitExit(instanceId, 5000);
+    }
   }
 
   /**

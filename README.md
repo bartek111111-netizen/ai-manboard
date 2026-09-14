@@ -153,8 +153,13 @@ progress is tracked in **`STATUS.md`**. Completed so far:
   `ProcessManager` (spawn with isolated stdio, grace `SIGTERM`→`SIGKILL`),
   PID registry (atomic on every transition) + `exit` watchdog, port allocation /
   collisions, per-instance logs (ring buffer + retention + truncation)
+- **Faza 5** — health + lifecycle: readiness + runtime probes (`HealthProber`),
+  `LifecycleManager` (start/stop/restart driving the FSM), startup-error
+  detection (exit code, log tail, error patterns), `/instances` API, E2E with a
+  real `llama-server` + small GGUF
 
-Next: health + lifecycle (prober, start/stop/restart) → API/SSE → frontend.
+Next: API/SSE + frontend (per-instance DTO, metrics, logs, token security,
+`InstancePanel`).
 
 ## Development
 

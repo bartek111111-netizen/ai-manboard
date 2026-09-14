@@ -1,5 +1,56 @@
 # STATUS
 
+## Faza 5 — Health + lifecycle start/stop/restart — ✅ ZROBIONE
+
+Działa: health + pełny lifecycle instancji (PLAN §22 5.1–5.5, §11.2, §5.3)
+— start/stop/restart z prawdziwą binarką. HealthProber (5.1):
+`apps/server/src/core/health/prober.ts` — `ProbeSource` (inżektowalny:
+`isReady` + `runtime`), `waitReady(source, base)` = sonda readiness w tle
+(interwał 2 s, budżet 120 s, `PROBER_DEFAULTS`), zwraca `ok` / `timeout`;
+`startRuntime(source, base, {onHang})` = sonda **ciągła** (interwał 5 s),
+3 kolejne niepowodzenia → `onHang` (wykrywanie hanga), sukces resetuje
+licznik, `stop()` idempotentny. Czysty (brak HTTP wprost — testowany na
+dummym). Resolver (5.2): `core/process/resolve.ts` — `InstanceResolver`
+(`modelId--presetName` → `readModel`/`readPreset` 404, engine, `buildEffective`
+warstwy 1–5, binary z `global.engines` po `expandHome`, port = `preset.port`
+albo `allocatePort`, `host` z paramów, `engine.buildLaunch`); `resolveInstanceId`
+dzieli po **pierwszym** `--`. Lifecycle (5.2): `core/process/lifecycle.ts` —
+`LifecycleManager` (`listInstances`/`getState`/`start`/`stop`/`restart`/`shutdown`)
+łączy resolver + `ProcessManager` + prober i **steruje FSM**: `start` = walidacja
+(`engine.validate` → `VALIDATION_FAILED` 400, `engine.preflight` → `PREFLIGHT_FAILED`
+400) → `manager.spawn` (stan `starting`) → tło `driveStartup`: probe OK →
+`starting`→`running` (event `probe-ok`) + start pętli runtime (hang → `running`→`error`),
+timeout → `starting`→`error` + `terminate` (SIGTERM→grace→SIGKILL, watchdog z
+`forcedState` — celowe SIGKILL ≠ crash); `stop` = grace `manager.stop` (live) albo
+`terminate` instancji `error` z żywym dzieckiem; `restart` = `stop`+`start`.
+Detekcja błędów startu (5.3): `diagnose(instanceId)` → `{state, exitCode, signal,
+logTail, errorLines}` (exit/signal z rejestru, tail z `LogWriter.readTail`
+(dysk, przeżywa zrzut ringa po exit), `errorLines` = linie z
+`engine.classifyLog(level='error')`); `LogWriter.latestFile`/`readTail` (nowszy
+plik `logs/<id>/*.log`). API (5.4): `api/handlers/instances.ts` —
+`makeInstanceHandlers(lifecycle)`: `GET /api/v1/instances` (lista),
+`POST /api/v1/instances/:id/start` (`starting`), `…/stop` (grace → `stopped`),
+`…/restart`; zarejestrowane w `app.ts` tylko gdy `lifecycle` w opcjach
+(`tempApp()` bez niego nadal działa); boot `index.ts` buduje `PidRegistry`+
+`LogWriter`+`ProcessManager`+`HealthProber`+`LifecycleManager` (engines z
+`listEngines()`) i wiesza `lifecycle.shutdown()` na SIGINT/SIGTERM. E2E (5.5):
+`tools/e2e/run-e2e.sh` (+ `run-e2e.ts`, tsx) — **prawdziwa** `llama-server`
+(`~/llama.cpp/build/bin/llama-server`) + mały gguf
+(`.e2e-models/SmolLM2-135M-Instruct-Q2_K.gguf`, 85 MB): start → sonda readiness
+(`GET /v1/models`) → **running po 3.0 s** → stop → `stopped`, pełny lifecycle w
+3.1 s, brak procesów zombie. **Uwaga zakresu:** warstwa 6 (instance overrides)
+NIE w MVP — `start` używa warstw 1–5 (`buildEffective` bez warstwy 6); pełne DTO
+instancji (`GET /instances/:id`, metrics, logs) = Faza 6.3. Testy (5.x):
+**60 (shared) + 109 (server) = 169/169 zielone**; prober (8: readiness ok/timeout,
+runtime hang 3×, stop), resolve (8: port pinned/alokacja/skip-taken, 404,
+PORT_IN_USE, listIds), lifecycle (6: start→running→stop, drugi start 409, restart,
+timeout→error, `diagnose` tail/error-patterns, lista), instances API (4: list,
+start→running→stop→restart, 404 unknown, 409 live).
+
+**Dalej:** Faza 6 — API + UI: `GET /instances/:id` (pełne DTO §14.2) + metrics +
+logs, SSE (eventy FSM + tail logów), token/security, `InstancePanel` (start/stop/
+restart + endpoint + PID + uptime) w web.
+
 ## Faza 4 — Process Manager + FSM — ✅ ZROBIONE
 
 Działa: rdzeń zarządzania procesami (PLAN §22 4.1–4.5, §11.2–11.5, TT-9).

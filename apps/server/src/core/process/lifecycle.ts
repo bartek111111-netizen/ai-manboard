@@ -1,0 +1,262 @@
+/**
+ * Lifecycle manager (PLAN §11, §5.3, Faza 5.2) — the start/stop/restart
+ * orchestrator that ties the Faza 3 config, Faza 4 process manager and the
+ * Faza 5 health prober together, driving the instance FSM (§11.2):
+ *
+ *   start: resolve → validate/preflight → spawn(`starting`) →
+ *          readiness probe → `running` (probe-ok) / `error` (timeout).
+ *   stop:  graceful SIGTERM→SIGKILL (`stopping`→`stopped`); an `error`
+ *          instance with a live child (hang) is terminated.
+ *   restart: stop + start.
+ *
+ * The readiness probe runs in the background so `start` responds immediately
+ * with `starting`; the state settles asynchronously.
+ */
+import {
+  AppError,
+  isLive,
+  transition,
+  type InferenceEngine,
+  type InstanceInfo,
+  type InstanceState,
+  type InstanceView,
+  type ModelInfo,
+} from '@ai-dashboard/shared';
+import type { LogLine } from '../logs/ringbuffer.js';
+import type { LogWriter } from '../logs/writer.js';
+import type { ConfigStore } from '../config/store.js';
+import { type HealthProber, type ProbeSource, type RuntimeHandle } from '../health/prober.js';
+import { InstanceResolver, resolveInstanceId, type ResolvedInstance } from './resolve.js';
+import type { ProcessManager } from './manager.js';
+import type { PidRegistry } from './registry.js';
+
+export interface LifecycleDeps {
+  store: ConfigStore;
+  engines: InferenceEngine[];
+  manager: ProcessManager;
+  registry: PidRegistry;
+  prober: HealthProber;
+  /** Disk log writer (for the startup-error tail, §5.3). Optional. */
+  logs?: LogWriter;
+}
+
+/** Startup-error diagnostic (PLAN §5.3): how the instance failed. */
+export interface StartupDiagnostic {
+  instanceId: string;
+  state: InstanceState;
+  exitCode: number | null;
+  signal: string | null;
+  /** The last log lines (tail) for this start. */
+  logTail: string[];
+  /** Log tail lines classified as `error` by the engine (the error patterns). */
+  errorLines: string[];
+}
+
+export class LifecycleManager {
+  private readonly deps: LifecycleDeps;
+  private readonly resolver: InstanceResolver;
+  /** Live runtime-probe loops, keyed by instanceId (stopped on stop/restart). */
+  private readonly runtimes = new Map<string, RuntimeHandle>();
+  /** Engine per instance (cached at spawn) for log-pattern classification. */
+  private readonly enginesByInstance = new Map<string, InferenceEngine>();
+
+  constructor(deps: LifecycleDeps) {
+    this.deps = deps;
+    this.resolver = new InstanceResolver({
+      store: deps.store,
+      engines: deps.engines,
+      takenPorts: () => deps.registry.takenPorts(),
+    });
+  }
+
+  // -------------------------------------------------------------- read side
+
+  /** All known instances (every model, preset pair) with their current state. */
+  listInstances(): InstanceInfo[] {
+    return this.resolver.listIds().map((id) => this.summarize(id));
+  }
+
+  /** Current FSM state, or `unknown` when the instance is not known/tracked. */
+  getState(instanceId: string): InstanceState {
+    return this.deps.manager.getState(instanceId) ?? 'unknown';
+  }
+
+  /**
+   * Startup-error diagnostic (PLAN §5.3): the FSM state plus how the instance
+   * failed — the exit code/signal, the log tail, and the log lines the engine
+   * classifies as errors (the error patterns).
+   */
+  diagnose(instanceId: string): StartupDiagnostic {
+    const entry = this.deps.registry.get(instanceId);
+    const engine = this.enginesByInstance.get(instanceId);
+    // Prefer the persistent disk tail (survives the in-memory ring being
+    // dropped on exit); fall back to the live ring.
+    const diskTail = this.deps.logs ? this.deps.logs.readTail(instanceId, 100) : [];
+    const ring = this.deps.manager.getLogs(instanceId, 100);
+    const logTail = diskTail.length > 0 ? diskTail : ring.map((l: LogLine) => l.line);
+    const errorLines = engine
+      ? logTail.filter((line) => engine.classifyLog(line).level === 'error')
+      : [];
+    return {
+      instanceId,
+      state: this.getState(instanceId),
+      exitCode: entry?.lastExitCode ?? null,
+      signal: entry?.lastSignal ?? null,
+      logTail,
+      errorLines,
+    };
+  }
+
+  private summarize(instanceId: string): InstanceInfo {
+    const entry = this.deps.registry.get(instanceId);
+    const { modelId, presetName } = resolveInstanceId(instanceId);
+    return {
+      instanceId,
+      modelId,
+      preset: presetName,
+      state: this.getState(instanceId),
+      port: entry?.port ?? null,
+      pid: entry?.pid ?? null,
+      startedAt: entry?.startedAt ?? null,
+    };
+  }
+
+  // -------------------------------------------------------------- commands
+
+  /**
+   * Starts an instance. Validates (engine.validate + preflight) first, then
+   * spawns (state → `starting`) and returns immediately; the readiness probe
+   * settles the instance to `running` or `error` in the background.
+   * @throws AppError when the instance is already live, or validation/preflight fails.
+   */
+  async start(instanceId: string): Promise<InstanceState> {
+    const current = this.getState(instanceId);
+    if (isLive(current)) {
+      throw new AppError('INVALID_STATE', `instance is already ${current}`, { instanceId }, 409);
+    }
+
+    const inst = await this.resolver.resolve(instanceId);
+    await this.runChecks(inst);
+    this.enginesByInstance.set(instanceId, inst.engine);
+
+    // Spawn (state → starting). The readiness probe runs in the background.
+    await this.deps.manager.spawn(instanceId, inst.launch, inst.port);
+    void this.driveStartup(instanceId, inst);
+    return this.getState(instanceId);
+  }
+
+  /**
+   * Stops an instance: graceful stop for a live instance; an `error` instance
+   * with a live child (a hang) is terminated on the spot. Resolves once the
+   * process has fully exited (state → `stopped`).
+   */
+  async stop(instanceId: string): Promise<void> {
+    this.stopRuntime(instanceId);
+    const current = this.getState(instanceId);
+    if (isLive(current)) {
+      await this.deps.manager.stop(instanceId);
+    } else if (current === 'error') {
+      if (this.deps.manager.isTracked(instanceId)) {
+        await this.deps.manager.terminate(instanceId, 'stopped');
+      } else {
+        // Child already gone (startup timeout) — settle the registry.
+        this.deps.manager.setInstanceState(instanceId, 'stopped');
+      }
+    }
+  }
+
+  /** Restarts an instance (stop + start). */
+  async restart(instanceId: string): Promise<InstanceState> {
+    await this.stop(instanceId);
+    return this.start(instanceId);
+  }
+
+  /** Stops all live runtime loops (dashboard shutdown). */
+  shutdown(): void {
+    for (const handle of this.runtimes.values()) handle.stop();
+    this.runtimes.clear();
+  }
+
+  // -------------------------------------------------------------- internal
+
+  private probeSourceFor(inst: ResolvedInstance): ProbeSource {
+    const view: InstanceView = {
+      id: inst.instanceId,
+      modelId: inst.modelId,
+      presetName: inst.presetName,
+      port: inst.port,
+    };
+    return {
+      isReady: (base) => inst.engine.isReady(view, base),
+      runtime: (base) => inst.engine.fetchRuntimeInfo(base),
+    };
+  }
+
+  /** Engine-specific validation + preflight; blocking failures throw. */
+  private async runChecks(inst: ResolvedInstance): Promise<void> {
+    const model = this.deps.store.readModel(inst.modelId);
+    if (!model) {
+      throw new AppError('MODEL_NOT_FOUND', `model not found: ${inst.modelId}`, { instanceId: inst.instanceId }, 404);
+    }
+    const modelInfo: ModelInfo = {
+      id: inst.modelId,
+      path: typeof model.params?.model === 'string' ? model.params.model : '',
+      engineId: inst.engine.id,
+    };
+    const errors = inst.engine.validate(modelInfo, inst.resolved);
+    if (errors.length > 0) {
+      throw new AppError('VALIDATION_FAILED', errors.join('; '), { instanceId: inst.instanceId, errors }, 400);
+    }
+    if (inst.engine.preflight) {
+      const ctx = {
+        binary: inst.launch.binary,
+        modelPath: modelInfo.path,
+        params: inst.params,
+        cwd: inst.launch.cwd,
+        env: inst.launch.env,
+      };
+      const pre = await inst.engine.preflight(ctx);
+      if (!pre.ok) {
+        throw new AppError(
+          'PREFLIGHT_FAILED',
+          pre.errors.map((e) => e.message).join('; '),
+          { instanceId: inst.instanceId, errors: pre.errors },
+          400,
+        );
+      }
+    }
+  }
+
+  /**
+   * Background: waits for readiness, then settles the instance.
+   *   probe-ok  → `starting`→`running` + start the runtime loop (hang → `error`).
+   *   timeout   → `starting`→`error` + terminate the stuck child.
+   */
+  private async driveStartup(instanceId: string, inst: ResolvedInstance): Promise<void> {
+    const source = this.probeSourceFor(inst);
+    const outcome = await this.deps.prober.waitReady(source, inst.base);
+    const current = this.deps.manager.getState(instanceId);
+    if (outcome.ok) {
+      if (current === 'starting') {
+        this.deps.manager.setInstanceState(instanceId, transition(current, 'probe-ok'));
+        this.runtimes.set(
+          instanceId,
+          this.deps.prober.startRuntime(source, inst.base, {
+            onHang: () => {
+              const s = this.deps.manager.getState(instanceId);
+              if (s === 'running') this.deps.manager.setInstanceState(instanceId, transition(s, 'hang'));
+              this.stopRuntime(instanceId);
+            },
+          }),
+        );
+      }
+    } else if (current === 'starting') {
+      await this.deps.manager.terminate(instanceId, transition(current, 'timeout'));
+    }
+  }
+
+  private stopRuntime(instanceId: string): void {
+    this.runtimes.get(instanceId)?.stop();
+    this.runtimes.delete(instanceId);
+  }
+}

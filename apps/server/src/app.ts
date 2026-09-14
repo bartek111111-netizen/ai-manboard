@@ -6,7 +6,9 @@ import { makeStatusHandler } from './api/handlers/status.js';
 import { makeConfigHandlers } from './api/handlers/config.js';
 import { makeEngineHandlers } from './api/handlers/engines.js';
 import { makeModelHandlers } from './api/handlers/models.js';
+import { makeInstanceHandlers } from './api/handlers/instances.js';
 import type { ConfigStore } from './core/config/store.js';
+import type { LifecycleManager } from './core/process/lifecycle.js';
 import { WEB_DIST_DIR } from './web-dist.js';
 
 export interface BuildAppOptions {
@@ -16,6 +18,11 @@ export interface BuildAppOptions {
   store: ConfigStore;
   /** Live config watch state (P-12) — shared with the runtime watcher. */
   getConfigState: () => ConfigWatchState;
+  /**
+   * Lifecycle manager (Faza 5) — when present, the `/instances` routes are
+   * registered. Omitted in tests that only exercise the config/model APIs.
+   */
+  lifecycle?: LifecycleManager;
 }
 
 /**
@@ -55,6 +62,14 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   app.get('/api/v1/models/:modelId', modelHandlers.getModel);
   app.patch('/api/v1/models/:modelId', modelHandlers.updateModel);
   app.delete('/api/v1/models/:modelId', modelHandlers.removeModel);
+  // Instances (Faza 5): only when the lifecycle manager is wired in.
+  if (options.lifecycle) {
+    const instanceHandlers = makeInstanceHandlers(options.lifecycle);
+    app.get('/api/v1/instances', instanceHandlers.list);
+    app.post('/api/v1/instances/:instanceId/start', instanceHandlers.start);
+    app.post('/api/v1/instances/:instanceId/stop', instanceHandlers.stop);
+    app.post('/api/v1/instances/:instanceId/restart', instanceHandlers.restart);
+  }
   // Plain liveness check (the token middleware from phase 6 will cover the API).
   app.get('/healthz', async () => ({ ok: true }));
 

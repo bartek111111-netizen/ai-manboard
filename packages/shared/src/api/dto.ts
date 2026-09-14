@@ -8,6 +8,7 @@ import type {
   Preset,
   ResolvedConfig,
 } from '../config/types.js';
+import type { InstanceState } from '../process/states.js';
 
 /** All stored config layers at a point in time (PLAN §14.1: `GET /config`). */
 export interface ConfigSnapshot {
@@ -124,4 +125,21 @@ export interface DiscoverResponse {
   removed: string[];
   /** Total number of models after the scan. */
   total: number;
+}
+
+// --------------------------------------------------------------- instances (Faza 5)
+
+/**
+ * One instance (model, preset) as listed by `GET /instances` (Faza 5.4).
+ * The full per-instance DTO (config source, runtime, process) is Faza 6.3.
+ */
+export interface InstanceInfo {
+  instanceId: string;
+  modelId: string;
+  /** The preset name. */
+  preset: string;
+  state: InstanceState;
+  port: number | null;
+  pid: number | null;
+  startedAt: string | null;
 }

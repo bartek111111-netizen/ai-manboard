@@ -4,11 +4,17 @@
  */
 import { createHash } from 'node:crypto';
 import type { ConfigSnapshot, ConfigWatchState } from '@ai-dashboard/shared';
+import { listEngines } from '@ai-dashboard/shared/engine';
 import { buildApp } from './app.js';
 import { loadEnv } from './env.js';
 import { ensureHome, resolveHome } from './core/config/paths.js';
 import { ConfigStore } from './core/config/store.js';
 import { ConfigWatcher } from './core/config/watcher.js';
+import { HealthProber } from './core/health/prober.js';
+import { LogWriter } from './core/logs/writer.js';
+import { LifecycleManager } from './core/process/lifecycle.js';
+import { ProcessManager } from './core/process/manager.js';
+import { PidRegistry } from './core/process/registry.js';
 import { WEB_DIST_DIR } from './web-dist.js';
 
 function snapshotHash(snapshot: ConfigSnapshot): string {
@@ -61,7 +67,23 @@ async function main(): Promise<void> {
   });
   watcher.start();
 
-  const app = await buildApp({ store, getConfigState: () => configState, staticDir: WEB_DIST_DIR });
+  // Faza 5: process lifecycle (start/stop/restart + health).
+  const registry = new PidRegistry(home);
+  const logs = new LogWriter({
+    logsDir: home.logsDir,
+    retentionFiles: 10,
+    maxFileBytes: 10_000_000,
+  });
+  const manager = new ProcessManager({ registry, logs, ringLines: 1000, stopTimeoutSec: 10 });
+  const prober = new HealthProber();
+  const lifecycle = new LifecycleManager({ store, engines: listEngines(), manager, registry, prober, logs });
+
+  const app = await buildApp({
+    store,
+    getConfigState: () => configState,
+    staticDir: WEB_DIST_DIR,
+    lifecycle,
+  });
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {
@@ -70,6 +92,7 @@ async function main(): Promise<void> {
     console.log(`[dashboard] ${signal} — shutting down`);
     watcher.stop();
     configState.watchActive = false;
+    lifecycle.shutdown();
     await app.close();
     process.exit(0);
   };

@@ -6,7 +6,7 @@
  * marker) once they exceed `maxFileBytes` (~10 MB) so a runaway backend can
  * never fill the disk.
  */
-import { mkdirSync, openSync, writeSync, closeSync, readdirSync, unlinkSync, statSync } from 'node:fs';
+import { mkdirSync, openSync, writeSync, closeSync, readdirSync, unlinkSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** Marker line inserted when a log file is truncated at the size cap. */
@@ -73,6 +73,37 @@ export class LogWriter {
       closeSync(handle);
     }
     this.byteCounts.set(file, size + data.length);
+  }
+
+  /** The newest `logs/<instanceId>/*.log` file path, or null when none. */
+  latestFile(instanceId: string): string | null {
+    const dir = this.instanceDir(instanceId);
+    let files: string[];
+    try {
+      files = readdirSync(dir).filter((f) => f.endsWith('.log'));
+    } catch {
+      return null; // dir not created yet
+    }
+    if (files.length === 0) return null;
+    files.sort(); // zero-padded timestamps → lexicographic = time order
+    return join(dir, files[files.length - 1]);
+  }
+
+  /**
+   * The last `lines` lines of the newest log file for `instanceId` (for the
+   * startup-error diagnostic, §5.3). Returns `[]` when there is no log file.
+   */
+  readTail(instanceId: string, lines: number): string[] {
+    const file = this.latestFile(instanceId);
+    if (!file) return [];
+    let content: string;
+    try {
+      content = readFileSync(file, 'utf8');
+    } catch {
+      return [];
+    }
+    const all = content.split('\n').filter((l) => l.length > 0);
+    return all.slice(-Math.max(1, Math.floor(lines)));
   }
 
   /** Keeps the newest `retentionFiles` files in `logs/<instanceId>/`. */

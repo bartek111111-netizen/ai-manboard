@@ -17,7 +17,7 @@ import {
 } from '@ai-dashboard/shared';
 import type { ConfigStore } from '../config/store.js';
 import { buildEffective } from '../config/layers.js';
-import { allocatePort, assertPortFree, assertValidPort } from './ports.js';
+import { allocatePort, assertValidPort, isPortInUse } from './ports.js';
 
 /** An instance id is `<modelId>--<presetName>` (the model id never contains `--`). */
 export function resolveInstanceId(instanceId: string): { modelId: string; presetName: string } {
@@ -133,14 +133,30 @@ export class InstanceResolver {
     let port: number;
     if (preset.port !== undefined) {
       assertValidPort(preset.port);
-      // If the pinned port is free, use it; otherwise auto-allocate a free one
-      if (!new Set(taken).has(preset.port)) {
+      // Check if the pinned port is free (both in registry and on the system)
+      const isInRegistry = new Set(taken).has(preset.port);
+      const isInSystem = await isPortInUse(preset.port);
+      if (!isInRegistry && !isInSystem) {
         port = preset.port;
       } else {
-        port = allocatePort(global.portRange, taken);
+        // Auto-allocate: find the first port that's free in both registry and system
+        for (let candidate = global.portRange.start; candidate <= global.portRange.end; candidate++) {
+          if (!new Set(taken).has(candidate) && !await isPortInUse(candidate)) {
+            port = candidate;
+            break;
+          }
+        }
+        if (port === undefined) throw new AppError('PORT_IN_USE', `no free port in range ${global.portRange.start}–${global.portRange.end}`);
       }
     } else {
-      port = allocatePort(global.portRange, taken);
+      // Auto-allocate: find the first port that's free in both registry and system
+      for (let candidate = global.portRange.start; candidate <= global.portRange.end; candidate++) {
+        if (!new Set(taken).has(candidate) && !await isPortInUse(candidate)) {
+          port = candidate;
+          break;
+        }
+      }
+      if (port === undefined) throw new AppError('PORT_IN_USE', `no free port in range ${global.portRange.start}–${global.portRange.end}`);
     }
 
     const params: Record<string, unknown> = {};

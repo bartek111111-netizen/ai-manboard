@@ -56,3 +56,26 @@ export function assertValidPort(port: number): void {
     throw new AppError('VALIDATION_FAILED', `invalid port ${port} (must be 1024–65535)`, { port });
   }
 }
+
+/**
+ * Checks if a port is actually in use on the system (by any process).
+ * Uses a quick TCP connection test — if we can connect, the port is taken.
+ */
+export async function isPortInUse(port: number): Promise<boolean> {
+  const { createServer } = await import('node:net');
+  const { promisify } = await import('node:util');
+  const listen = promisify((cb: (err: Error | null) => void) => {
+    const server = createServer();
+    server.once('error', (err) => cb(err));
+    server.once('listening', () => {
+      server.close(() => cb(null));
+    });
+    server.listen(port, '127.0.0.1');
+  });
+  try {
+    await listen();
+    return false; // port is free
+  } catch {
+    return true; // port is in use
+  }
+}

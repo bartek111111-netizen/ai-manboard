@@ -57,13 +57,17 @@ export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
                 return [...filtered, item];
               });
             })
-            .catch(() => {});
+            .catch((err) => {
+              console.error('Failed to get instance state', err);
+            });
         });
 
         // Remove instances that are no longer in the list
         setStates((prev) => prev.filter((s) => running.some((i) => i.instanceId === s.instanceId)));
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('Failed to get instances', err);
+      });
   }, [detectState]);
 
   useEffect(() => {

@@ -81,11 +81,15 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
             </>
           )}
 
-          {/* Faza 8.2: CPU/RAM (pending) */}
-          <dt>{t('metricsCpu')}</dt>
-          <dd className="muted">Faza 8.2</dd>
-          <dt>{t('metricsRss')}</dt>
-          <dd className="muted">Faza 8.2</dd>
+          {/* CPU/RAM (per-process) */}
+          {dto?.process && (
+            <>
+              <dt>{t('metricsCpu')}</dt>
+              <dd>{dto.process.cpuPct !== null ? `${dto.process.cpuPct.toFixed(1)}%` : '—'}</dd>
+              <dt>{t('metricsRss')}</dt>
+              <dd>{dto.process.rssMB !== null ? `${dto.process.rssMB.toFixed(0)} MB` : '—'}</dd>
+            </>
+          )}
         </dl>
       )}
 

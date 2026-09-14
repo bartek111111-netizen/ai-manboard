@@ -118,7 +118,7 @@ export function Sidebar() {
         {/* RAM */}
         <StatRow
           label={t('ramHeading')}
-          value={ram ? `${(ramPct / 100).toFixed(2).slice(0, -1)}%` : '—'}
+          value={ram ? `${ramPct.toFixed(0)}%` : '—'}
           pct={ramPct}
           color={ramColor}
         />

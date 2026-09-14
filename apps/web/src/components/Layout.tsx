@@ -15,7 +15,9 @@ export function Layout() {
             <NavLink to="/">{t('appTitle')}</NavLink>
           </h1>
         </header>
-        <Outlet />
+        <div className="app-content">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

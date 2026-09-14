@@ -103,6 +103,14 @@ body {
   flex-direction: column;
 }
 
+.app-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--spacing-l);
+}
+
 .app-header {
   display: flex;
   align-items: center;

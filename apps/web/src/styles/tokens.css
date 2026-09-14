@@ -118,3 +118,614 @@ body {
   color: var(--color-state-error);
   font-weight: 600;
 }
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--color-border);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.small {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.btn.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #3d7ac2;
+}
+
+/* --- Toolbar --- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-m);
+  flex-wrap: wrap;
+}
+
+/* --- Model table --- */
+.model-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.model-table th,
+.model-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.model-table th {
+  color: var(--color-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.model-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-accent) 5%);
+}
+
+.model-name {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.model-name:hover {
+  text-decoration: underline;
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.actions .btn {
+  margin-right: 4px;
+}
+
+/* --- Tabs --- */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-m);
+}
+
+.tab {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.tab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+
+.tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Select / inputs --- */
+.preset-select,
+select,
+input[type='text'],
+input[type='number'],
+input[type='password'],
+textarea {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  min-width: 140px;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+textarea {
+  min-width: 100%;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* --- Status badge --- */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.status-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-badge.running   { background: color-mix(in srgb, var(--color-state-running) 20%, transparent); color: var(--color-state-running); }
+.status-badge.running::before   { background: var(--color-state-running); }
+.status-badge.stopped   { background: color-mix(in srgb, var(--color-state-stopped) 20%, transparent); color: var(--color-state-stopped); }
+.status-badge.stopped::before   { background: var(--color-state-stopped); }
+.status-badge.starting  { background: color-mix(in srgb, var(--color-state-starting) 20%, transparent); color: var(--color-state-starting); }
+.status-badge.starting::before  { background: var(--color-state-starting); animation: pulse 1.5s ease-in-out infinite; }
+.status-badge.stopping  { background: color-mix(in srgb, var(--color-state-stopping) 20%, transparent); color: var(--color-state-stopping); }
+.status-badge.stopping::before  { background: var(--color-state-stopping); }
+.status-badge.error     { background: color-mix(in srgb, var(--color-state-error) 20%, transparent); color: var(--color-state-error); }
+.status-badge.error::before     { background: var(--color-state-error); }
+.status-badge.crashed   { background: color-mix(in srgb, var(--color-state-crashed) 20%, transparent); color: var(--color-state-crashed); }
+.status-badge.crashed::before   { background: var(--color-state-crashed); }
+.status-badge.unknown   { background: color-mix(in srgb, var(--color-state-unknown) 20%, transparent); color: var(--color-state-unknown); }
+.status-badge.unknown::before   { background: var(--color-state-unknown); }
+
+.status-badge.small {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* --- Error notice --- */
+.error-notice {
+  margin-bottom: var(--spacing-m);
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-state-error) 15%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-state-error) 40%, transparent);
+  color: var(--color-state-error);
+}
+
+.error-notice code {
+  font-family: monospace;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.error-notice.error-notice-dismissed {
+  display: none;
+}
+
+/* --- Schema form (Faza 9.1) --- */
+.schema-form {
+  margin-top: var(--spacing-m);
+}
+
+.schema-form h2 {
+  margin-bottom: var(--spacing-s);
+}
+
+.schema-form-group {
+  margin-bottom: var(--spacing-m);
+  padding-bottom: var(--spacing-m);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.schema-form-group-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-bottom: var(--spacing-s);
+}
+
+.form-field {
+  margin-bottom: var(--spacing-s);
+}
+
+.form-field-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.form-field-label .muted {
+  margin-left: 6px;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.form-field-error {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--color-state-error);
+}
+
+details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: var(--spacing-s);
+}
+
+.schema-form-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  margin-top: var(--spacing-m);
+  padding-top: var(--spacing-s);
+  border-top: 1px solid var(--color-border);
+}
+
+/* --- Section cards --- */
+.section-card {
+  margin-bottom: var(--spacing-l);
+  padding: var(--spacing-m);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.section-card h2,
+.section-card h3 {
+  margin-top: 0;
+}
+
+/* --- Instance panel --- */
+.instance-panel {
+  margin-top: var(--spacing-s);
+}
+
+.instance-panel .muted {
+  display: block;
+  margin-bottom: var(--spacing-s);
+}
+
+.instance-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-m);
+  flex-wrap: wrap;
+}
+
+.instance-actions .btn {
+  min-width: 80px;
+}
+
+.instance-panel .kv {
+  margin-top: var(--spacing-s);
+}
+
+/* --- Metrics panel --- */
+.metrics-panel .kv {
+  margin-top: var(--spacing-s);
+}
+
+.metrics-panel .muted {
+  display: block;
+  margin-top: var(--spacing-s);
+}
+
+/* --- Log viewer --- */
+.log-viewer {
+  margin-top: var(--spacing-s);
+}
+
+.log-viewer .muted {
+  display: block;
+  margin-bottom: var(--spacing-s);
+}
+
+.log-viewer-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-s);
+  flex-wrap: wrap;
+}
+
+.log-autoscroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.log-autoscroll input[type='checkbox'] {
+  accent-color: var(--color-accent);
+}
+
+.log-line-count {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.log-viewer-container {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-s);
+  font-size: 0.8rem;
+  font-family: 'Cascadia Mono', 'Fira Code', monospace;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 500px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-viewer-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.log-line {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  line-height: 1.4;
+}
+
+.log-line:hover {
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+}
+
+.log-timestamp {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  width: 70px;
+}
+
+.log-level {
+  font-weight: 700;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.log-level-info { color: var(--color-text); }
+.log-level-warn { color: var(--color-state-stopping); }
+.log-level-error { color: var(--color-state-error); }
+
+.log-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Capability icons --- */
+.capability-icons {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.capability-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.capability-icon.active {
+  background: color-mix(in srgb, var(--color-state-running) 20%, transparent);
+  color: var(--color-state-running);
+}
+
+.capability-icon.inactive {
+  background: color-mix(in srgb, var(--color-state-stopped) 15%, transparent);
+  color: var(--color-muted);
+  opacity: 0.5;
+}
+
+/* --- Instance panel extras --- */
+.instance-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-s);
+}
+
+.instance-id {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.endpoint {
+  font-family: monospace;
+  font-size: 0.85rem;
+  background: var(--color-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* --- Schema form extras --- */
+.schema-advanced {
+  margin-top: var(--spacing-s);
+}
+
+.field {
+  margin-bottom: var(--spacing-s);
+}
+
+.field-desc {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+
+.field-source {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.field-error {
+  font-size: 0.8rem;
+  color: var(--color-state-error);
+  margin-top: 2px;
+}
+
+.input {
+  width: 100%;
+}
+
+/* --- Preset select extras --- */
+.preset-create {
+  margin-top: var(--spacing-s);
+}
+
+.preset-params {
+  margin-top: var(--spacing-m);
+  padding: var(--spacing-s);
+  background: var(--color-bg);
+  border-radius: var(--radius);
+}
+
+/* --- Settings extras --- */
+.settings-engine {
+  margin-bottom: var(--spacing-m);
+}
+
+/* --- Error action --- */
+.error-action {
+  font-size: 0.85rem;
+  margin-top: 4px;
+  color: var(--color-muted);
+}
+
+/* --- Settings page --- */
+.settings-page .section-card {
+  background: var(--color-surface);
+}
+
+.settings-page .form-field {
+  margin-bottom: var(--spacing-m);
+}
+
+.settings-page .form-field-label {
+  font-size: 0.9rem;
+}
+
+.settings-page .form-field input,
+.settings-page .form-field textarea {
+  width: 100%;
+}
+
+.settings-page .muted {
+  display: block;
+  margin-top: 4px;
+}
+
+.settings-actions {
+  margin-top: var(--spacing-m);
+}
+
+/* --- Onboarding --- */
+.onboarding {
+  max-width: 600px;
+  margin: var(--spacing-l) auto;
+  padding: var(--spacing-l);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.onboarding h1 {
+  margin-top: 0;
+  font-size: 1.4rem;
+}
+
+.onboarding .btn {
+  margin-top: var(--spacing-m);
+}
+
+/* --- Placeholder page --- */
+.placeholder-page {
+  text-align: center;
+  padding: var(--spacing-l);
+}
+
+.placeholder-page .muted {
+  display: block;
+  margin-top: var(--spacing-m);
+}
+
+/* --- Model detail header --- */
+h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+section {
+  margin-bottom: var(--spacing-l);
+}

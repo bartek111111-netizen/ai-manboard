@@ -8,8 +8,7 @@ import { stateUi } from '../ui/state';
 export function StatusBadge({ state, small = false }: { state: InstanceState; small?: boolean }) {
   const ui = stateUi(state);
   return (
-    <span className={`status-badge${small ? ' small' : ''}`} style={{ color: `var(${ui.colorVar})` }}>
-      <span className="status-badge-dot" aria-hidden="true" />
+    <span className={`status-badge ${state}${small ? ' small' : ''}`} style={{ color: `var(${ui.colorVar})` }}>
       {ui.label}
     </span>
   );

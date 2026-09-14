@@ -131,7 +131,13 @@ export class InstanceResolver {
     const currentPort = this.deps.registry.get(instanceId)?.port ?? null;
     const taken = this.deps.takenPorts().filter((p) => p !== currentPort);
     let port: number;
-    if (preset.port !== undefined) {
+
+    // If the instance is already live, use its current port (no re-allocation)
+    const currentState = this.deps.registry.get(instanceId)?.state;
+    const isLive = currentState === 'running' || currentState === 'starting';
+    if (isLive && currentPort !== null) {
+      port = currentPort;
+    } else if (preset.port !== undefined) {
       assertValidPort(preset.port);
       // Check if the pinned port is free (both in registry and on the system)
       const isInRegistry = new Set(taken).has(preset.port);

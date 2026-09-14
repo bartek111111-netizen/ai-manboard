@@ -1547,3 +1547,69 @@ section {
   overflow-x: auto;
   white-space: pre-wrap;
 }
+
+/* --- Status page: running models grid --- */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.status-card {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.status-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 500;
+}
+
+.status-card-title {
+  font-size: 14px;
+  color: var(--color-accent);
+}
+
+.status-card-state {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.status-card-state.running {
+  background: var(--color-state-running-bg);
+  color: var(--color-state-running);
+}
+
+.status-kv {
+  padding: 12px 14px;
+}
+
+.status-kv dt {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.status-kv dd {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+/* --- Sidebar: running count badge --- */
+.sidebar-count {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}

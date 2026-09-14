@@ -74,6 +74,7 @@ export function Sidebar() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [gpus, setGpus] = useState<GpuEntry[]>([]);
   const [preferredGpu, setPreferredGpu] = useState<string | null>(null);
+  const [runningCount, setRunningCount] = useState(0);
 
   const load = useCallback(() => {
     // Load metrics
@@ -95,6 +96,15 @@ export function Sidebar() {
         setPreferredGpu(data.global.gpu?.preferred ?? null);
       })
       .catch(() => setPreferredGpu(null));
+
+    // Load running instance count
+    fetch('/api/v1/instances')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { instances: { state: string }[] }) => {
+        const count = data.instances.filter((i) => i.state === 'running' || i.state === 'starting').length;
+        setRunningCount(count);
+      })
+      .catch(() => setRunningCount(0));
   }, []);
 
   useEffect(() => {
@@ -118,7 +128,10 @@ export function Sidebar() {
     <aside className="sidebar">
       <nav className="sidebar-nav">
         <a href="#/" className="sidebar-link">{t('navDashboard')}</a>
-        <a href="#/status" className="sidebar-link">{t('navStatus')}</a>
+        <a href="#/status" className="sidebar-link">
+          {t('navStatus')}
+          {runningCount > 0 && <span className="sidebar-count">{runningCount}</span>}
+        </a>
         <a href="#/settings" className="sidebar-link">{t('navSettings')}</a>
       </nav>
 

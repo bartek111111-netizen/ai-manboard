@@ -85,6 +85,12 @@ export const pl = {
   autoAssign: 'Przypisz automatycznie jako domyślny',
   defaultTag: 'domyślny',
 
+  // Status page (running models)
+  noRunningModels: 'Brak uruchomionych modeli.',
+  stateRunning: 'działa',
+  stateStarting: 'startuje',
+  fieldPort: 'Port',
+
   // Detail tabs
   tabPreview: 'Podgląd',
   tabConfig: 'Konfiguracja',

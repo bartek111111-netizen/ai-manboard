@@ -85,13 +85,16 @@ export function Layout() {
           <div className="app-header-status">
             {/* State dots per model */}
             <div className="state-dots">
-              {modelStates.map((ms) => (
-                <span
-                  key={ms.instanceId}
-                  className="state-dot"
-                  style={{ background: getStateColor(ms.state) }}
-                  title={`${ms.preset}: ${ms.state} (${ms.slotsUsed}/${ms.slotsTotal})`}
-                />
+              {modelStates.map((ms, idx) => (
+                <span key={ms.instanceId} className="state-dot-group">
+                  {idx > 0 && <span className="state-dot-sep">|</span>}
+                  <span
+                    className="state-dot blink"
+                    style={{ background: getStateColor(ms.state) }}
+                    title={`${ms.preset}: ${ms.state} (${ms.slotsUsed}/${ms.slotsTotal})`}
+                  />
+                  <span className="state-dot-name">{ms.preset}</span>
+                </span>
               ))}
             </div>
             {/* Toast notification */}

@@ -162,6 +162,7 @@ export const pl = {
   gpuNotSelected: 'GPU nie zaznaczone w ustawieniach',
 
   // File picker
+  showHidden: 'Pokaż ukryte',
   selectFile: 'Wybierz plik',
   selectFolder: 'Wybierz folder',
   upDir: 'W górę',

@@ -33,6 +33,7 @@ export function FilePicker({
   const [parent, setParent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
 
   const load = (path: string): void => {
     setLoading(true);
@@ -73,6 +74,14 @@ export function FilePicker({
             ↑ {t('upDir')}
           </button>
           <span className="file-picker-current">{currentPath}</span>
+          <label className="checkbox-label small">
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={(e) => setShowHidden(e.target.checked)}
+            />
+            {t('showHidden')}
+          </label>
         </div>
 
         <div className="file-picker-list">
@@ -81,7 +90,9 @@ export function FilePicker({
           {!loading && !error && entries.length === 0 && (
             <p className="muted">{t('emptyDir')}</p>
           )}
-          {entries.map((entry) => (
+          {entries
+            .filter((entry) => showHidden || !entry.name.startsWith('.'))
+            .map((entry) => (
             <button
               key={entry.path}
               type="button"

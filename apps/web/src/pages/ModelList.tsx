@@ -50,14 +50,16 @@ export function ModelList() {
   const selectedPreset = (model: ModelView): string | undefined =>
     selected[model.id] ?? (presets[model.id]?.[0]?.name ?? undefined);
 
-  const [scanResult, setScanResult] = useState<{ added: number; removed: number; total: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{ added: number; removed: number; total: number; hidden: number } | null>(null);
 
   const handleScan = async (): Promise<void> => {
     setBusy(true);
     setScanResult(null);
     try {
       const result = await discoverModels();
-      setScanResult({ added: result.added.length, removed: result.removed.length, total: result.total });
+      // Count hidden models from the current list
+      const hiddenCount = models.filter((m) => m.hidden).length;
+      setScanResult({ added: result.added.length, removed: result.removed.length, total: result.total, hidden: hiddenCount });
       await refresh();
     } catch (err) {
       setError(errInfo(err));
@@ -86,7 +88,10 @@ export function ModelList() {
       )}
       {scanResult && (
         <div className="scan-result">
-          <span>{t('scanResult')} +{scanResult.added}, łącznie {scanResult.total}</span>
+          <span>
+            {t('scanResult')} +{scanResult.added}, łącznie {scanResult.total}
+            {scanResult.hidden > 0 ? ` (${scanResult.hidden} ukryte)` : ''}
+          </span>
           <button type="button" className="btn small" onClick={() => setScanResult(null)}>×</button>
         </div>
       )}

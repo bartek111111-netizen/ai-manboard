@@ -144,6 +144,17 @@ export function StatusPage() {
                   </>
                 )}
 
+                {/* Work time: actual generation time */}
+                {m?.runtime?.extras?.workTimeSec !== undefined && m?.uptimeSec !== null && m?.uptimeSec !== undefined && (
+                  <>
+                    <dt>{t('metricsWorkTime')}</dt>
+                    <dd>{formatUptime(m.runtime.extras.workTimeSec as number)}</dd>
+                    <dt>{t('metricsWorkPct')}</dt>
+                    <dd>{((m.runtime.extras.workTimeSec as number) / m.uptimeSec * 100).toFixed(1)}%</dd>
+                  </>
+                )}
+
+                {/* CPU/RAM (per-process) */}
                 {m?.process && (
                   <>
                     <dt>{t('metricsCpu')}</dt>

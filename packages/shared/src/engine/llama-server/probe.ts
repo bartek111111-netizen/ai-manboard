@@ -56,7 +56,12 @@ export async function fetchLlamaServerRuntimeInfo(base: string): Promise<Runtime
     reachable = true;
     info.slots = {
       total: slots.length,
-      used: slots.filter((s) => typeof s === 'object' && s !== null && 'used' in s && (s as { used?: boolean }).used === true).length,
+      used: slots.filter((s) => {
+        if (typeof s !== 'object' || s === null) return false;
+        // Check both possible field names: is_processing (newer builds) or used (older)
+        const slot = s as Record<string, unknown>;
+        return slot['is_processing'] === true || slot['used'] === true;
+      }).length,
     };
     info.extras.slots = slots;
   }

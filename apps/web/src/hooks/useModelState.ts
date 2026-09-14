@@ -2,7 +2,7 @@
  * Hook to detect model state (ready, idle, working) from slots endpoint.
  * Polls every 3s for live instances.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getInstances, getInstance, type InstanceInfo } from '../api/client';
 
 export type ModelState = 'ready' | 'idle' | 'working' | 'unknown';
@@ -16,11 +16,8 @@ export interface ModelStateInfo {
   slotsTotal: number;
 }
 
-export function useModelState(debounceMs: number = 0): ModelStateInfo[] {
+export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
   const [states, setStates] = useState<ModelStateInfo[]>([]);
-  const [lastStates, setLastStates] = useState<Record<string, ModelState>>({});
-  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
-  const stableStates = useRef<Record<string, ModelState>>({});
 
   const detectState = useCallback((slotsUsed: number, slotsTotal: number): ModelState => {
     if (slotsUsed === 0) return 'idle';
@@ -33,75 +30,47 @@ export function useModelState(debounceMs: number = 0): ModelStateInfo[] {
       .then((list: InstanceInfo[]) => {
         const running = list.filter((i) => i.state === 'running' || i.state === 'starting');
 
+        // For each running instance, fetch its runtime info
         running.forEach((inst) => {
           getInstance(inst.instanceId)
-            .then((dto) => {
+            .then((dto: any) => {
               const slotsUsed = dto.runtime?.slots?.used ?? 0;
               const slotsTotal = dto.runtime?.slots?.total ?? 0;
               const newState = detectState(slotsUsed, slotsTotal);
 
-              // Update state map
               setStates((prev) => {
-                const existing = prev.find((s) => s.instanceId === inst.instanceId);
-                if (existing && existing.state === newState) return prev;
-
-                // If debounce is set, delay the state change
-                if (debounceMs > 0 && stableStates.current[inst.instanceId] !== newState) {
-                  clearTimeout(debounceTimers.current[inst.instanceId]);
-                  debounceTimers.current[inst.instanceId] = setTimeout(() => {
-                    stableStates.current[inst.instanceId] = newState;
-                    setStates((cur) => {
-                      const item = cur.find((s) => s.instanceId === inst.instanceId);
-                      if (item) return cur.map((s) => s.instanceId === inst.instanceId ? { ...s, state: newState } : s);
-                      return [...cur, {
-                        instanceId: inst.instanceId,
-                        modelId: inst.modelId,
-                        preset: inst.preset,
-                        state: newState,
-                        slotsUsed,
-                        slotsTotal,
-                      }];
-                    });
-                  }, debounceMs);
-                } else {
-                  stableStates.current[inst.instanceId] = newState;
-                  const item = {
-                    instanceId: inst.instanceId,
-                    modelId: inst.modelId,
-                    preset: inst.preset,
-                    state: newState,
-                    slotsUsed,
-                    slotsTotal,
-                  };
-                  if (existing) {
-                    return prev.map((s) => s.instanceId === inst.instanceId ? item : s);
-                  }
-                  return [...prev, item];
+                // Remove instances that are no longer running
+                const filtered = prev.filter((s) => running.some((i) => i.instanceId === s.instanceId));
+                // Update or add the current instance
+                const existing = filtered.find((s) => s.instanceId === inst.instanceId);
+                const item = {
+                  instanceId: inst.instanceId,
+                  modelId: inst.modelId,
+                  preset: inst.preset,
+                  state: newState,
+                  slotsUsed,
+                  slotsTotal,
+                };
+                if (existing) {
+                  return filtered.map((s) => s.instanceId === inst.instanceId ? item : s);
                 }
-                return prev;
+                return [...filtered, item];
               });
             })
             .catch(() => {});
         });
 
-        // Remove instances that are no longer running
+        // Remove instances that are no longer in the list
         setStates((prev) => prev.filter((s) => running.some((i) => i.instanceId === s.instanceId)));
       })
       .catch(() => {});
-  }, [detectState, debounceMs]);
+  }, [detectState]);
 
   useEffect(() => {
     refresh();
     const timer = setInterval(refresh, 3000);
     return () => clearInterval(timer);
   }, [refresh]);
-
-  // Cleanup debounce timers
-  useEffect(() => {
-    return () => {
-      Object.values(debounceTimers.current).forEach(clearTimeout);
-    };
-  }, []);
 
   return states;
 }

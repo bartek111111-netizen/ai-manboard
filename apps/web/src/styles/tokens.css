@@ -1685,3 +1685,10 @@ section {
   color: var(--color-muted);
   margin-top: 2px;
 }
+
+/* --- Debug: state count in header --- */
+.debug-state-count {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-right: 8px;
+}

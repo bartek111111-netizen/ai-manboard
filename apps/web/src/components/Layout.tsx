@@ -83,6 +83,10 @@ export function Layout() {
             <NavLink to="/">{t('appTitle')}</NavLink>
           </h1>
           <div className="app-header-status">
+            {/* Debug: show state count */}
+            <span className="debug-state-count">
+              states: {modelStates.length}
+            </span>
             {/* State dots per model */}
             <div className="state-dots">
               {modelStates.map((ms) => (

@@ -1318,6 +1318,10 @@ section {
 }
 
 /* --- File picker (dark mode, Explorer/Dolphin style) --- */
+.modal-overlay:has(.file-picker) {
+  z-index: 200;
+}
+
 .file-picker {
   max-width: 700px;
 }
@@ -1325,9 +1329,9 @@ section {
 .file-picker-path {
   display: flex;
   align-items: center;
-  gap: var(--spacing-s);
+  gap: var(--spacing-m);
   margin-bottom: var(--spacing-m);
-  padding: var(--spacing-s);
+  padding: var(--spacing-m);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -1336,8 +1340,8 @@ section {
 .file-picker-current {
   flex: 1;
   font-family: monospace;
-  font-size: 0.8rem;
-  color: var(--color-muted);
+  font-size: 0.85rem;
+  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1348,8 +1352,8 @@ section {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--spacing-xs);
+  gap: var(--spacing-s);
+  padding: var(--spacing-m);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -1358,20 +1362,22 @@ section {
 .file-picker-entry {
   display: flex;
   align-items: center;
-  gap: var(--spacing-s);
-  padding: var(--spacing-s) var(--spacing-m);
+  gap: var(--spacing-m);
+  padding: var(--spacing-m);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   text-align: left;
+  color: var(--color-text);
   transition: background 0.15s, border-color 0.15s;
 }
 
 .file-picker-entry:hover {
-  background: var(--color-border);
+  background: var(--color-primary);
   border-color: var(--color-primary);
+  color: var(--color-bg);
 }
 
 .file-picker-entry.dir {
@@ -1383,9 +1389,9 @@ section {
 }
 
 .file-picker-icon {
-  width: 24px;
+  width: 28px;
   text-align: center;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
 }
 
 .file-picker-name {
@@ -1397,7 +1403,7 @@ section {
 
 .file-picker-size {
   font-family: monospace;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--color-muted);
 }
 

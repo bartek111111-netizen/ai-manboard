@@ -47,18 +47,15 @@ function buildCommandPreview(schema: ParamSchema[], values: Record<string, unkno
       } else if (val === false && param.offFlag) {
         parts.push(param.offFlag);
       }
-    } else if (param.key === 'model') {
-      // Model path goes last
-      continue;
     } else {
       parts.push(`${flag}=${val}`);
     }
   }
 
-  // Model path last
+  // Model path last (with --model flag)
   const modelPath = values['model'];
   if (typeof modelPath === 'string' && modelPath) {
-    parts.push(modelPath);
+    parts.push(`--model ${modelPath}`);
   }
 
   return parts.join(' \\\n  ');

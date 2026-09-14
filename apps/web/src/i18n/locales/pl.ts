@@ -152,10 +152,17 @@ export const pl = {
 
   // Settings — GPU selection
   settingsGpuSelection: 'Karta graficzna',
+  gpuSelectionDesc: 'Wybrana karta będzie pokazana w statystykach po lewej stronie (sidebar).',
   noGpusDetected: 'Nie wykryto GPU',
-  selectedGpuForModels: 'Wybrano GPU:',
-  browseModelDirPrompt: 'Wpisz ścieżkę do folderu z modelami:',
-  browseBinaryPrompt: 'Wpisz ścieżkę do binarki:',
+  gpuNotSelected: 'GPU nie zaznaczone w ustawieniach',
+
+  // File picker
+  selectFile: 'Wybierz plik',
+  selectFolder: 'Wybierz folder',
+  upDir: 'W górę',
+  loading: 'Ładowanie...',
+  emptyDir: 'Pusty folder',
+  selectCurrentDir: 'Wybierz ten folder',
 
   // System status
   systemStatusHeading: 'Status systemu',

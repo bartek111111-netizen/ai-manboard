@@ -1,6 +1,6 @@
 /**
  * Left sidebar with always-on system stats (GPU/CPU/RAM).
- * Polls the system metrics endpoint every 3s.
+ * Uses the preferred GPU from Settings config.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { t } from '../i18n';
@@ -21,6 +21,16 @@ interface SystemMetrics {
   gpu?: GpuMetrics | null;
   cpu?: CpuMetrics | null;
   ram?: { usedMB: number; totalMB: number };
+}
+
+interface GpuEntry {
+  id: string;
+  name: string;
+  pciSlot: string;
+  memoryTotalMB: number | null;
+  memoryUsedMB: number | null;
+  utilization: number | null;
+  driver: string;
 }
 
 function MiniBar({ pct, color }: { pct: number; color: string }) {
@@ -62,12 +72,29 @@ function colorForPct(pct: number): string {
 
 export function Sidebar() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [gpus, setGpus] = useState<GpuEntry[]>([]);
+  const [preferredGpu, setPreferredGpu] = useState<string | null>(null);
 
   const load = useCallback(() => {
+    // Load metrics
     fetch('/api/v1/system/metrics')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: SystemMetrics) => setMetrics(data))
       .catch(() => setMetrics(null));
+
+    // Load GPU list
+    fetch('/api/v1/gpus')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { gpus: GpuEntry[] }) => setGpus(data.gpus))
+      .catch(() => setGpus([]));
+
+    // Load config for preferred GPU
+    fetch('/api/v1/config')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { global: { gpu?: { preferred?: string | null } } }) => {
+        setPreferredGpu(data.global.gpu?.preferred ?? null);
+      })
+      .catch(() => setPreferredGpu(null));
   }, []);
 
   useEffect(() => {
@@ -76,21 +103,16 @@ export function Sidebar() {
     return () => clearInterval(interval);
   }, [load]);
 
-  const gpu = metrics?.gpu ?? null;
   const cpu = metrics?.cpu ?? null;
   const ram = metrics?.ram ?? null;
-
-  const gpuPct = gpu?.utilization ?? 0;
-  const vramPct = gpu && gpu.memoryUsedMB != null && gpu.memoryTotalMB != null
-    ? (gpu.memoryUsedMB / gpu.memoryTotalMB) * 100
-    : 0;
   const cpuPct = cpu?.usagePct ?? 0;
   const ramPct = ram ? (ram.usedMB / ram.totalMB) * 100 : 0;
 
-  const gpuColor = colorForPct(gpuPct);
-  const vramColor = colorForPct(vramPct);
   const cpuColor = colorForPct(cpuPct);
   const ramColor = colorForPct(ramPct);
+
+  // Find the preferred GPU from the config
+  const gpu = gpus.find((g) => g.id === preferredGpu) ?? null;
 
   return (
     <aside className="sidebar">
@@ -108,25 +130,35 @@ export function Sidebar() {
             <>
               <StatRow
                 label={t('gpuUtilization')}
-                value={`${gpuPct.toFixed(0)}%`}
-                pct={gpuPct}
-                color={gpuColor}
+                value={`${gpu.utilization ?? 0}%`}
+                pct={gpu.utilization ?? 0}
+                color={colorForPct(gpu.utilization ?? 0)}
               />
               <StatRow
                 label={t('gpuMemory')}
-                value={`${vramPct.toFixed(0)}%`}
-                pct={vramPct}
-                color={vramColor}
+                value={
+                  gpu.memoryTotalMB != null && gpu.memoryUsedMB != null
+                    ? `${Math.round((gpu.memoryUsedMB / gpu.memoryTotalMB) * 100)}%`
+                    : '—'
+                }
+                pct={
+                  gpu.memoryTotalMB != null && gpu.memoryUsedMB != null
+                    ? (gpu.memoryUsedMB / gpu.memoryTotalMB) * 100
+                    : 0
+                }
+                color={colorForPct(
+                  gpu.memoryTotalMB != null && gpu.memoryUsedMB != null
+                    ? (gpu.memoryUsedMB / gpu.memoryTotalMB) * 100
+                    : 0,
+                )}
               />
               <div className="sidebar-substat">
-                <span>{t('gpuMemoryDetail')}</span>
-                <span>
-                  {(gpu.memoryUsedMB! / 1024).toFixed(1)} / {(gpu.memoryTotalMB! / 1024).toFixed(1)} GB
-                </span>
+                <span>{gpu.name}</span>
+                <span>{(gpu.memoryUsedMB ?? 0) / 1024 >= 1 ? `${((gpu.memoryUsedMB ?? 0) / 1024).toFixed(1)} GB` : `${gpu.memoryUsedMB ?? 0} MB`}</span>
               </div>
             </>
           ) : (
-            <p className="sidebar-section-empty">{t('gpuNotAvailable')}</p>
+            <p className="sidebar-section-empty">{t('gpuNotSelected')}</p>
           )}
         </div>
 

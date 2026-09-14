@@ -12,6 +12,7 @@ import { makeSseHandlers } from './api/handlers/sse.js';
 import { makeInstanceHandlers } from './api/handlers/instances.js';
 import { systemMetricsHandler } from './api/handlers/system.js';
 import { gpusHandler } from './api/handlers/gpus.js';
+import { browseHandler } from './api/handlers/browse.js';
 import type { SseHub } from './core/sse/hub.js';
 import type { ProcessManager } from './core/process/manager.js';
 import type { ConfigStore } from './core/config/store.js';
@@ -107,6 +108,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   // System metrics (GPU/CPU/RAM) — Faza 10+.
   app.get('/api/v1/system/metrics', systemMetricsHandler);
   app.get('/api/v1/gpus', gpusHandler);
+  app.get('/api/v1/browse', browseHandler);
   // Plain liveness check (the token middleware from phase 6 will cover the API).
   app.get('/healthz', async () => ({ ok: true }));
 

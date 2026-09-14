@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getEngines, getConfig, putGlobalConfig } from '../api/client';
 import type { EngineInfo } from '../api/client';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { FilePicker } from '../components/FilePicker';
 import { t } from '../i18n';
 import { errInfo } from '../ui/errors';
 
@@ -31,6 +32,7 @@ export function Settings() {
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [pickerMode, setPickerMode] = useState<{ type: 'modelDir' | 'binary'; engineId?: string } | null>(null);
 
   const load = useCallback((): void => {
     Promise.all([getEngines(), getConfig()])
@@ -51,7 +53,6 @@ export function Settings() {
         setError(errInfo(err));
       });
 
-    // Load GPUs
     fetch('/api/v1/gpus')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: { gpus: GpuInfo[] }) => {
@@ -80,6 +81,7 @@ export function Settings() {
       security: { token: token.trim() !== '' ? token.trim() : null },
       monitoring: { probeIntervalSec: 2, startupTimeoutSec: 30 },
       logs: { ringLines: 200, retentionFiles: 5 },
+      gpu: { preferred: selectedGpu },
     };
     putGlobalConfig(body)
       .then(() => {
@@ -93,27 +95,31 @@ export function Settings() {
       .finally(() => setBusy(false));
   };
 
-  const handleBrowseModelDir = (): void => {
-    const input = window.prompt(t('browseModelDirPrompt'), '/mnt/dane/');
-    if (input) {
+  const handlePickerSelect = (path: string): void => {
+    if (pickerMode?.type === 'modelDir') {
       const dirs = modelDirs.split('\n').filter((d) => d.trim() !== '');
-      dirs.push(input.trim());
+      if (!dirs.includes(path)) dirs.push(path);
       setModelDirs(dirs.join('\n'));
+    } else if (pickerMode?.type === 'binary' && pickerMode.engineId) {
+      setBinaryMap((prev) => ({ ...prev, [pickerMode.engineId!]: path }));
     }
-  };
-
-  const handleBrowseBinary = (engineId: string): void => {
-    const current = binaryMap[engineId] ?? '';
-    const input = window.prompt(t('browseBinaryPrompt'), current || '/mnt/dane/');
-    if (input) {
-      setBinaryMap((prev) => ({ ...prev, [engineId]: input.trim() }));
-    }
+    setPickerMode(null);
   };
 
   return (
     <section className="settings-page">
       <h2>{t('settingsHeading')}</h2>
       <ErrorNotice message={error?.message ?? null} code={error?.code} />
+
+      {/* File picker modal */}
+      {pickerMode && (
+        <FilePicker
+          initialPath="/mnt/dane"
+          onSelect={handlePickerSelect}
+          onClose={() => setPickerMode(null)}
+          isFile={pickerMode.type === 'binary'}
+        />
+      )}
 
       {/* Model directories */}
       <fieldset>
@@ -126,7 +132,7 @@ export function Settings() {
             value={modelDirs}
             onChange={(e) => setModelDirs(e.target.value)}
           />
-          <button type="button" className="btn small" onClick={handleBrowseModelDir}>
+          <button type="button" className="btn small" onClick={() => setPickerMode({ type: 'modelDir' })}>
             {t('browseBtn')}
           </button>
         </div>
@@ -151,7 +157,7 @@ export function Settings() {
                 <button
                   type="button"
                   className="btn small"
-                  onClick={() => handleBrowseBinary(eng.id)}
+                  onClick={() => setPickerMode({ type: 'binary', engineId: eng.id })}
                 >
                   {t('browseBtn')}
                 </button>
@@ -164,6 +170,7 @@ export function Settings() {
       {/* GPU selection */}
       <fieldset>
         <legend>{t('settingsGpuSelection')}</legend>
+        <p className="settings-gpu-desc">{t('gpuSelectionDesc')}</p>
         {gpus.length === 0 ? (
           <p className="muted">{t('noGpusDetected')}</p>
         ) : (
@@ -186,9 +193,6 @@ export function Settings() {
               </div>
             </label>
           ))
-        )}
-        {selectedGpu && (
-          <p className="muted small">{t('selectedGpuForModels')} {selectedGpu}</p>
         )}
       </fieldset>
 

@@ -32,33 +32,44 @@ const GROUP_LABELS: Record<string, string> = {
   advanced: 'Zaawansowane',
 };
 
-/** Builds a preview of the launch command from current values. */
+/** Builds a preview of the launch command from current values (matches llama-server CLI). */
 function buildCommandPreview(schema: ParamSchema[], values: Record<string, unknown>): string {
-  const parts: string[] = ['llama-server'];
+  const parts: string[] = ['/home/bat/llama.cpp/build/bin/llama-server'];
 
+  // Model path first (always sent)
+  const modelPath = values['model'];
+  if (typeof modelPath === 'string' && modelPath) {
+    parts.push('--model', modelPath);
+  }
+
+  // Host and port (always sent)
+  const host = values['host'] ?? '127.0.0.1';
+  const port = values['port'] ?? 8080;
+  parts.push('--host', String(host));
+  parts.push('--port', String(port));
+
+  // Other params (only when set)
   for (const param of schema) {
+    if (param.key === 'model' || param.key === 'host' || param.key === 'port') continue;
     const val = values[param.key];
     if (val === null || val === undefined || val === '') continue;
 
     const flag = param.flag ?? `--${param.key}`;
     if (param.type === 'bool') {
       if (val === true) {
+        // For bools that are true by default, don't send
+        if (param.offFlag || param.offValue) continue;
         parts.push(flag);
-      } else if (val === false && param.offFlag) {
-        parts.push(param.offFlag);
+      } else if (val === false) {
+        if (param.offFlag) parts.push(param.offFlag);
+        else if (param.offValue) parts.push(flag, String(param.offValue));
       }
     } else {
-      parts.push(`${flag}=${val}`);
+      parts.push(flag, String(val));
     }
   }
 
-  // Model path last (with --model flag, consistent with other flags)
-  const modelPath = values['model'];
-  if (typeof modelPath === 'string' && modelPath) {
-    parts.push(`--model=${modelPath}`);
-  }
-
-  return parts.join(' \\\n  ');
+  return parts.map((p, i) => (i === 0 ? p : `  ${p}`)).join('\n');
 }
 
 /** A single field rendered per type. */

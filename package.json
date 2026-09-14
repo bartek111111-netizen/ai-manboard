@@ -1,6 +1,6 @@
 {
   "name": "ai-dashboard",
-  "version": "0.1.0",
+  "version": "0.1.6",
   "private": true,
   "description": "Lokalny dashboard zarzadzania modelami AI (llama.cpp / llama-server)",
   "type": "module",

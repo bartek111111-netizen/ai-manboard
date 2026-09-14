@@ -67,8 +67,7 @@ export async function fetchLlamaServerRuntimeInfo(base: string): Promise<Runtime
     info.extras.health = health;
   }
 
-  // `/metrics` (Prometheus text): availability + trimmed sample only — the
-  // full metric parsing belongs to a later phase (MVP keeps it light).
+  // `/metrics` (Prometheus text): parse tokens/sec and context size
   try {
     const res = await fetch(`${root}/metrics`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
     if (res.ok) {
@@ -76,6 +75,30 @@ export async function fetchLlamaServerRuntimeInfo(base: string): Promise<Runtime
       const text = await res.text();
       info.extras.metricsAvailable = true;
       info.extras.metricsSample = text.slice(0, 2_000);
+
+      // Parse Prometheus format: metric_name value
+      const metrics: Record<string, number> = {};
+      for (const line of text.split('\n')) {
+        if (line.startsWith('#') || !line.trim()) continue;
+        const [name, value] = line.split(' ');
+        if (name && value) {
+          const num = parseFloat(value);
+          if (!isNaN(num)) metrics[name] = num;
+        }
+      }
+
+      // tokensPerSec = tokens_predicted_total / tokens_predicted_seconds_total
+      const tokensTotal = metrics['llamacpp:tokens_predicted_total'];
+      const tokensTime = metrics['llamacpp:tokens_predicted_seconds_total'];
+      if (tokensTotal !== undefined && tokensTime > 0) {
+        info.tokensPerSec = tokensTotal / tokensTime;
+      }
+
+      // Context size: use n_tokens_max as approximation
+      const ctxSize = metrics['llamacpp:n_tokens_max'];
+      if (ctxSize !== undefined) {
+        info.contextSize = Math.round(ctxSize);
+      }
     }
   } catch {
     // unavailable — ignore

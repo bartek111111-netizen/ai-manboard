@@ -317,13 +317,25 @@ export class ProcessManager {
     if (!active) return;
     const logLine: LogLine = {
       ts: new Date().toISOString(),
-      level: source === 'stderr' ? 'error' : 'info',
+      level: this.classifyLevel(line),
       source,
       line,
     };
     active.ring.push(logLine);
     if (active.logFile) this.opts.logs?.append(active.logFile, line);
     this.opts.onLogLine?.(instanceId, logLine);
+  }
+
+  /** Classifies log level based on content. */
+  private classifyLevel(line: string): 'info' | 'warn' | 'error' {
+    // Llama-server uses "E" prefix for errors, "W" for warnings
+    const trimmed = line.trim();
+    if (/^[Ee]rror|E\s/.test(trimmed)) return 'error';
+    if (/^[Ww]arn/.test(trimmed)) return 'warn';
+    // Some engines output "ERROR:" or "WARN:" prefixes
+    if (trimmed.includes('ERROR') || trimmed.includes('FATAL')) return 'error';
+    if (trimmed.includes('WARN') || trimmed.includes('WARNING')) return 'warn';
+    return 'info';
   }
 
   private cleanup(instanceId: string): void {

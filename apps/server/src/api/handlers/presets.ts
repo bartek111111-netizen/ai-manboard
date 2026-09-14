@@ -47,7 +47,12 @@ export function makePresetHandlers(store: ConfigStore) {
       requireModel(store, modelId);
       assertSafeId(name, 'presetName');
       const body = (request.body ?? {}) as Record<string, unknown>;
-      const preset: Preset = validatePreset({ version: 1, params: {}, ...body, name }, name);
+      // If the body doesn't include params, preserve the existing ones.
+      const existing = store.readPreset(modelId, name);
+      const preset: Preset = validatePreset(
+        { version: 1, params: existing?.params ?? {}, ...body, name },
+        name,
+      );
       store.writePreset(modelId, name, preset);
       reply.send(preset);
     },

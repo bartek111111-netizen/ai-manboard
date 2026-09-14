@@ -109,7 +109,14 @@ export function PresetSelect({
   const saveMeta = (): void => {
     if (!current) return;
     const port = newPort.trim() !== '' ? Number(newPort) : current.port;
-    void run(() => putPreset(modelId, current.name, { version: current.version, name: current.name, port }));
+    void run(() =>
+      putPreset(modelId, current.name, {
+        version: current.version,
+        name: current.name,
+        port,
+        params: current.params,
+      }),
+    );
   };
 
   const saveParams = (): void => {
@@ -172,7 +179,7 @@ export function PresetSelect({
                 <div className="preset-params">
                   <h4>{t('presetParamsHeading')}</h4>
                   <SchemaForm
-                    schema={schema}
+                    schema={schema.filter((p) => p.key !== 'model')}
                     values={editParams}
                     onChange={handleParamChange}
                   />

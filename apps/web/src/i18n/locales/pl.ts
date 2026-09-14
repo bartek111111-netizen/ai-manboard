@@ -6,6 +6,7 @@ export const pl = {
   appTitle: 'AI Model Dashboard',
   navDashboard: 'Pulpit',
   navStatus: 'Status',
+  navSystem: 'System',
   navSettings: 'Ustawienia',
   dashboardTitle: 'Pulpit',
   statusHeading: 'Status API',
@@ -133,6 +134,22 @@ export const pl = {
 
   // Instance resolve (Faza 10.1)
   actionResolve: 'Rozstrzygnij',
+
+  // System status
+  systemStatusHeading: 'Status systemu',
+  gpuHeading: 'GPU',
+  gpuUtilization: 'Wykorzystanie',
+  gpuMemory: 'Pamięć VRAM',
+  gpuNotAvailable: 'GPU nie wykryte',
+  cpuHeading: 'CPU',
+  cpuUsage: 'Wykorzystanie',
+  cpuLoadAvg: 'Średni load',
+  cpuTemperature: 'Temperatura',
+  cpuNotAvailable: 'CPU metrics niedostępne',
+  ramHeading: 'RAM',
+  ramUsage: 'Zajętość',
+  ramUsed: 'Użyto',
+  ramNotAvailable: 'RAM metrics niedostępne',
 
   // Preset editor (Faza 9.2)
   presetEditHeading: 'Edycja presetu',

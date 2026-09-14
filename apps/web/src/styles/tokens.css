@@ -555,30 +555,32 @@ details > summary {
 /* --- Capability icons --- */
 .capability-icons {
   display: inline-flex;
-  gap: 4px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .capability-icon {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.capability-icon.active {
-  background: color-mix(in srgb, var(--color-state-running) 20%, transparent);
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--color-state-running) 15%, transparent);
   color: var(--color-state-running);
 }
 
-.capability-icon.inactive {
-  background: color-mix(in srgb, var(--color-state-stopped) 15%, transparent);
-  color: var(--color-muted);
-  opacity: 0.5;
+.capability-icon:hover {
+  background: color-mix(in srgb, var(--color-state-running) 25%, transparent);
+}
+
+.capability-icon-symbol {
+  font-size: 0.85rem;
+}
+
+.capability-icon-label {
+  text-transform: capitalize;
 }
 
 /* --- Instance panel extras --- */
@@ -702,6 +704,61 @@ details > summary {
 
 .onboarding .btn {
   margin-top: var(--spacing-m);
+}
+
+/* --- System status --- */
+.system-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-m);
+}
+
+.system-card {
+  padding: var(--spacing-m);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.system-card h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-s);
+}
+
+.system-card-name {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-bottom: var(--spacing-s);
+}
+
+.system-card .kv {
+  margin-top: var(--spacing-s);
+}
+
+/* Progress bar */
+.progress-bar {
+  margin-bottom: var(--spacing-s);
+}
+
+.progress-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+}
+
+.progress-bar-track {
+  height: 12px;
+  background: var(--color-bg);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
 }
 
 /* --- Placeholder page --- */

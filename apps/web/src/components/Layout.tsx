@@ -18,6 +18,9 @@ export function Layout({ children }: { children: ReactNode }) {
           <NavLink to="/status" className={linkClass}>
             {t('navStatus')}
           </NavLink>
+          <NavLink to="/system" className={linkClass}>
+            {t('navSystem')}
+          </NavLink>
           <NavLink to="/settings" className={linkClass}>
             {t('navSettings')}
           </NavLink>

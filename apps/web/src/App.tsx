@@ -5,6 +5,7 @@ import { ModelDetail } from './pages/ModelDetail';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { Settings } from './pages/Settings';
 import { StatusPage } from './pages/StatusPage';
+import { SystemStatus } from './pages/SystemStatus';
 
 /**
  * Routes (hash routing — works from the static build, no server config).
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/" element={<HomeView />} />
           <Route path="/models/:modelId" element={<ModelDetail />} />
           <Route path="/status" element={<StatusPage />} />
+          <Route path="/system" element={<SystemStatus />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<PlaceholderPage />} />
         </Routes>

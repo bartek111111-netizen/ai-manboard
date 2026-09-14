@@ -25,7 +25,9 @@ const GROUP_LABELS: Record<string, string> = {
   model: 'Model',
   performance: 'Wydajność',
   sampling: 'Sampling',
-  speculative: 'Spekulacja',
+  speculative: 'Spekulacja (MTP)',
+  vision: 'Wizja (mmproj)',
+  moe: 'MoE',
   server: 'Serwer',
   advanced: 'Zaawansowane',
 };

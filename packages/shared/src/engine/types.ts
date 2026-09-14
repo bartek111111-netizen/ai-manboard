@@ -39,7 +39,7 @@ export interface ParamSchema {
   choices?: { value: unknown; label?: string }[];
   /** Also accept arbitrary integers in addition to the enum choices (e.g. gpu-layers). */
   allowNumber?: boolean;
-  group: 'model' | 'performance' | 'sampling' | 'speculative' | 'server' | 'advanced';
+  group: 'model' | 'performance' | 'sampling' | 'speculative' | 'vision' | 'moe' | 'server' | 'advanced';
   description?: string;
   /** Hidden in the "Zaawansowane" (collapsed) UI section. */
   advanced?: boolean;

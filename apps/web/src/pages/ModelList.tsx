@@ -50,8 +50,20 @@ export function ModelList() {
   const selectedPreset = (model: ModelView): string | undefined =>
     selected[model.id] ?? (presets[model.id]?.[0]?.name ?? undefined);
 
-  const handleScan = (): void => {
-    void run(() => scan());
+  const [scanResult, setScanResult] = useState<{ added: number; removed: number; total: number } | null>(null);
+
+  const handleScan = async (): Promise<void> => {
+    setBusy(true);
+    setScanResult(null);
+    try {
+      const result = await discoverModels();
+      setScanResult({ added: result.added.length, removed: result.removed.length, total: result.total });
+      await refresh();
+    } catch (err) {
+      setError(errInfo(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -71,6 +83,12 @@ export function ModelList() {
       <ErrorNotice message={actionError?.message ?? null} code={actionError?.code} />
       {error && (
         <ErrorNotice message={error} />
+      )}
+      {scanResult && (
+        <div className="scan-result">
+          <span>{t('scanResult')} +{scanResult.added}, łącznie {scanResult.total}</span>
+          <button type="button" className="btn small" onClick={() => setScanResult(null)}>×</button>
+        </div>
       )}
 
       {showAddModal && (

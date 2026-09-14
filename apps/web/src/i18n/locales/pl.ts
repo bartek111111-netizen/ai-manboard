@@ -46,6 +46,7 @@ export const pl = {
   presetNone: 'brak presetu',
   capabilitiesEmpty: 'brak oznaczonych możliwości',
   capabilitiesManual: 'ustawione ręcznie',
+  scanResult: 'Znaleziono:',
   actionScan: 'Nowy skan',
   actionAddModel: 'Dodaj model',
 

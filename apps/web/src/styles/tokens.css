@@ -1442,3 +1442,17 @@ section {
 .schema-advanced-content fieldset {
   margin-bottom: var(--spacing-m);
 }
+
+/* --- Scan result (ModelList) --- */
+.scan-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-s) var(--spacing-m);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  margin-bottom: var(--spacing-m);
+  color: var(--color-text);
+  font-size: 0.9rem;
+}

@@ -1106,12 +1106,12 @@ odzwierciedla zależności. Szacunki = liczba sesji (orientacyjnie).
   „unknown argument”; `PUT /engines` zrealną binarką: `versionLine` + `vulkan: true`)
 
 ### Faza 3 — Model Management (sesja 4)
-- [ ] 3.1 Discovery (skan katalogów, cache mtime, `filePatterns`)
-- [ ] 3.2 GGUF metadata reader (nagłówki)
-- [ ] 3.3 Capabilities: heurystyki + manual override
-- [ ] 3.4 Ręczne dodanie / usuwanie modeli (FM-3/8)
-- [ ] 3.5 API: `models*` endpointy
-- [ ] 3.6 Testy unit: discovery (tmp foldery), gguf reader (pliki testowe)
+- [x] 3.1 Discovery (skan katalogów, cache mtime, `filePatterns`)
+- [x] 3.2 GGUF metadata reader (nagłówki)
+- [x] 3.3 Capabilities: heurystyki + manual override
+- [x] 3.4 Ręczne dodanie / usuwanie modeli (FM-3/8)
+- [x] 3.5 API: `models*` endpointy
+- [x] 3.6 Testy unit: discovery (tmp foldery), gguf reader (pliki testowe)
 - **Akceptacja**: katalog z modelami → lista w API + metadane.
 
 ### Faza 4 — Process Manager + FSM (sesja 5)

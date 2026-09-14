@@ -232,11 +232,11 @@ export class LifecycleManager {
       const proc = procList?.find((p: Record<string, unknown>) => p.pid === pid);
       if (proc) {
         console.log(`[process-metrics] Found process:`, proc);
-        // mem is already in MB, memRss is in KB
-        const memMB = (proc as { mem?: number }).mem ?? 0;
+        // memRss is in KB
+        const memRssKB = (proc as { memRss?: number }).memRss ?? 0;
         return {
           cpuPct: (proc as { cpu?: number }).cpu ?? 0,
-          rssMB: Math.round(memMB),
+          rssMB: Math.round(memRssKB / 1024),
         };
       }
 

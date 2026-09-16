@@ -4,7 +4,7 @@
  * - Each run: `{timestamp}.log` in `~/.ai-dashboard/logs/{modelId}/`
  * - Auto-cleanup of oldest when exceeding limit
  */
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { t } from '../i18n';
-import { getInstances, getModels, getConfig } from '../api/client';
+import { getInstances } from '../api/client';
 import { useModelState } from '../hooks/useModelState';
 
 /**
@@ -10,21 +10,11 @@ import { useModelState } from '../hooks/useModelState';
  * Header: app title + model state indicators (dots + toasts).
  */
 export function Layout() {
-  const [debounceMs, setDebounceMs] = useState(0);
   const [toast, setToast] = useState<{ message: string; state: string } | null>(null);
   const prevStates = useRef<Record<string, string>>({});
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Load debounce setting from config
-  useEffect(() => {
-    getConfig()
-      .then((config: any) => {
-        setDebounceMs(config.global?.notifications?.stateChangeDelayMs ?? 0);
-      })
-      .catch(() => {});
-  }, []);
-
-  const modelStates = useModelState(debounceMs);
+  const modelStates = useModelState();
 
   // Show toast on state change
   useEffect(() => {

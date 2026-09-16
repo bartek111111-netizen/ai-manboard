@@ -7,7 +7,7 @@ import { FastifyInstance } from 'fastify';
 import { listRunLogs, readRunLog, deleteRunLog, clearModelLogs, writeManualLog, writeAutoLog } from '../../core/logs/store.js';
 
 export function registerLogsHandler(app: FastifyInstance): void {
-  app.get<{ params: { id: string } }>(
+  app.get<{ Params: { id: string } }>(
     '/api/v1/models/:id/logs',
     (req, reply) => {
       const logs = listRunLogs(req.params.id);
@@ -15,7 +15,7 @@ export function registerLogsHandler(app: FastifyInstance): void {
     },
   );
 
-  app.post<{ params: { id: string }; body: { content: string; auto?: boolean } }>(
+  app.post<{ Params: { id: string }; Body: { content: string; auto?: boolean } }>(
     '/api/v1/models/:id/logs',
     (req, reply) => {
       const writeFn = req.body.auto ? writeAutoLog : writeManualLog;
@@ -24,7 +24,7 @@ export function registerLogsHandler(app: FastifyInstance): void {
     },
   );
 
-  app.get<{ params: { id: string; file: string } }>(
+  app.get<{ Params: { id: string; file: string } }>(
     '/api/v1/models/:id/logs/:file',
     (req, reply) => {
       const content = readRunLog(req.params.id, req.params.file);
@@ -35,7 +35,7 @@ export function registerLogsHandler(app: FastifyInstance): void {
     },
   );
 
-  app.delete<{ params: { id: string; file: string } }>(
+  app.delete<{ Params: { id: string; file: string } }>(
     '/api/v1/models/:id/logs/:file',
     (req, reply) => {
       deleteRunLog(req.params.id, req.params.file);
@@ -43,7 +43,7 @@ export function registerLogsHandler(app: FastifyInstance): void {
     },
   );
 
-  app.delete<{ params: { id: string } }>(
+  app.delete<{ Params: { id: string } }>(
     '/api/v1/models/:id/logs',
     (req, reply) => {
       clearModelLogs(req.params.id);

@@ -226,14 +226,12 @@ export class LifecycleManager {
 
       // Use systeminformation for CPU% and RSS
       const allProcs = await si.processes();
-      const procList = allProcs.list;
-      const proc = procList?.find((p: Record<string, unknown>) => p.pid === pid);
+      const proc = allProcs.list.find((p) => p.pid === pid);
       if (proc) {
         // memRss is in KB
-        const memRssKB = (proc as { memRss?: number }).memRss ?? 0;
         return {
-          cpuPct: (proc as { cpu?: number }).cpu ?? 0,
-          rssMB: Math.round(memRssKB / 1024),
+          cpuPct: proc.cpu ?? 0,
+          rssMB: Math.round((proc.memRss ?? 0) / 1024),
         };
       }
 
@@ -303,7 +301,7 @@ export class LifecycleManager {
   }
 
   /** Saves the instance's logs to disk (auto-log, keeps last 3). */
-  private autoSaveLogs(instanceId: string, logs: any[]): void {
+  private autoSaveLogs(instanceId: string, logs: LogLine[]): void {
     try {
       if (logs.length === 0) return;
       const modelId = instanceId.split('--')[0];

@@ -1,5 +1,32 @@
 # STATUS
 
+## Po-Faza 10 — StatusPage + metryki per-proces + logi + jinja + auto-alokacja + bramki — ✅ ZROBIONE (2026-09-16)
+
+Działa: pełna pętla + nowy StatusPage + wskaźniki stanu + persistence logów; bramka zielona.
+**StatusPage:** nowa strona `pages/StatusPage.tsx` — siatka modeli running z metrykami na żywo
+(czas pracy, % pracy, CPU/RAM) + licznik w sidebarze. **Metryki per-proces:** CPU%/RSS
+przez `systeminformation` (cpu, memRss KB) + fallback `/proc` — w `MetricsPanel` i
+`StatusPage` (poprawki: memRss=KB nie MB, real RSS). **Wskaźniki stanu (dots + toasty):**
+header: kropki per model (blink, kolory hex, nazwy modeli) + toasty przy zmianie stanu;
+`hooks/useModelState.ts` — polling 3 s (slots → idle/working/ready); debounce setting
+w Settings (persist: `global.notifications.stateChangeDelaySec`, konsument UI — do zrobienia).
+**Logi:** persistence — auto-save przy stop (last 3), manual save (last 10), historia +
+clear per model (panel w `ModelDetail`); klasyfikacja poziomów (stderr ≠ error);
+`/metrics` → tokensPerSec/contextSize; kopiuj ostatnie 40 linii. **Porty:** systemowy probe
+(`isPortInUse`) + auto-alokacja wolnego portu gdy pinned jest zajęty (registry LUB system);
+`resolve` używa bieżącego portu gdy instancja żywa (bez re-alokacji). **Jinja:** param
+`--jinja`/`--no-jinja` (chat template) + grupa `chat` w SchemaForm. **Info:** strona Info
+(wersja/engine/config) + DSH control w sidebarze (start/stop, PID).
+**Bramki (2026-09-16):** typecheck (26 błędów) + lint (10) + testy resolve (stare
+zachowanie portów) — naprawione: `portInUse` probe wstrzykiwalna w `InstanceResolver`
+(testy deterministyczne, 3 nowe testy auto-alokacji), generiki Fastify 5 (`Params`/`Body`)
+w handlers/logs.ts, grupa `chat` w `ParamSchema` (shared), `notifications` w `GlobalConfig`,
+typowanie `si.processes()`, `LogLine[]` w autoSaveLogs. Bramka: **typecheck + lint + testy
+zielone — 60 (shared) + 151 (server) + 15 (web) = 226/226**; web build OK.
+
+**Dalej:** CORS (10.3 PLAN), GPU metrics w UI, pełny E2E z crash (kill procesu), docs polish,
+konsument debounce w UI (stateChangeDelaySec).
+
 ## Faza 10 — Reconcile + hardening + docs — ✅ ZROBIONE
 
 Działa: pełne pokrycie: lifecycle + crash + reconcile + security + GPU + E2E (PLAN §22 10.1–10.5).

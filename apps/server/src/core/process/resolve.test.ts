@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { defaultGlobalConfig, type ModelConfig, type Preset } from '@ai-dashboard/shared';
+import { defaultGlobalConfig, type InstanceState, type ModelConfig, type Preset } from '@ai-dashboard/shared';
 import { listEngines } from '@ai-dashboard/shared/engine';
 import { ensureHome, resolveHome } from '../config/paths.js';
 import { ConfigStore } from '../config/store.js';
@@ -54,7 +54,10 @@ describe('resolveInstanceId', () => {
 
 /** A mock registry that returns null (no instance) for all `get` calls. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock signature
-const mockRegistry = { get: (_instanceId: string): { port: number } | null => null };
+const mockRegistry = { get: (_instanceId: string): { port: number; state: InstanceState } | null => null };
+
+/** Deterministic port probe: nothing on the system (isolates from the real host). */
+const freeProbe = async (): Promise<boolean> => false;
 
 describe('InstanceResolver', () => {
   afterEach(clearHome);
@@ -62,7 +65,7 @@ describe('InstanceResolver', () => {
   it('resolves a pinned-port preset into a launch command on that port', async () => {
     const home = tempHome('resolve-pin');
     const { store } = seededStore(home);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry, portInUse: freeProbe });
     const inst = await resolver.resolve(`${MODEL_ID}--test`);
     expect(inst.port).toBe(8081);
     expect(inst.base).toBe('http://127.0.0.1:8081');
@@ -80,7 +83,7 @@ describe('InstanceResolver', () => {
     const { store } = seededStore(home);
     const preset: Preset = { version: 1, name: 'noport', port: undefined, params: {} };
     store.writePreset(MODEL_ID, 'noport', preset);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry, portInUse: freeProbe });
     const inst = await resolver.resolve(`${MODEL_ID}--noport`);
     expect(inst.port).toBeGreaterThanOrEqual(8080);
     expect(inst.port).toBeLessThanOrEqual(8099);
@@ -91,7 +94,7 @@ describe('InstanceResolver', () => {
     const { store } = seededStore(home);
     const preset: Preset = { version: 1, name: 'noport', params: {} };
     store.writePreset(MODEL_ID, 'noport', preset);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8080], registry: mockRegistry });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8080], registry: mockRegistry, portInUse: freeProbe });
     const inst = await resolver.resolve(`${MODEL_ID}--noport`);
     expect(inst.port).toBe(8081); // 8080 taken → next free
   });
@@ -99,17 +102,37 @@ describe('InstanceResolver', () => {
   it('throws PRESET_NOT_FOUND when the preset does not exist', async () => {
     const home = tempHome('resolve-missing');
     const { store } = seededStore(home);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry });
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry, portInUse: freeProbe });
     await expect(resolver.resolve(`${MODEL_ID}--ghost`)).rejects.toThrowError(/preset not found/i);
   });
 
-  it('throws PORT_IN_USE when the pinned port is already taken', async () => {
+  it('auto-allocates a free port when the pinned port is already taken (registry)', async () => {
     const home = tempHome('resolve-conflict');
     const { store } = seededStore(home);
     const preset: Preset = { version: 1, name: 'busy', port: 8085, params: {} };
     store.writePreset(MODEL_ID, 'busy', preset);
-    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8085], registry: mockRegistry });
-    await expect(resolver.resolve(`${MODEL_ID}--busy`)).rejects.toThrowError(/8085/);
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [8085], registry: mockRegistry, portInUse: freeProbe });
+    const inst = await resolver.resolve(`${MODEL_ID}--busy`);
+    expect(inst.port).toBe(8080); // 8085 taken → first free in range
+  });
+
+  it('auto-allocates when the pinned port is held on the system (not in registry)', async () => {
+    const home = tempHome('resolve-sysprobe');
+    const { store } = seededStore(home);
+    const preset: Preset = { version: 1, name: 'sysbusy', port: 8082, params: {} };
+    store.writePreset(MODEL_ID, 'sysbusy', preset);
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry, portInUse: async (p) => p === 8082 });
+    const inst = await resolver.resolve(`${MODEL_ID}--sysbusy`);
+    expect(inst.port).toBe(8080); // 8082 held externally → first free in range
+  });
+
+  it('throws PORT_IN_USE when no port in the range is free', async () => {
+    const home = tempHome('resolve-exhausted');
+    const { store } = seededStore(home);
+    const global = store.readGlobal();
+    const all = Array.from({ length: global.portRange.end - global.portRange.start + 1 }, (_, i) => global.portRange.start + i);
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => all, registry: mockRegistry, portInUse: freeProbe });
+    await expect(resolver.resolve(`${MODEL_ID}--test`)).rejects.toThrowError(/no free port/);
   });
 
   it('lists known instance ids', async () => {

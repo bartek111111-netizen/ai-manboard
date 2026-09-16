@@ -28,7 +28,7 @@ function formatSize(bytes: number | null): string {
  * the selected instance's state/port, and start/stop/restart actions.
  */
 export function ModelList() {
-  const { models, instances, presets, error, refresh, scan } = useModelData();
+  const { models, instances, presets, error, refresh } = useModelData();
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [actionError, setActionError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,10 +62,10 @@ export function ModelList() {
       // Use the models state (which is now updated by refresh)
       setTimeout(() => {
         const hiddenCount = models.filter((m) => m.hidden).length;
-        setScanResult({ added: result.added.length, removed: result.removed.length, total: result.total, hidden: hiddenCount });
+        setScanResult({ added: result.added, removed: result.removed, total: result.total, hidden: hiddenCount });
       }, 100);
     } catch (err) {
-      setError(errInfo(err));
+      setActionError(errInfo(err));
     } finally {
       setBusy(false);
     }

@@ -54,6 +54,8 @@ export interface GlobalConfig {
   logs: { ringLines: number; retentionFiles: number };
   /** GPU preferences: which GPU to use for models and show in sidebar stats. */
   gpu?: { preferred?: string | null };
+  /** UI notifications: state-change delay in seconds (persisted; UI consumer pending). */
+  notifications?: { stateChangeDelaySec?: number };
 }
 
 /**

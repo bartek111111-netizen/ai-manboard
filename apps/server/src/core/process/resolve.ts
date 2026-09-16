@@ -11,13 +11,14 @@ import { homedir } from 'node:os';
 import {
   AppError,
   type InferenceEngine,
+  type InstanceState,
   type LaunchCommand,
   type LaunchContext,
   type ResolvedConfig,
 } from '@ai-dashboard/shared';
 import type { ConfigStore } from '../config/store.js';
 import { buildEffective } from '../config/layers.js';
-import { allocatePort, assertValidPort, isPortInUse } from './ports.js';
+import { assertValidPort, isPortInUse } from './ports.js';
 
 /** An instance id is `<modelId>--<presetName>` (the model id never contains `--`). */
 export function resolveInstanceId(instanceId: string): { modelId: string; presetName: string } {
@@ -58,7 +59,9 @@ export interface InstanceResolverDeps {
   /** Ports already claimed by other instances (`registry.takenPorts()`). */
   takenPorts: () => number[];
   /** The instance registry (to exclude the current instance's own port). */
-  registry: { get(instanceId: string): { port: number } | null };
+  registry: { get(instanceId: string): { port: number; state: InstanceState } | null };
+  /** System port probe (injectable for deterministic tests). */
+  portInUse?: (port: number) => Promise<boolean>;
 }
 
 /** Schema defaults (layer 1) per engine, built from `ParamSchema[].default`. */
@@ -130,7 +133,8 @@ export class InstanceResolver {
     // — `getFullDto` calls `resolve` to read config, not to spawn).
     const currentPort = this.deps.registry.get(instanceId)?.port ?? null;
     const taken = this.deps.takenPorts().filter((p) => p !== currentPort);
-    let port: number;
+    const probe = this.deps.portInUse ?? isPortInUse;
+    let port: number | undefined;
 
     // If the instance is already live, use its current port (no re-allocation)
     const currentState = this.deps.registry.get(instanceId)?.state;
@@ -141,13 +145,13 @@ export class InstanceResolver {
       assertValidPort(preset.port);
       // Check if the pinned port is free (both in registry and on the system)
       const isInRegistry = new Set(taken).has(preset.port);
-      const isInSystem = await isPortInUse(preset.port);
+      const isInSystem = await probe(preset.port);
       if (!isInRegistry && !isInSystem) {
         port = preset.port;
       } else {
         // Auto-allocate: find the first port that's free in both registry and system
         for (let candidate = global.portRange.start; candidate <= global.portRange.end; candidate++) {
-          if (!new Set(taken).has(candidate) && !await isPortInUse(candidate)) {
+          if (!new Set(taken).has(candidate) && !await probe(candidate)) {
             port = candidate;
             break;
           }
@@ -157,7 +161,7 @@ export class InstanceResolver {
     } else {
       // Auto-allocate: find the first port that's free in both registry and system
       for (let candidate = global.portRange.start; candidate <= global.portRange.end; candidate++) {
-        if (!new Set(taken).has(candidate) && !await isPortInUse(candidate)) {
+        if (!new Set(taken).has(candidate) && !await probe(candidate)) {
           port = candidate;
           break;
         }

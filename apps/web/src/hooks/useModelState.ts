@@ -3,7 +3,7 @@
  * Polls every 3s for live instances.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { getInstances, getInstance, getModels, type InstanceInfo } from '../api/client';
+import { getInstances, getInstance, getModels } from '../api/client';
 
 export type ModelState = 'ready' | 'idle' | 'working' | 'unknown';
 
@@ -17,7 +17,7 @@ export interface ModelStateInfo {
   slotsTotal: number;
 }
 
-export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
+export function useModelState(): ModelStateInfo[] {
   const [states, setStates] = useState<ModelStateInfo[]>([]);
 
   const detectState = useCallback((slotsUsed: number): ModelState => {
@@ -35,7 +35,7 @@ export function useModelState(_debounceMs: number = 0): ModelStateInfo[] {
         // For each running instance, fetch its runtime info
         running.forEach((inst) => {
           getInstance(inst.instanceId)
-            .then((dto: any) => {
+            .then((dto) => {
               const slotsUsed = dto.runtime?.slots?.used ?? 0;
               const slotsTotal = dto.runtime?.slots?.total ?? 0;
               const newState = detectState(slotsUsed);

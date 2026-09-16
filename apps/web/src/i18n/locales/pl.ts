@@ -150,6 +150,26 @@ export const pl = {
   metricsWorkTime: 'Czas pracy (generowanie)',
   metricsWorkPct: '% czasu pracy',
   metricsNotLive: 'Metryki dostępne tylko dla uruchomionej instancji.',
+  // Grouped metrics (engine / process / GPU)
+  groupEngine: 'Engine (llama-server)',
+  groupProcess: 'Proces',
+  groupGpu: 'GPU',
+  // External instances (detected outside the app, PLAN §16.4)
+  externalBadge: 'SPOZA APLIKACJI',
+  externalDescription: 'Wykryto proces silnika uruchomiony spoza aplikacji (nie przez dashboard). Dane przechwycono z systemu.',
+  groupParams: 'Parametry (przechwycona komenda)',
+  groupModel: 'Model',
+  fieldModelPath: 'Ścieżka modelu',
+  fieldQuantization: 'Kwantyzacja',
+  fieldHost: 'Host',
+  metricsPrefill: 'Prefill — śr. tok/s',
+  metricsPrefillDetail: 'średnia prędkość przetwarzania promptu od startu',
+  metricsTtft: 'Czas do 1. tokena (TTFT)',
+  metricsTtftDetail: 'prefill ostatniego zlecenia',
+  metricsGpuUtilization: 'Wykorzystanie GPU',
+  metricsGpuName: 'Karta',
+  metricsGpuMemoryVram: 'Pamięć (VRAM)',
+  openChatInBrowser: 'Uruchom Chat w przeglądarce',
 
   // SchemaForm (Faza 9.1)
   enumSelect: '— wybierz —',

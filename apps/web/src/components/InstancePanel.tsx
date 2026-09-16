@@ -79,6 +79,10 @@ export function InstancePanel({ modelId, presetName }: { modelId: string; preset
 
   const live = isLiveState(state);
 
+  // Chat UI root (the llama-server web UI at the instance base, e.g.
+  // `http://127.0.0.1:8080/`); the API endpoint is `<origin>/v1/`.
+  const chatUrl = dto ? new URL(dto.endpoint).origin + '/' : null;
+
   return (
     <section>
       <div className="instance-head">
@@ -124,6 +128,11 @@ export function InstancePanel({ modelId, presetName }: { modelId: string; preset
           <button type="button" className="btn" disabled={busy} onClick={() => run(() => startInstance(instanceId))}>
             {t('actionStart')}
           </button>
+        )}
+        {live && chatUrl && (
+          <a className="btn" href={chatUrl} target="_blank" rel="noreferrer noopener">
+            {t('openChatInBrowser')}
+          </a>
         )}
         {live && (
           <button type="button" className="btn" disabled={busy} onClick={() => run(() => stopInstance(instanceId))}>

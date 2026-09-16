@@ -169,10 +169,26 @@ export class InstanceResolver {
       if (port === undefined) throw new AppError('PORT_IN_USE', `no free port in range ${global.portRange.start}–${global.portRange.end}`);
     }
 
+    // Send only the params the user actually set (any layer above the schema
+    // defaults). Schema-default values (source === 'schema') are the user's
+    // "didn't set" state → the backend runs on its own default for those.
+    // This is critical: several schema defaults are NOT valid for the current
+    // `llama-server` build (e.g. `--n-cpu-moe -1` → "invalid value" → crash);
+    // sending them would abort the launch. See the user rule "only params the
+    // user set go to llama-server" (STATUS.md, 2026-09-16).
     const params: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(resolved)) params[key] = entry.value;
+    for (const [key, entry] of Object.entries(resolved)) {
+      if (entry.source === 'schema') continue;
+      params[key] = entry.value;
+    }
     params.port = port;
+    // `--metrics` is always enabled: the dashboard reads `/metrics` (tokens/s,
+    // work time). Restore the schema default when the user didn't set it.
+    if (!('metrics-enabled' in params)) params['metrics-enabled'] = true;
     const host = typeof params.host === 'string' && params.host.trim() !== '' ? params.host : '127.0.0.1';
+    // Always send `--host` (the loopback bind address, PLAN S-1); the binary's
+    // own default may differ.
+    params.host = host;
 
     const ctx: LaunchContext = { binary, modelPath, params, cwd: dirname(modelPath), env: {} };
     const launch = await engine.buildLaunch(ctx);

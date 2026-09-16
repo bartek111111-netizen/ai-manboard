@@ -19,6 +19,13 @@
   --color-state-crashed: #d64550;
   --color-state-unknown: #8a8d93;
 
+  /* External instances (detected outside the app, PLAN §16.4) — a lighter,
+     warm tone distinct from the blue app cards + the green "running" state. */
+  --color-external-border: #5a5030;
+  --color-external-header: #2c2a20;
+  --color-external-badge: #d6a33d;
+  --color-external-badge-bg: #35301a;
+
   --radius: 6px;
   --spacing-s: 8px;
   --spacing-m: 16px;
@@ -32,6 +39,10 @@
     --color-text: #1f2023;
     --color-muted: #6b6e75;
     --color-border: #d7d8dc;
+    --color-external-border: #c9a86a;
+    --color-external-header: #f6efdd;
+    --color-external-badge: #9a7a1a;
+    --color-external-badge-bg: #efe0b8;
   }
 }
 
@@ -915,6 +926,26 @@ details > summary {
   margin-top: var(--spacing-s);
 }
 
+/* --- Grouped metrics (engine / process / GPU) --- */
+.metric-group {
+  margin-bottom: var(--spacing-l);
+}
+
+.metric-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 4px;
+  margin: 0 0 2px;
+}
+
+.metric-group .kv {
+  margin-top: var(--spacing-s);
+}
+
 /* --- Log viewer --- */
 .log-viewer {
   margin-top: var(--spacing-s);
@@ -1594,13 +1625,84 @@ section {
 }
 
 .status-kv dt {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-muted);
 }
 
 .status-kv dd {
-  font-size: 14px;
+  font-size: 15px;
   margin-bottom: 8px;
+}
+
+/* Status-card metrics (shared InstanceMetrics) — slightly larger values. */
+.status-card-metrics {
+  padding: 12px 14px;
+}
+
+.status-card-metrics .metric-group .kv dd {
+  font-size: 15px;
+}
+
+.status-card-metrics .metric-group .kv dt {
+  font-size: 13px;
+}
+
+.status-card-chat {
+  display: block;
+  padding: 8px 14px 0;
+  font-size: 13px;
+  color: var(--color-accent);
+}
+
+.status-card-chat:hover {
+  text-decoration: underline;
+}
+
+/* External instances (detected outside the app, PLAN §16.4): a lighter, warm
+   card with a distinct "SPOZA APLIKACJI" badge, so it reads at a glance that
+   the dashboard did not start it. */
+.status-card--external {
+  border-color: var(--color-external-border);
+}
+
+.status-card--external .status-card-header {
+  background: var(--color-external-header);
+  border-bottom-color: var(--color-external-border);
+}
+
+.status-card--external .status-card-title {
+  color: var(--color-external-badge);
+}
+
+.status-card--external .status-card-state.external {
+  background: var(--color-external-badge-bg);
+  color: var(--color-external-badge);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.status-card-external-desc {
+  margin: 0;
+  padding: 10px 14px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+
+.status-card--external .status-card-metrics,
+.status-card--external .metric-group .kv dd {
+  font-size: 14px;
+}
+
+.status-card--external .metric-group .kv dt {
+  font-size: 12px;
+}
+
+/* Monospace values (the captured command line / model path). */
+.kv-mono {
+  font-family: ui-monospace, 'SF Mono', 'Consolas', monospace;
+  font-size: 12px;
+  word-break: break-all;
 }
 
 /* --- Sidebar: running count badge --- */

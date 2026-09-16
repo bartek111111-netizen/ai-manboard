@@ -78,6 +78,35 @@ describe('InstanceResolver', () => {
     expect(args).toContain('--model');
   });
 
+  it('sends only user-set params, never schema defaults (regression: --n-cpu-moe -1 crash)', async () => {
+    // The user did NOT set n-cpu-moe / load-mode / seed / n-predict, so the
+    // schema defaults must NOT leak into the launch command. Sending
+    // `--n-cpu-moe -1` (the schema default) made the llama-server abort with
+    // "invalid value"; `--metrics`/`--host`/`--port` must still be present.
+    const home = tempHome('resolve-no-defaults');
+    const { store } = seededStore(home);
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry, portInUse: freeProbe });
+    const inst = await resolver.resolve(`${MODEL_ID}--test`);
+    const args = inst.launch.args;
+    for (const forbidden of ['--n-cpu-moe', '--load-mode', '--seed', '--n-predict', '--batch-size', '--min-p']) {
+      expect(args).not.toContain(forbidden);
+    }
+    expect(args).toContain('--metrics');
+    expect(args).toContain('--host');
+    expect(args).toContain('--port');
+    expect(args).toContain('--model');
+  });
+
+  it('sends a user-set param that equals its schema default (source is the preset, not the schema)', async () => {
+    const home = tempHome('resolve-set-default');
+    const { store } = seededStore(home);
+    const preset: Preset = { version: 1, name: 'explicit', port: 8081, params: { threads: 8 } };
+    store.writePreset(MODEL_ID, 'explicit', preset);
+    const resolver = new InstanceResolver({ store, engines: listEngines(), takenPorts: () => [], registry: mockRegistry, portInUse: freeProbe });
+    const inst = await resolver.resolve(`${MODEL_ID}--explicit`);
+    expect(inst.launch.args).toContain('--threads');
+  });
+
   it('allocates a free port from the range when the preset has none', async () => {
     const home = tempHome('resolve-alloc');
     const { store } = seededStore(home);

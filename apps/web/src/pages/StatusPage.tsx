@@ -1,10 +1,22 @@
 /**
  * Status page: shows running models with live metrics in columns.
- * Polls every 3s for real-time updates.
+ * Polls every 3s for real-time updates. Uses the shared `InstanceMetrics`
+ * component (same grouped data as the model-preview "Metryki" tab).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { getInstances, getInstance, getModels, type InstanceInfo, type InstanceDto, type ModelView } from '../api/client';
+import {
+  getInstances,
+  getInstance,
+  getModels,
+  getExternalInstances,
+  type InstanceInfo,
+  type InstanceDto,
+  type ModelView,
+  type ExternalInstanceView,
+} from '../api/client';
 import { t } from '../i18n';
+import { InstanceMetrics } from '../components/InstanceMetrics.js';
+import { ExternalInstanceCard } from '../components/ExternalInstanceCard.js';
 
 const REFRESH_INTERVAL_MS = 3000;
 
@@ -14,29 +26,29 @@ interface ModelMetrics {
   preset: string;
   state: string;
   port: number | null;
+  endpoint: string;
   uptimeSec: number | null;
-  runtime: {
-    modelLoaded?: boolean;
-    contextSize?: number;
-    slots?: { total: number; used: number };
-    tokensPerSec?: number;
-    extras: Record<string, unknown>;
-  } | null;
-  process: { cpuPct: number | null; rssMB: number | null };
+  runtime: InstanceDto['runtime'];
+  process: InstanceDto['process'];
+  gpu?: InstanceDto['gpu'];
+  ttft?: InstanceDto['ttft'];
 }
 
 export function StatusPage() {
   const [instances, setInstances] = useState<InstanceInfo[]>([]);
   const [models, setModels] = useState<ModelView[]>([]);
   const [metrics, setMetrics] = useState<Record<string, ModelMetrics>>({});
+  const [external, setExternal] = useState<ExternalInstanceView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback((): void => {
-    Promise.all([getInstances(), getModels()])
-      .then(([instanceList, modelList]) => {
+    // External detection is best-effort: a failure there must not blank the whole page.
+    Promise.all([getInstances(), getModels(), getExternalInstances().catch(() => [] as ExternalInstanceView[])])
+      .then(([instanceList, modelList, extList]) => {
         setInstances(instanceList);
         setModels(modelList);
+        setExternal(extList);
         setError(null);
 
         // Fetch metrics for each running instance
@@ -52,9 +64,12 @@ export function StatusPage() {
                   preset: inst.preset,
                   state: dto.state,
                   port: dto.port,
+                  endpoint: dto.endpoint,
                   uptimeSec: dto.uptimeSec,
                   runtime: dto.runtime,
                   process: dto.process,
+                  gpu: dto.gpu,
+                  ttft: dto.ttft,
                 },
               }));
             })
@@ -88,7 +103,7 @@ export function StatusPage() {
 
   const running = instances.filter((i) => i.state === 'running' || i.state === 'starting');
 
-  if (running.length === 0) {
+  if (running.length === 0 && external.length === 0) {
     return (
       <section>
         <h2>{t('statusHeading')}</h2>
@@ -97,9 +112,11 @@ export function StatusPage() {
     );
   }
 
+  const total = running.length + external.length;
+
   return (
     <section>
-      <h2>{t('statusHeading')} ({running.length})</h2>
+      <h2>{t('statusHeading')} ({total})</h2>
       <div className="status-grid">
         {running.map((inst) => {
           const m = metrics[inst.instanceId];
@@ -119,65 +136,44 @@ export function StatusPage() {
                 </span>
               </div>
 
-              <dl className="kv status-kv">
-                <dt>{t('fieldPort')}</dt>
-                <dd>{m?.port ?? '—'}</dd>
+              {m?.endpoint && (
+                <a
+                  className="status-card-chat"
+                  href={new URL(m.endpoint).origin + '/'}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  {t('openChatInBrowser')}
+                </a>
+              )}
 
-                {m?.uptimeSec !== null && m?.uptimeSec !== undefined && (
-                  <>
-                    <dt>{t('fieldUptime')}</dt>
-                    <dd>{formatUptime(m.uptimeSec)}</dd>
-                  </>
-                )}
-
-                {m?.runtime?.slots && (
-                  <>
-                    <dt>{t('metricsSlots')}</dt>
-                    <dd>{m.runtime.slots.used}/{m.runtime.slots.total}</dd>
-                  </>
-                )}
-
-                {m?.runtime?.tokensPerSec !== null && m?.runtime?.tokensPerSec !== undefined && (
-                  <>
-                    <dt>{t('metricsTokensPerSec')}</dt>
-                    <dd>{m.runtime.tokensPerSec.toFixed(1)}</dd>
-                  </>
-                )}
-
-                {/* Work time: actual generation time */}
-                {m?.runtime?.extras?.workTimeSec !== undefined && m?.uptimeSec !== null && m?.uptimeSec !== undefined && (
-                  <>
-                    <dt>{t('metricsWorkTime')}</dt>
-                    <dd>{(m.runtime.extras.workTimeSec as number) > 0 ? formatUptime(m.runtime.extras.workTimeSec as number) : '—'}</dd>
-                    <dt>{t('metricsWorkPct')}</dt>
-                    <dd>{(m.runtime.extras.workTimeSec as number) > 0 ? ((m.runtime.extras.workTimeSec as number) / m.uptimeSec * 100).toFixed(1) + '%' : '—'}</dd>
-                  </>
-                )}
-
-                {/* CPU/RAM (per-process) */}
-                {m?.process && (
-                  <>
-                    <dt>{t('metricsCpu')}</dt>
-                    <dd>{m.process.cpuPct !== null ? `${m.process.cpuPct.toFixed(1)}%` : '—'}</dd>
-                    <dt>{t('metricsRss')}</dt>
-                    <dd>{m.process.rssMB !== null ? `${m.process.rssMB.toFixed(0)} MB` : '—'}</dd>
-                  </>
-                )}
-              </dl>
+              {m ? (
+                <div className="status-card-metrics">
+                  <InstanceMetrics
+                    runtime={m.runtime}
+                    process={m.process}
+                    gpu={m.gpu}
+                    ttft={m.ttft}
+                    port={m.port}
+                    uptimeSec={m.uptimeSec}
+                  />
+                </div>
+              ) : (
+                <dl className="kv status-kv">
+                  <dt>{t('fieldPort')}</dt>
+                  <dd>{'—'}</dd>
+                </dl>
+              )}
             </div>
           );
         })}
+
+        {/* Engine processes launched outside the app (PLAN §16.4) — same grid,
+            lighter color + a "spoza aplikacji" title marker. */}
+        {external.map((ext) => (
+          <ExternalInstanceCard key={ext.pid} ext={ext} />
+        ))}
       </div>
     </section>
   );
-}
-
-/** Formats uptime in seconds to a readable string. */
-function formatUptime(sec: number): string {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = Math.round(sec % 60); // round to whole seconds
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
 }

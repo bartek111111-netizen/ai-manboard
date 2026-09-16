@@ -101,6 +101,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   if (options.lifecycle) {
     const instanceHandlers = makeInstanceHandlers(options.lifecycle);
     app.get('/api/v1/instances', instanceHandlers.list);
+    app.get('/api/v1/instances/external', instanceHandlers.external);
     app.get('/api/v1/instances/:instanceId', instanceHandlers.get);
     app.get('/api/v1/instances/:instanceId/metrics', instanceHandlers.metrics);
     app.get('/api/v1/instances/:instanceId/logs', instanceHandlers.logs);

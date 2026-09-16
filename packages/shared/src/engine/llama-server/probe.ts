@@ -109,6 +109,18 @@ export async function fetchLlamaServerRuntimeInfo(base: string): Promise<Runtime
       if (tokensTime !== undefined) {
         info.extras.workTimeSec = tokensTime;
       }
+
+      // Prefill (prompt processing) speed: average prompt tokens/s since launch.
+      // `prompt_seconds_total` is the cumulative prompt-processing time and
+      // `prompt_tokens_total` the cumulative prompt tokens processed.
+      const prefillTokens = metrics['llamacpp:prompt_tokens_total'];
+      const prefillTime = metrics['llamacpp:prompt_seconds_total'];
+      if (prefillTime !== undefined) {
+        info.extras.prefillSeconds = prefillTime;
+      }
+      if (prefillTokens !== undefined && prefillTime > 0) {
+        info.extras.prefillTps = prefillTokens / prefillTime;
+      }
     }
   } catch {
     // unavailable — ignore

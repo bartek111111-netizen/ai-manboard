@@ -1,12 +1,15 @@
 /**
- * MetricsPanel (Faza 8.2): runtime metrics — engine (slots, tokens/s) +
- * process (CPU/RSS) + optional GPU. Polls the metrics endpoint.
+ * MetricsPanel (Faza 8.2): the model-preview "Metryki" tab. Shows the same
+ * grouped metrics as the "Status" page via the shared `InstanceMetrics`
+ * component (engine + process + GPU, incl. prefill speed and TTFT). Polls the
+ * instance DTO every 3 s.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { getInstance } from '../api/client.js';
 import type { InstanceDto } from '../api/client.js';
 import { t } from '../i18n/index.js';
 import { ErrorNotice } from './ErrorNotice.js';
+import { InstanceMetrics } from './InstanceMetrics.js';
 
 interface MetricsPanelProps {
   instanceId: string;
@@ -34,7 +37,6 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
     return () => clearInterval(interval);
   }, [load]);
 
-  const runtime = dto?.runtime;
   const isLive = dto?.state === 'running' || dto?.state === 'starting';
 
   return (
@@ -47,64 +49,16 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
         <p className="muted">{t('metricsNotLive')}</p>
       )}
 
-      {isLive && runtime && (
-        <dl className="kv">
-          <dt>{t('metricsModelLoaded')}</dt>
-          <dd>{runtime.modelLoaded ? '✓' : '—'}</dd>
-
-          <dt>{t('metricsContextSize')}</dt>
-          <dd>{runtime.contextSize ?? '—'}</dd>
-
-          {runtime.slots && (
-            <>
-              <dt>{t('metricsSlots')}</dt>
-              <dd>
-                {runtime.slots.used}/{runtime.slots.total}
-              </dd>
-            </>
-          )}
-
-          {runtime.tokensPerSec !== undefined && (
-            <>
-              <dt>{t('metricsTokensPerSec')}</dt>
-              <dd>{runtime.tokensPerSec.toFixed(1)}</dd>
-            </>
-          )}
-
-          {/* Work time: actual generation time */}
-          {runtime.extras?.workTimeSec !== undefined && dto?.uptimeSec !== null && dto?.uptimeSec !== undefined && (
-            <>
-              <dt>{t('metricsWorkTime')}</dt>
-              <dd>{(runtime.extras.workTimeSec as number) > 0 ? formatUptime(runtime.extras.workTimeSec as number) : '—'}</dd>
-              <dt>{t('metricsWorkPct')}</dt>
-              <dd>{(runtime.extras.workTimeSec as number) > 0 ? ((runtime.extras.workTimeSec as number) / dto.uptimeSec * 100).toFixed(1) + '%' : '—'}</dd>
-            </>
-          )}
-
-          {/* CPU/RAM (per-process) */}
-          {dto?.process && (
-            <>
-              <dt>{t('metricsCpu')}</dt>
-              <dd>{dto.process.cpuPct !== null ? `${dto.process.cpuPct.toFixed(1)}%` : '—'}</dd>
-              <dt>{t('metricsRss')}</dt>
-              <dd>{dto.process.rssMB !== null ? `${dto.process.rssMB.toFixed(0)} MB` : '—'}</dd>
-            </>
-          )}
-        </dl>
-      )}
-
-      {isLive && !runtime && (
-        <p className="muted">…</p>
+      {isLive && dto && (
+        <InstanceMetrics
+          runtime={dto.runtime}
+          process={dto.process}
+          gpu={dto.gpu}
+          ttft={dto.ttft}
+          port={dto.port}
+          uptimeSec={dto.uptimeSec}
+        />
       )}
     </section>
   );
-}
-
-function formatUptime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.round(seconds % 60); // round to whole seconds
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
 }

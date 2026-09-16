@@ -106,6 +106,29 @@ export class LogWriter {
     return all.slice(-Math.max(1, Math.floor(lines)));
   }
 
+  /**
+   * The most recent `prompt processing` line from the newest log (the last
+   * completed request's prefill stats). Returns `{ tokens, seconds, tps }` or
+   * null when no timing line is present. Used for the TTFT / prefill-speed
+   * metrics. Reads only the tail of the log (the timing line is the newest).
+   */
+  readLastPromptProcessing(instanceId: string, tailLines = 500): { tokens: number; seconds: number; tps: number } | null {
+    const lines = this.readTail(instanceId, tailLines);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i];
+      if (!line.includes('prompt processing')) continue;
+      const t = line.match(/t = ([\d.]+) s \/ ([\d.]+) tokens per second/);
+      if (!t) continue;
+      const seconds = Number(t[1]);
+      const tps = Number(t[2]);
+      const tokens = Number(line.match(/n_tokens = ([\d.]+)/)?.[1] ?? 0);
+      if (Number.isFinite(seconds) && seconds > 0) {
+        return { tokens: Number.isFinite(tokens) ? tokens : 0, seconds, tps: Number.isFinite(tps) ? tps : 0 };
+      }
+    }
+    return null;
+  }
+
   /** Keeps the newest `retentionFiles` files in `logs/<instanceId>/`. */
   prune(instanceId: string): void {
     const dir = this.instanceDir(instanceId);

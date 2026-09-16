@@ -22,6 +22,11 @@ export function makeInstanceHandlers(lifecycle: LifecycleManager) {
       reply.send({ instances: lifecycle.listInstances() });
     },
 
+    /** GET /api/v1/instances/external → engine processes launched outside the app (PLAN §16.4). */
+    external: async (_request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      reply.send({ instances: await lifecycle.detectExternalInstances() });
+    },
+
     /** GET /api/v1/instances/:instanceId → full DTO (Faza 6.3, §14.2). */
     get: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
       const instanceId = param(request);

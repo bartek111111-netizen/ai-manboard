@@ -16,6 +16,7 @@ import {
   AppError,
   isLive,
   transition,
+  fetchLlamaServerRuntimeInfo,
   type InferenceEngine,
   type InstanceInfo,
   type InstanceState,
@@ -32,8 +33,17 @@ import type { ProcessManager } from './manager.js';
 import type { PidRegistry } from './registry.js';
 import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn, isPidAlive } from './reconcile.js';
 import { writeAutoLog } from '../logs/store.js';
+import { readGpuInfo, type GpuInfo } from '../../gpu.js';
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import si from 'systeminformation';
+import {
+  scanEngineProcesses,
+  readRssMB,
+  readUptimeSec,
+  type ExternalInstanceView,
+  type ExternalProcessInfo,
+} from './external.js';
 
 export interface LifecycleDeps {
   store: ConfigStore;
@@ -78,6 +88,10 @@ export interface InstanceDto {
   runtime: RuntimeInfo | null;
   /** Process metrics (Faza 8). */
   process: { cpuPct: number | null; rssMB: number | null };
+  /** System GPU info (null when no GPU is detected). */
+  gpu?: GpuInfo | null;
+  /** Last request's prefill timing from the log (TTFT approximation). */
+  ttft?: { tokens: number; seconds: number; tps: number } | null;
   /** The last abnormal exit (null when none since start). */
   lastError: { exitCode: number | null; signal: string | null } | null;
 }
@@ -180,6 +194,7 @@ export class LifecycleManager {
       : null;
     const startedAt = entry?.startedAt ?? null;
     const uptimeSec = startedAt ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000) : null;
+    const system = this.getSystemMetrics(instanceId, state);
     return {
       instanceId,
       modelId: inst.modelId,
@@ -193,6 +208,8 @@ export class LifecycleManager {
       configSource,
       runtime,
       process: await this.getProcessMetrics(instanceId),
+      gpu: system.gpu,
+      ttft: system.ttft,
       lastError: entry && (entry.lastExitCode !== null || entry.lastSignal)
         ? { exitCode: entry.lastExitCode, signal: entry.lastSignal ?? null }
         : null,
@@ -206,7 +223,21 @@ export class LifecycleManager {
     const runtime = state === 'running' || state === 'starting'
       ? await inst.engine.fetchRuntimeInfo(inst.base)
       : null;
-    return { instanceId, state, runtime, process: await this.getProcessMetrics(instanceId) };
+    const system = this.getSystemMetrics(instanceId, state);
+    return { instanceId, state, runtime, process: await this.getProcessMetrics(instanceId), gpu: system.gpu, ttft: system.ttft };
+  }
+
+  /**
+   * System-level metrics for an instance: the GPU (system-wide, read from
+   * sysfs / `nvidia-smi`) and the last request's prefill timing (TTFT) from
+   * the instance's log. Best-effort — null when unavailable.
+   */
+  private getSystemMetrics(instanceId: string, state: InstanceState): { gpu: GpuInfo | null; ttft: { tokens: number; seconds: number; tps: number } | null } {
+    const gpu = readGpuInfo();
+    const ttft = (state === 'running' || state === 'starting') && this.deps.logs
+      ? this.deps.logs.readLastPromptProcessing(instanceId)
+      : null;
+    return { gpu, ttft };
   }
 
   /** Gets CPU% and RSS for the instance's process. */
@@ -250,6 +281,84 @@ export class LifecycleManager {
   /** Recent log lines (in-memory ring), most recent last (Faza 6.3). */
   getLogs(instanceId: string, limit?: number): LogLine[] {
     return this.deps.manager.getLogs(instanceId, limit);
+  }
+
+  // ------------------------------------------------------ external detection
+
+  /**
+   * Detects engine processes launched **outside** the dashboard (a script, a
+   * terminal) and captures their settings — the full command line, port, model
+   * path, memory and start time (PLAN §16.4). The dashboard's own PIDs are
+   * excluded; what remains were started from elsewhere. Each is enriched with
+   * the live server's `/v1/models` (model / context / quant), RSS, uptime and
+   * the system GPU, and mapped to a registered instance when identifiable.
+   */
+  async detectExternalInstances(): Promise<ExternalInstanceView[]> {
+    const global = this.deps.store.readGlobal();
+    const binaryBases: string[] = [];
+    for (const cfg of Object.values(global.engines)) {
+      if (cfg?.binary) binaryBases.push(basename(cfg.binary));
+    }
+    if (binaryBases.length === 0) return [];
+
+    // PIDs the dashboard manages — exclude them; the rest are external.
+    const appPids = new Set<number>();
+    for (const inst of this.listInstances()) if (inst.pid) appPids.add(inst.pid);
+
+    const external = scanEngineProcesses(binaryBases).filter((p) => !appPids.has(p.pid));
+    return Promise.all(external.map((p) => this.enrichExternalInstance(p)));
+  }
+
+  /** Enriches one external process: live `/v1/models`, RSS, uptime, GPU + the app match. */
+  private async enrichExternalInstance(p: ExternalProcessInfo): Promise<ExternalInstanceView> {
+    const runtime = p.port ? await fetchLlamaServerRuntimeInfo(`http://${p.host}:${p.port}`) : null;
+    const model = this.matchRegisteredModel(p.modelPath);
+    const inst = model ? this.matchRegisteredInstance(model, p.port) : null;
+    // The live server's `/v1/models` meta (works even without `--metrics`).
+    const meta = ((runtime?.extras?.models as { data?: Array<Record<string, unknown>> })?.data?.[0] ?? {}) as Record<string, unknown>;
+    const metaObj = (meta.meta as Record<string, unknown>) ?? {};
+    const contextSize = runtime?.contextSize ?? (typeof metaObj.n_ctx === 'number' ? metaObj.n_ctx : null);
+    const quantization = (typeof metaObj.ftype === 'string' ? metaObj.ftype : null) ?? (runtime?.extras?.modelQuant as string | undefined) ?? null;
+    return {
+      detected: 'external',
+      pid: p.pid,
+      cmdline: p.cmdline,
+      params: p.args,
+      modelPath: p.modelPath,
+      port: p.port,
+      host: p.host,
+      rssMB: readRssMB(p.pid),
+      uptimeSec: readUptimeSec(p.pid),
+      modelName: (p.modelPath ? basename(p.modelPath) : null) ?? runtime?.modelLoaded ?? null,
+      contextSize,
+      quantization,
+      gpu: readGpuInfo(),
+      instanceId: inst?.instanceId ?? null,
+      modelId: model ?? null,
+      preset: inst?.preset ?? null,
+    };
+  }
+
+  /** Matches a model file path to a registered model id (exact or suffix). */
+  private matchRegisteredModel(path: string | null): string | null {
+    if (!path) return null;
+    for (const id of this.deps.store.listModelIds()) {
+      const registered = this.deps.store.readModel(id)?.params?.model;
+      if (typeof registered === 'string' && (path === registered || path.endsWith(registered) || registered.endsWith(path))) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  /** The registered instance for (modelId, port): exact port first, else any for the model. */
+  private matchRegisteredInstance(modelId: string, port: number | null): InstanceInfo | null {
+    const forModel = this.listInstances().filter((i) => i.modelId === modelId);
+    if (port) {
+      const byPort = forModel.find((i) => i.port === port);
+      if (byPort) return byPort;
+    }
+    return forModel[0] ?? null;
   }
 
   // -------------------------------------------------------------- commands

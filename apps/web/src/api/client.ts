@@ -46,6 +46,14 @@ export interface RuntimeInfoView {
   extras: Record<string, unknown>;
 }
 
+/** GPU info (mirrors the server's `GpuInfo`). */
+export interface GpuView {
+  name?: string;
+  memoryUsedMB?: number | null;
+  memoryTotalMB?: number | null;
+  utilization?: number | null;
+}
+
 /** Full instance DTO (mirrors the server's `InstanceDto`, §14.2). */
 export interface InstanceDto {
   instanceId: string;
@@ -60,7 +68,36 @@ export interface InstanceDto {
   configSource: Record<string, string>;
   runtime: RuntimeInfoView | null;
   process: { cpuPct: number | null; rssMB: number | null };
+  gpu?: GpuView | null;
+  ttft?: { tokens: number; seconds: number; tps: number } | null;
   lastError: { exitCode: number | null; signal: string | null } | null;
+}
+
+/**
+ * An engine process detected running OUTSIDE the dashboard (PLAN §16.4): the
+ * captured command line (settings), port, model info, memory and start time.
+ */
+export interface ExternalInstanceView {
+  detected: 'external';
+  pid: number;
+  /** The full `argv` of the process. */
+  cmdline: string[];
+  /** The captured `--key → value` settings. */
+  params: Record<string, string>;
+  modelPath: string | null;
+  port: number | null;
+  host: string;
+  rssMB: number | null;
+  uptimeSec: number | null;
+  /** From the live server's `/v1/models` (works without `--metrics`). */
+  modelName: string | null;
+  contextSize: number | null;
+  quantization: string | null;
+  gpu: GpuView | null;
+  /** The registered instance it maps to (null when not recognized). */
+  instanceId: string | null;
+  modelId: string | null;
+  preset: string | null;
 }
 
 /** Result of `POST /api/v1/models/discover`. */
@@ -174,6 +211,11 @@ export function getInstances(): Promise<InstanceInfo[]> {
 /** GET /api/v1/instances/:instanceId — full DTO (§14.2). */
 export function getInstance(instanceId: string): Promise<InstanceDto> {
   return request<InstanceDto>(`/api/v1/instances/${encodeURIComponent(instanceId)}`);
+}
+
+/** GET /api/v1/instances/external — engine processes launched outside the app (PLAN §16.4). */
+export function getExternalInstances(): Promise<ExternalInstanceView[]> {
+  return request<{ instances: ExternalInstanceView[] }>('/api/v1/instances/external').then((r) => r.instances);
 }
 
 /** POST /api/v1/instances/:instanceId/start */

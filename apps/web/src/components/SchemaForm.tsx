@@ -3,7 +3,7 @@
  * the engine's `ParamSchema[]`. Groups, types, validation, source layer.
  * Includes a command preview and proper advanced section formatting.
  */
-import type { ParamSchema } from '@ai-dashboard/shared';
+import { buildLlamaServerArgs, type ParamSchema } from '@ai-dashboard/shared';
 import { t } from '../i18n/index.js';
 
 interface SchemaFormProps {
@@ -18,6 +18,10 @@ interface SchemaFormProps {
   onChange: (key: string, value: unknown) => void;
   /** The model's path (pre-filled for the `model` param). */
   modelPath?: string;
+  /** The engine binary path (the real one, from `getEngines()`). */
+  binary?: string;
+  /** The preset's port (sent as `--port`). */
+  port?: number;
 }
 
 /** Group label (PL). */
@@ -33,54 +37,26 @@ const GROUP_LABELS: Record<string, string> = {
   advanced: 'Zaawansowane',
 };
 
-/** Builds a preview of the launch command from current values (matches llama-server CLI). */
-function buildCommandPreview(schema: ParamSchema[], values: Record<string, unknown>): string {
-  const lines: string[] = ['/home/bat/llama.cpp/build/bin/llama-server \\'];
-
-  // Model path first (always sent)
-  const modelPath = values['model'];
-  if (typeof modelPath === 'string' && modelPath) {
-    lines.push(`  --model ${modelPath} \\`);
-  }
-
-  // Host and port (only when set by user)
-  if (values['host'] !== undefined && values['host'] !== null && values['host'] !== '') {
-    lines.push(`  --host ${values['host']} \\`);
-  }
-  if (values['port'] !== undefined && values['port'] !== null && values['port'] !== '') {
-    lines.push(`  --port ${values['port']} \\`);
-  }
-
-  // Other params (only when set)
-  let last = false;
-  for (const param of schema) {
-    if (param.key === 'model' || param.key === 'host' || param.key === 'port') continue;
-    const val = values[param.key];
-    if (val === null || val === undefined || val === '') continue;
-
-    last = true;
-    const flag = param.flag ?? `--${param.key}`;
-    if (param.type === 'bool') {
-      if (val === true) {
-        if (param.offFlag || param.offValue) { last = false; continue; }
-        lines.push(`  ${flag} \\`);
-      } else if (val === false) {
-        if (param.offFlag) lines.push(`  ${param.offFlag} \\`);
-        else if (param.offValue) lines.push(`  ${flag} ${param.offValue} \\`);
-        else { last = false; }
-      }
-    } else {
-      lines.push(`  ${flag} ${val} \\`);
-    }
-  }
-
-  // Remove trailing \ from the last line
-  if (last && lines.length > 0) {
-    const lastLine = lines[lines.length - 1];
-    lines[lines.length - 1] = lastLine.replace(' \\', '');
-  }
-
-  return lines.join('\n');
+/**
+ * Builds the launch-command preview. It reuses the same shared builder the
+ * server uses for the real launch (`buildLlamaServerArgs`), so the preview is
+ * always identical to the command that actually runs — including schema defaults
+ * like `--offline`/`--metrics` and the jinja state.
+ */
+function buildCommandPreview(
+  schema: ParamSchema[],
+  values: Record<string, unknown>,
+  binary: string | undefined,
+  modelPath: string | undefined,
+  port?: number,
+): string {
+  if (!binary || !modelPath) return '…';
+  // Merge schema defaults + current values + host/port → all schema keys, like
+  // the server's resolved params (so defaults are honoured, not just set values).
+  const schemaDefaults: Record<string, unknown> = Object.fromEntries(schema.map((p) => [p.key, p.default]));
+  const params: Record<string, unknown> = { ...schemaDefaults, ...values, host: '127.0.0.1', port: port ?? 8080 };
+  const args = buildLlamaServerArgs({ modelPath, params });
+  return `${binary} ${args.join(' ')}`;
 }
 
 /** A single field rendered per type. */
@@ -268,9 +244,11 @@ export function SchemaForm({
   errors,
   onChange,
   modelPath,
+  binary,
+  port,
 }: SchemaFormProps) {
-  // Command preview
-  const command = buildCommandPreview(schema, values);
+  // Command preview — identical to the real launch command (shared builder).
+  const command = buildCommandPreview(schema, values, binary, modelPath, port);
 
   // Separate advanced params from main params
   const mainParams = schema.filter((p) => !p.advanced);

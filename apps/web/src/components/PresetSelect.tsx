@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ParamSchema, Preset } from '@ai-dashboard/shared';
-import { deletePreset, duplicatePreset, getEngineSchema, getModels, getPresets, putPreset } from '../api/client';
+import { deletePreset, duplicatePreset, getEngineSchema, getEngines, getModels, getPresets, putPreset } from '../api/client';
 import { ErrorNotice } from './ErrorNotice';
 import { SchemaForm } from './SchemaForm';
 import { t } from '../i18n';
@@ -22,6 +22,7 @@ export function PresetSelect({
   const [presets, setPresets] = useState<Preset[]>([]);
   const [schema, setSchema] = useState<ParamSchema[]>([]);
   const [modelPath, setModelPath] = useState<string>('');
+  const [binary, setBinary] = useState<string | null>(null);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [newName, setNewName] = useState('');
@@ -46,14 +47,17 @@ export function PresetSelect({
     refresh();
   }, [refresh]);
 
-  // Fetch the model's engine schema + path (for the SchemaForm).
+  // Fetch the model's engine schema + path + binary (for the SchemaForm).
   useEffect(() => {
     getModels()
       .then((models) => {
         const model = models.find((m) => m.id === modelId);
         if (model) {
           setModelPath(model.path);
-          return getEngineSchema(model.engineId).then(setSchema);
+          return getEngines().then((engines) => {
+            setBinary(engines.find((e) => e.id === model.engineId)?.binary ?? null);
+            return getEngineSchema(model.engineId).then(setSchema);
+          });
         }
         return null;
       })
@@ -64,17 +68,26 @@ export function PresetSelect({
 
   const current = presets.find((p) => p.name === selected) ?? null;
 
-  // Sync editParams when the preset changes.
+  // Sync editParams when the preset changes (and the schema is loaded).
+  // Merge schema defaults + the preset's params so ALL fields are present:
+  // the form shows schema defaults for unset params, and the save sends the
+  // full param set (not just the preset's overrides).
   useEffect(() => {
     if (current) {
-      setEditParams({ ...current.params });
+      if (schema.length > 0) {
+        const schemaDefaults: Record<string, unknown> = Object.fromEntries(schema.map((p) => [p.key, p.default]));
+        setEditParams({ ...schemaDefaults, ...current.params });
+      } else {
+        // Schema not loaded yet — use the preset's params as-is.
+        setEditParams({ ...current.params });
+      }
       // isDefault: check if this preset has `default: true` in its params
       setIsDefault(current.params?.default === true);
     } else {
       setEditParams({});
       setIsDefault(false);
     }
-  }, [selected, current]);
+  }, [selected, current, schema]);
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true);
@@ -240,6 +253,8 @@ export function PresetSelect({
                     values={editParams}
                     onChange={handleParamChange}
                     modelPath={modelPath}
+                    binary={binary ?? undefined}
+                    port={current.port}
                   />
                   <div className="instance-actions">
                     <button type="button" className="btn" disabled={savingParams} onClick={saveParams}>

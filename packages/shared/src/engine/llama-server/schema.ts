@@ -457,7 +457,7 @@ export const LLAMA_SERVER_SCHEMA: ParamSchema[] = [
     label: 'Tryb offline (blokowanie sieci)',
     type: 'bool',
     flag: '--offline',
-    default: true,
+    default: false,
     group: 'server',
   },
   // --- chat/template

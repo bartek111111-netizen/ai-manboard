@@ -1,5 +1,59 @@
 # STATUS
 
+## Nowa reguła: tylko parametry zmienione przez użytkownika + fix zapisu/wczytania presetu — ✅ ZROBIONE (2026-09-16)
+
+**Reguła (decyzja użytkownika):** parametry **na domyśle** w ogóle **nie** są
+wysyłane do `llama-server` (serwer działa na własnych defaultach); parametry
+**ustawione przez użytkownika** (≠ default) **muszą** być w podglądzie i w
+odpalaniu; te **niezaznaczone** nie pojawiają się nigdzie i nie odpalają —
+dotyczy to **wszystkiego**, w tym `--host`/`--port`.
+
+**Zmiany:**
+- `schema.ts`: `offline` default → `false` (domyślny stan serwera = online,
+  flaga `--offline` nieobecna).
+- `args-core.ts`: usunięto „zawsze `--host`/`--port`" — teraz idą przez pętlę
+  „≠ default" (wysyłane tylko gdy ≠ `127.0.0.1`/`8080`). `--model` zostaje
+  zawsze (required). Plain bools (`--metrics`, `--offline`) wysyłane gdy `true`
+  (flag-only: obecność = enabled).
+- `args.test.ts`: zaktualizowane testy pod nową regułę (host/port tylko ≠
+  default, offline default = false → nie wysyłane, metrics default = true →
+  wysyłane).
+- `PresetSelect.tsx`: **fix zapisu/wczytania** — `editParams` teraz
+  `{...schemaDefaults, ...current.params}` (wcześniej tylko `current.params`).
+  Dzięki temu: pola formularza pokazują domyślne wartości schematu (dla
+  niezapisanych pól), a przy zapisie wysyłany jest **pełny** zestaw parametrów
+  (nie tylko te zmienione w presetu).
+
+**Bramki (2026-09-16):** typecheck + lint + testy zielone — **60 (shared) +
+151 (server) + 15 (web) = 226/226**; web build OK.
+
+## Poprawki: podgląd komendy = faktyczna komenda + pełne logi bez przycinania — ✅ ZROBIONE (2026-09-16)
+
+Dwa zgłoszone bugi. **Podgląd ≠ faktyczna komenda:** FE miał własny builder
+(`buildCommandPreview` w `SchemaForm`) z twardym binary i z surowymi parametrami
+presetu (bez defaultów schematu) → brakowało `--offline`/`--metrics`/stanu jinja
+i kolejność/flagi się różniły. Poprawka: wydzielono czysty, browser-safe
+`buildLlamaServerArgs` (`shared/engine/llama-server/args-core.ts` — jeden builder
+flagi, bez `node:path`) — `buildLlamaServerLaunch` (`args.ts`) go opakowuje
+(cwd/env), a FE preview importuje `buildLlamaServerArgs` z `@ai-dashboard/shared`.
+`SchemaForm` buduje parametry jako **merge defaultów schematu + wartości presetu +
+host/port** i używa **prawdziwego binary** (`getEngines()`), więc podgląd jest
+zawsze identyczny z odpalaną komendą (w tym `--offline`/`--metrics` i `--jinja`).
+`PresetSelect` pobiera `binary` + `port` i podaje do `SchemaForm`. **Logi (reset
+boxa, „1–2 linie"):** `LogViewer` co 500 ms **zamieniał** `lines` na ostatnią
+partię (`.slice(-500)` + `setLines(buffer)`) → box „resetował się" i pokazywał
+tylko ostatnie linie. Poprawka: **append** (`setLines(prev => [...prev, ...buffer])`)
++ cap 10000 (był 500) → pełna historia na raz, bez przycinania, scroll (CSS
+`overflow-y`). SSE i tak replayuje ring (1000 linii) na połączeniu.
+
+**Bramki (2026-09-16):** typecheck + lint + testy zielone — **60 (shared) +
+151 (server) + 15 (web) = 226/226**; web build OK (FE importuje czysty builder,
+brak `node:path` w browserze).
+
+**Dalej:** CORS (10.3 PLAN), GPU metrics w UI, pełny E2E z crash (kill procesu),
+docs polish, konsument debounce w UI (stateChangeDelaySec), opcjonalnie: fallback
+logów na dysku dla instancji po restarcie dashboardu / odpalonych zewnętrznie.
+
 ## Po-Faza 10 — StatusPage + metryki per-proces + logi + jinja + auto-alokacja + bramki — ✅ ZROBIONE (2026-09-16)
 
 Działa: pełna pętla + nowy StatusPage + wskaźniki stanu + persistence logów; bramka zielona.

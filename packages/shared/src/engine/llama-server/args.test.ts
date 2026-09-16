@@ -26,13 +26,12 @@ describe('buildLlamaServerLaunch (PLAN §10.1 — Faza 2.4)', () => {
       },
     };
     const cmd = buildLlamaServerLaunch(ctx);
+    // Order follows LLAMA_SERVER_SCHEMA: model, ctx-size, gpu-layers, threads, temp,
+    // top-p, top-k, max-tokens, metrics-enabled (default true → sent), port (≠ default 8080 → sent).
+    // host at default (127.0.0.1) → omitted; offline at default (false) → omitted.
     expect(cmd.args).toEqual([
       '--model',
       '/mnt/dane/Modele/llama-3-8b-instruct.Q8_0.gguf',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      '8081',
       '--ctx-size',
       '4096',
       '--n-gpu-layers',
@@ -48,29 +47,23 @@ describe('buildLlamaServerLaunch (PLAN §10.1 — Faza 2.4)', () => {
       '--n-predict',
       '512',
       '--metrics',
-      '--offline',
+      '--port',
+      '8081',
     ]);
     // cwd defaults to the model file's directory; env is empty.
     expect(cmd.cwd).toBe('/mnt/dane/Modele');
     expect(cmd.env).toEqual({});
   });
 
-  it('sends only --model/--host/--port/--metrics/--offline for an all-defaults config', () => {
+  it('sends only --model/--metrics for an all-defaults config (host/port at default → omitted)', () => {
+    // host/port at their schema defaults (127.0.0.1:8080) are now omitted entirely;
+    // offline at its default (false) is omitted; metrics at its default (true) is sent.
     const cmd = buildLlamaServerLaunch({
       binary: 'llama-server',
       modelPath: '/m/model.gguf',
       params: { ...defaults(), model: undefined, host: '127.0.0.1', port: 8080 },
     });
-    expect(cmd.args).toEqual([
-      '--model',
-      '/m/model.gguf',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      '8080',
-      '--metrics',
-      '--offline',
-    ]);
+    expect(cmd.args).toEqual(['--model', '/m/model.gguf', '--metrics']);
   });
 
   it('never sends a flag for its schema default (no-redundancy rule)', () => {
@@ -114,15 +107,15 @@ describe('buildLlamaServerLaunch (PLAN §10.1 — Faza 2.4)', () => {
     expect(cpu[cpu.indexOf('--n-gpu-layers') + 1]).toBe('0');
   });
 
-  it('bools: metrics/offline flag when true, nothing when false; fit → --fit off when false', () => {
+  it('bools: metrics flag when true (default); offline flag when true (≠ default false); fit → --fit off when false', () => {
     const base = { binary: 'llama-server', modelPath: '/m/x.gguf' };
     const mk = (extra: Record<string, unknown>) =>
       buildLlamaServerLaunch({ ...base, params: { ...defaults(), model: undefined, ...extra } }).args;
 
-    expect(mk({})).toContain('--metrics'); // default true
-    expect(mk({ 'metrics-enabled': false })).not.toContain('--metrics');
-    expect(mk({})).toContain('--offline'); // default true
-    expect(mk({ offline: false })).not.toContain('--offline');
+    expect(mk({})).toContain('--metrics'); // default true (plain bool: sent when true)
+    expect(mk({ 'metrics-enabled': false })).not.toContain('--metrics'); // false → not sent
+    expect(mk({})).not.toContain('--offline'); // default false (plain bool: not sent when false)
+    expect(mk({ offline: true })).toContain('--offline'); // true (≠ default) → sent
     expect(mk({})).not.toContain('--fit'); // default true
     const fitArgs = mk({ fit: false });
     expect(fitArgs[fitArgs.indexOf('--fit') + 1]).toBe('off');

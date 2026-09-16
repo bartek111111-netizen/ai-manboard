@@ -6,5 +6,6 @@ export * from './api/errors.js';
 export * from './config/defaults.js';
 export * from './config/types.js';
 export * from './engine/types.js';
+export { buildLlamaServerArgs, type ArgsContext } from './engine/llama-server/args-core.js';
 export * from './process/states.js';
 export * from './schema/validate.js';

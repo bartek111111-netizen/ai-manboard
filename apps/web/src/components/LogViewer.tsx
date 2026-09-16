@@ -9,7 +9,13 @@ import type { LogLine } from '../api/sse.js';
 import { t } from '../i18n/index.js';
 import { ErrorNotice } from './ErrorNotice.js';
 
-const MAX_LINES = 500;
+/**
+ * The live view accumulates the full history (no truncation) — the user wants
+ * "wszystko na raz bez przycinania". The server ring already caps the replay
+ * tail, so the client only needs to keep appending; we keep a generous ceiling
+ * purely to bound memory for very long sessions.
+ */
+const MAX_LINES = 10000;
 
 interface RunLog {
   file: string;
@@ -126,12 +132,14 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
     const close = openLogStream(
       instanceId,
       (line) => {
-        buffer = [...buffer, line].slice(-MAX_LINES);
+        buffer = [...buffer, line];
       },
     );
     const interval = setInterval(() => {
       if (buffer.length > 0) {
-        setLines(buffer);
+        // Append (not replace) so the full history stays — the old code swapped
+        // `lines` with each 500 ms batch, so the box "reset" to the latest lines.
+        setLines((prev) => [...prev, ...buffer].slice(-MAX_LINES));
         buffer = [];
       }
     }, 500);

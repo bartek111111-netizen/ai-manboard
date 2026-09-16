@@ -1769,6 +1769,38 @@ section {
   color: var(--color-state-running);
 }
 
+/* Activity indicator on the Status page (replaces the plain "Działa" text):
+   a blinking icon — a green dot when the model is idle, a yellow lightning
+   when it is actively generating (mirrors the header state dots). */
+.status-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.status-activity-icon {
+  font-size: 13px;
+  line-height: 1;
+  animation: blink 2s ease-in-out infinite;
+}
+
+.status-activity-label {
+  font-weight: 600;
+}
+
+.status-activity.state-idle {
+  background: color-mix(in srgb, var(--color-state-running) 20%, transparent);
+  color: var(--color-state-running);
+}
+
+.status-activity.state-working {
+  background: color-mix(in srgb, var(--color-state-stopping) 20%, transparent);
+  color: var(--color-state-stopping);
+}
+
 .status-kv {
   padding: 12px 14px;
 }

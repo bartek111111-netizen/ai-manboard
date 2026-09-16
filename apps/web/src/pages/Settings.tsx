@@ -29,6 +29,8 @@ export function Settings() {
   const [token, setToken] = useState('');
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
   const [preferredGpu, setPreferredGpu] = useState<string | null>(null);
+  const [gpuLabel, setGpuLabel] = useState('');
+  const [gpuUseLabel, setGpuUseLabel] = useState(false);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -51,6 +53,8 @@ export function Settings() {
         setPortEnd(config.global.portRange.end);
         setToken(config.global.security.token ?? '');
         setPreferredGpu(config.global.gpu?.preferred ?? null);
+        setGpuLabel(config.global.gpu?.label ?? '');
+        setGpuUseLabel(config.global.gpu?.useLabel ?? false);
         setStateChangeDelay(config.global.notifications?.stateChangeDelaySec ?? 0);
         setError(null);
       })
@@ -91,7 +95,7 @@ export function Settings() {
       security: { token: token.trim() !== '' ? token.trim() : null },
       monitoring: { probeIntervalSec: 2, startupTimeoutSec: 30 },
       logs: { ringLines: 200, retentionFiles: 5 },
-      gpu: { preferred: preferredGpu },
+      gpu: { preferred: preferredGpu, label: gpuLabel.trim() !== '' ? gpuLabel.trim() : undefined, useLabel: gpuUseLabel && gpuLabel.trim() !== '' },
       notifications: { stateChangeDelaySec: stateChangeDelay },
     };
     putGlobalConfig(body)
@@ -275,6 +279,33 @@ export function Settings() {
             </label>
           ))
         )}
+        <div className="settings-gpu-custom-name">
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={gpuUseLabel}
+              onChange={(e) => {
+                setGpuUseLabel(e.target.checked);
+                setDirty(true);
+              }}
+            />
+            <span>{t('gpuUseCustomName')}</span>
+          </label>
+          <label className="field">
+            <span>{t('gpuCustomLabel')}</span>
+            <input
+              type="text"
+              className="input"
+              value={gpuLabel}
+              placeholder={t('gpuCustomLabelPlaceholder')}
+              onChange={(e) => {
+                setGpuLabel(e.target.value);
+                setDirty(true);
+              }}
+            />
+          </label>
+          <p className="muted small">{t('gpuCustomLabelHint')}</p>
+        </div>
       </fieldset>
 
       {/* Notifications */}

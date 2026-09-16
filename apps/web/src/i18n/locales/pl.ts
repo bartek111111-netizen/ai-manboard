@@ -212,6 +212,11 @@ export const pl = {
     "Wybrana karta będzie pokazana w statystykach po lewej stronie (sidebar).",
   noGpusDetected: "Nie wykryto GPU",
   gpuNotSelected: "GPU nie zaznaczone w ustawieniach",
+  gpuUseCustomName: "Użyj własnej nazwy GPU",
+  gpuCustomLabel: "Własna nazwa GPU",
+  gpuCustomLabelPlaceholder: "np. RX 9070 XT",
+  gpuCustomLabelHint:
+    "Gdy zaznaczone, ta nazwa zastępuje wykrytą nazwę GPU we wszystkich miejscach (sidebar, Status, Metryki).",
 
   // File picker
   showHidden: "Pokaż ukryte",

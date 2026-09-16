@@ -4,6 +4,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { resolveHome } from './core/config/paths.js';
 
 export interface GpuInfo {
   /** GPU name. */
@@ -148,17 +149,55 @@ export function readGpuFromNvidiaSmi(): GpuInfo | null {
 }
 
 /**
+ * Reads the user-configured GPU label from `config/global.json` (`gpu.label` +
+ * `gpu.useLabel`). Returns null when the label is not enabled, so the detected
+ * name is used. A short cache avoids re-reading the file on every poll.
+ */
+let gpuLabelCache: { label: string | null; at: number } | null = null;
+const GPU_LABEL_CACHE_MS = 5000;
+
+function getGpuLabel(): string | null {
+  const now = Date.now();
+  if (gpuLabelCache && now - gpuLabelCache.at < GPU_LABEL_CACHE_MS) {
+    return gpuLabelCache.label;
+  }
+  let label: string | null = null;
+  try {
+    const { globalFile } = resolveHome();
+    const cfg = JSON.parse(readFileSync(globalFile, 'utf8'));
+    if (cfg?.gpu?.useLabel === true && typeof cfg?.gpu?.label === 'string' && cfg.gpu.label.trim() !== '') {
+      label = cfg.gpu.label.trim();
+    }
+  } catch {
+    // config file missing/unreadable — use the detected name
+  }
+  gpuLabelCache = { label, at: now };
+  return label;
+}
+
+/**
  * Reads GPU info from the detected source. Uses cached detection to avoid
- * repeated `nvidia-smi` failures on systems without NVIDIA GPUs.
+ * repeated `nvidia-smi` failures on systems without NVIDIA GPUs. When the user
+ * enabled a custom GPU label (`global.gpu.useLabel`), the displayed `name` is
+ * replaced by it, so all GPU name displays show the user's name.
  */
 export function readGpuInfo(): GpuInfo | null {
   const source = detectGpuSource();
+  let info: GpuInfo | null = null;
   switch (source) {
     case 'sysfs':
-      return readGpuFromSysfs();
+      info = readGpuFromSysfs();
+      break;
     case 'nvidia':
-      return readGpuFromNvidiaSmi();
+      info = readGpuFromNvidiaSmi();
+      break;
     case 'none':
-      return null;
+      info = null;
+      break;
   }
+  if (info) {
+    const label = getGpuLabel();
+    if (label) info = { ...info, name: label };
+  }
+  return info;
 }

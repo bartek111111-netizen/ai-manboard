@@ -124,6 +124,10 @@ export function StatusPage() {
           const m = metrics[inst.instanceId];
           const model = models.find((mdl) => mdl.id === inst.modelId);
           const modelName = model?.displayName ?? inst.modelId;
+          const slotsUsed = m?.runtime?.slots?.used ?? 0;
+          const slotsTotal = m?.runtime?.slots?.total ?? 0;
+          const activityState: 'working' | 'idle' = slotsUsed > 0 ? 'working' : 'idle';
+          const activityLabel = activityState === 'working' ? t('stateWorking') : t('stateIdle');
           return (
             <div key={inst.instanceId} className="status-card">
               <div className="status-card-header">
@@ -133,8 +137,14 @@ export function StatusPage() {
                   </span>
                   <span className="status-card-preset">{inst.preset}</span>
                 </div>
-                <span className="status-card-state running">
-                  {t('stateRunning')}
+                <span
+                  className={`status-activity state-${activityState}`}
+                  title={`${activityLabel} (${slotsUsed}/${slotsTotal})`}
+                >
+                  <span className="status-activity-icon">
+                    {activityState === 'working' ? '⚡' : '●'}
+                  </span>
+                  <span className="status-activity-label">{activityLabel}</span>
                 </span>
               </div>
 

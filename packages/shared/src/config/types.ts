@@ -53,7 +53,14 @@ export interface GlobalConfig {
   /** Log retention (FMK-2). */
   logs: { ringLines: number; retentionFiles: number };
   /** GPU preferences: which GPU to use for models and show in sidebar stats. */
-  gpu?: { preferred?: string | null };
+  gpu?: {
+    /** Which detected GPU (PCI id) to show in the sidebar stats. */
+    preferred?: string | null;
+    /** Custom display name for the GPU (overrides the detected name). */
+    label?: string;
+    /** Whether the custom label is used in the display (sidebar / status / metrics). */
+    useLabel?: boolean;
+  };
   /** UI notifications: state-change delay in seconds (persisted; UI consumer pending). */
   notifications?: { stateChangeDelaySec?: number };
 }

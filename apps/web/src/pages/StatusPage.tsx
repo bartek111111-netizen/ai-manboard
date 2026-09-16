@@ -26,6 +26,7 @@ interface ModelMetrics {
   preset: string;
   state: string;
   port: number | null;
+  command: string;
   endpoint: string;
   uptimeSec: number | null;
   runtime: InstanceDto['runtime'];
@@ -64,6 +65,7 @@ export function StatusPage() {
                   preset: inst.preset,
                   state: dto.state,
                   port: dto.port,
+                  command: dto.command,
                   endpoint: dto.endpoint,
                   uptimeSec: dto.uptimeSec,
                   runtime: dto.runtime,
@@ -156,6 +158,7 @@ export function StatusPage() {
                     ttft={m.ttft}
                     port={m.port}
                     uptimeSec={m.uptimeSec}
+                    command={m.command}
                   />
                 </div>
               ) : (

@@ -5,15 +5,12 @@
  * and is clearly marked "spoza aplikacji" — with a lighter, distinct color
  * scheme so it is obvious at a glance that the app did not start it.
  */
-import { Fragment } from 'react';
 import type { ExternalInstanceView } from '../api/client.js';
 import { t } from '../i18n/index.js';
 import { formatUptime } from './InstanceMetrics.js';
+import { CommandBlock } from './CommandBlock.js';
 
 export function ExternalInstanceCard({ ext }: { ext: ExternalInstanceView }) {
-  // The captured settings — everything except model/port/host (shown in their own groups).
-  const params = Object.entries(ext.params).filter(([k]) => k !== 'model' && k !== 'port' && k !== 'host');
-
   return (
     <div className="status-card status-card--external">
       <div className="status-card-header">
@@ -80,18 +77,11 @@ export function ExternalInstanceCard({ ext }: { ext: ExternalInstanceView }) {
         </dl>
       </section>
 
-      {/* Captured settings (the full command line) */}
+      {/* Captured settings — the full command line, shown wrapped + copyable. */}
       <section className="metric-group">
         <h4 className="metric-group-title">{t('groupParams')}</h4>
-        {params.length > 0 ? (
-          <dl className="kv kv-mono">
-            {params.map(([k, v]) => (
-              <Fragment key={k}>
-                <dt>{k}</dt>
-                <dd>{v}</dd>
-              </Fragment>
-            ))}
-          </dl>
+        {ext.cmdline.length > 0 ? (
+          <CommandBlock command={ext.cmdline.join(' ')} className="cmd-block--inline" />
         ) : (
           <p className="muted">—</p>
         )}

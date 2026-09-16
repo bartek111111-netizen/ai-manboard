@@ -62,6 +62,7 @@ export interface InstanceDto {
   state: InstanceState;
   pid: number | null;
   port: number;
+  command: string;
   endpoint: string;
   startedAt: string | null;
   uptimeSec: number | null;

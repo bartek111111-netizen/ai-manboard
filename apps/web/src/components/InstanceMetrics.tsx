@@ -10,6 +10,7 @@
  */
 import type { GpuView, InstanceDto, RuntimeInfoView } from '../api/client.js';
 import { t } from '../i18n/index.js';
+import { CommandPopover } from './CommandBlock.js';
 
 interface InstanceMetricsProps {
   runtime: RuntimeInfoView | null;
@@ -18,9 +19,11 @@ interface InstanceMetricsProps {
   ttft?: { tokens: number; seconds: number; tps: number } | null;
   port: number | null;
   uptimeSec: number | null;
+  /** The launch command (binary + args) — revealed via the ⓘ on the Engine header. */
+  command?: string | null;
 }
 
-export function InstanceMetrics({ runtime, process, gpu, ttft, port, uptimeSec }: InstanceMetricsProps) {
+export function InstanceMetrics({ runtime, process, gpu, ttft, port, uptimeSec, command }: InstanceMetricsProps) {
   const prefillTps = runtime?.extras?.prefillTps as number | undefined;
   const workTimeSec = runtime?.extras?.workTimeSec as number | undefined;
   const contextSize = runtime?.contextSize;
@@ -29,7 +32,10 @@ export function InstanceMetrics({ runtime, process, gpu, ttft, port, uptimeSec }
     <>
       {/* Engine metrics (from llama-server /metrics + runtime probe) */}
       <section className="metric-group">
-        <h4 className="metric-group-title">{t('groupEngine')}</h4>
+        <h4 className="metric-group-title">
+          {t('groupEngine')}
+          {command ? <CommandPopover command={command} label={t('launchCommand')} /> : null}
+        </h4>
         <dl className="kv">
           <dt>{t('fieldPort')}</dt>
           <dd>{port ?? '—'}</dd>

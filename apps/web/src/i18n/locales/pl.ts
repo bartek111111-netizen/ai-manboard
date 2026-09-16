@@ -159,6 +159,8 @@ export const pl = {
   externalDescription: 'Wykryto proces silnika uruchomiony spoza aplikacji (nie przez dashboard). Dane przechwycono z systemu.',
   groupParams: 'Parametry (przechwycona komenda)',
   groupModel: 'Model',
+  copyCommand: 'Kopiuj komendę',
+  launchCommand: 'Komenda startowa',
   fieldModelPath: 'Ścieżka modelu',
   fieldQuantization: 'Kwantyzacja',
   fieldHost: 'Host',

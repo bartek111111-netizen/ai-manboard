@@ -78,6 +78,8 @@ export interface InstanceDto {
   state: InstanceState;
   pid: number | null;
   port: number;
+  /** The exact launch command (binary + args), for the UI's ⓘ popover. */
+  command: string;
   /** OpenAI-compatible endpoint base (`http://<host>:<port>/v1/`). */
   endpoint: string;
   startedAt: string | null;
@@ -202,6 +204,7 @@ export class LifecycleManager {
       state,
       pid: entry?.pid ?? null,
       port: inst.port,
+      command: [inst.launch.binary, ...inst.launch.args].join(' '),
       endpoint: `${inst.base}/v1/`,
       startedAt,
       uptimeSec,

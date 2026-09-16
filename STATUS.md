@@ -1,5 +1,28 @@
 # STATUS
 
+## Poprawka reguły: parametry z pliku presetu (nie „≠ default") + fix ubatch-size default — ✅ ZROBIONE (2026-09-16)
+
+**Reguła (poprawiona po wyjaśnieniu użytkownika):** parametry **ustawione przez
+użyka** (obecne w pliku presetu) są wysyłane do `llama-server`; parametry
+**nieobecne** w pliku presetu (użyk nie ustawił) **nie** są wysyłane. Schematyczne
+defaulty **nie** są merge'owane do obiektu params. To **nie** jest reguła „≠ default" —
+to **„czy param jest w pliku presetu"**.
+
+**Zmiany:**
+- `PresetSelect.tsx`: **revert** — `editParams` = `{...current.params}` (bez
+  `schemaDefaults`). Plik presetu jest źródłem prawdy: parametry nieustawione
+  są nieobecne, a launcher/podgląd wysyłają tylko to, co jest w pliku.
+- `args-core.ts`: usunięto check „≠ default" — wysyłam **wszystko co jest w
+  params** (zdefiniowane). Param nieobecny (`undefined`) → nie wysyłany.
+- `SchemaForm.tsx`: `buildCommandPreview` nie merge'uje `schemaDefaults` —
+  tylko params z presetu + host/port.
+- `schema.ts`: `ubatch-size` default **1024 → 512** (faktyczny default llama.cpp).
+- `args.test.ts`: przepisane testy pod nową regułę (params = tylko to, co user
+  ustawił; pusty params → tylko `--model`).
+
+**Bramki (2026-09-16):** typecheck + lint + testy zielone — **60 (shared) +
+151 (server) + 15 (web) = 226/226**; web build OK.
+
 ## Nowa reguła: tylko parametry zmienione przez użytkownika + fix zapisu/wczytania presetu — ✅ ZROBIONE (2026-09-16)
 
 **Reguła (decyzja użytkownika):** parametry **na domyśle** w ogóle **nie** są

@@ -20,8 +20,6 @@ interface SchemaFormProps {
   modelPath?: string;
   /** The engine binary path (the real one, from `getEngines()`). */
   binary?: string;
-  /** The preset's port (sent as `--port`). */
-  port?: number;
 }
 
 /** Group label (PL). */
@@ -48,12 +46,11 @@ function buildCommandPreview(
   values: Record<string, unknown>,
   binary: string | undefined,
   modelPath: string | undefined,
-  port?: number,
 ): string {
   if (!binary || !modelPath) return '…';
-  // Only the preset's params (what the user set) + host/port. Schema defaults
+  // Only the preset's params (what the user set). Schema defaults and host/port
   // are NOT merged — the server runs on its own defaults for unset params.
-  const params: Record<string, unknown> = { ...values, host: '127.0.0.1', port: port ?? 8080 };
+  const params: Record<string, unknown> = { ...values };
   const args = buildLlamaServerArgs({ modelPath, params });
   return `${binary} ${args.join(' ')}`;
 }
@@ -244,10 +241,9 @@ export function SchemaForm({
   onChange,
   modelPath,
   binary,
-  port,
 }: SchemaFormProps) {
   // Command preview — identical to the real launch command (shared builder).
-  const command = buildCommandPreview(values, binary, modelPath, port);
+  const command = buildCommandPreview(values, binary, modelPath);
 
   // Separate advanced params from main params
   const mainParams = schema.filter((p) => !p.advanced);

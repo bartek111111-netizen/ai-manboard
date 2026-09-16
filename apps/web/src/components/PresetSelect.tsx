@@ -247,7 +247,6 @@ export function PresetSelect({
                     onChange={handleParamChange}
                     modelPath={modelPath}
                     binary={binary ?? undefined}
-                    port={current.port}
                   />
                   <div className="instance-actions">
                     <button type="button" className="btn" disabled={savingParams} onClick={saveParams}>

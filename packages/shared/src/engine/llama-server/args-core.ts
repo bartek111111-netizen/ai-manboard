@@ -7,12 +7,12 @@
  *
  * Rules (user preference 2026-09-16 — "send only what the user set"):
  * - `--model` is always sent (required);
- * - every other parameter (including `--host`/`--port`): sent **only** when it
- *   differs from the schema default; at the default it is omitted entirely
- *   (the server then runs on its own default for that option);
- * - bools: `true` on an offFlag/offValue param → nothing (true is the default);
- *   `false` → the offFlag/offValue; plain bools sent when `true`
- *   (a flag-only option whose absence is the default state).
+ * - every other parameter (including `--host`/`--port`): sent **if and only if**
+ *   the user provided a value (the param is present in the preset/params object);
+ *   params the user didn't set are absent → not sent (the server runs on its own
+ *   default for that option);
+ * - bools: if present, sent per their flag semantics (plain bool → flag when
+ *   `true`; offFlag → offFlag when `false`; offValue → flag + offValue when `false`).
  */
 import { LLAMA_SERVER_SCHEMA } from './schema.js';
 
@@ -39,7 +39,8 @@ export function buildLlamaServerArgs(ctx: ArgsContext): string[] {
 
     if (p.type === 'bool') {
       if (value === true) {
-        // `true` is the default for offFlag/offValue params → nothing to send.
+        // Plain bool (flag-only): `true` → send the flag.
+        // offFlag/offValue params: `true` is the default state → nothing.
         if (p.offFlag || p.offValue) continue;
         args.push(p.flag ?? '');
       } else if (value === false) {
@@ -49,7 +50,7 @@ export function buildLlamaServerArgs(ctx: ArgsContext): string[] {
     } else {
       // Empty strings (device, api-key, ...) are "unset", not values.
       if (typeof value === 'string' && value.trim() === '') continue;
-      if (value !== p.default) args.push(p.flag ?? '', String(value));
+      args.push(p.flag ?? '', String(value));
     }
   }
 

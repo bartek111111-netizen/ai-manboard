@@ -40,21 +40,20 @@ const GROUP_LABELS: Record<string, string> = {
 /**
  * Builds the launch-command preview. It reuses the same shared builder the
  * server uses for the real launch (`buildLlamaServerArgs`), so the preview is
- * always identical to the command that actually runs — including schema defaults
- * like `--offline`/`--metrics` and the jinja state.
+ * always identical to the command that actually runs. Only the params the user
+ * actually set (the preset's params) are sent — schema defaults are NOT merged
+ * in (the server runs on its own defaults for unset params).
  */
 function buildCommandPreview(
-  schema: ParamSchema[],
   values: Record<string, unknown>,
   binary: string | undefined,
   modelPath: string | undefined,
   port?: number,
 ): string {
   if (!binary || !modelPath) return '…';
-  // Merge schema defaults + current values + host/port → all schema keys, like
-  // the server's resolved params (so defaults are honoured, not just set values).
-  const schemaDefaults: Record<string, unknown> = Object.fromEntries(schema.map((p) => [p.key, p.default]));
-  const params: Record<string, unknown> = { ...schemaDefaults, ...values, host: '127.0.0.1', port: port ?? 8080 };
+  // Only the preset's params (what the user set) + host/port. Schema defaults
+  // are NOT merged — the server runs on its own defaults for unset params.
+  const params: Record<string, unknown> = { ...values, host: '127.0.0.1', port: port ?? 8080 };
   const args = buildLlamaServerArgs({ modelPath, params });
   return `${binary} ${args.join(' ')}`;
 }
@@ -248,7 +247,7 @@ export function SchemaForm({
   port,
 }: SchemaFormProps) {
   // Command preview — identical to the real launch command (shared builder).
-  const command = buildCommandPreview(schema, values, binary, modelPath, port);
+  const command = buildCommandPreview(values, binary, modelPath, port);
 
   // Separate advanced params from main params
   const mainParams = schema.filter((p) => !p.advanced);

@@ -114,7 +114,7 @@ export const LLAMA_SERVER_SCHEMA: ParamSchema[] = [
     label: 'Fizyczny rozmiar partii (ubatch)',
     type: 'int',
     flag: '--ubatch-size',
-    default: 1024,
+    default: 512,
     min: 0,
     group: 'performance',
     advanced: true,

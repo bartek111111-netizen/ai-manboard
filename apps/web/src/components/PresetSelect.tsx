@@ -68,26 +68,19 @@ export function PresetSelect({
 
   const current = presets.find((p) => p.name === selected) ?? null;
 
-  // Sync editParams when the preset changes (and the schema is loaded).
-  // Merge schema defaults + the preset's params so ALL fields are present:
-  // the form shows schema defaults for unset params, and the save sends the
-  // full param set (not just the preset's overrides).
+  // Sync editParams when the preset changes. Only the preset's own params
+  // (what the user actually set) — NOT merged with schema defaults. The preset
+  // file is the source of truth: params the user didn't set are absent, and
+  // the launcher/preview only send what's in the preset.
   useEffect(() => {
     if (current) {
-      if (schema.length > 0) {
-        const schemaDefaults: Record<string, unknown> = Object.fromEntries(schema.map((p) => [p.key, p.default]));
-        setEditParams({ ...schemaDefaults, ...current.params });
-      } else {
-        // Schema not loaded yet — use the preset's params as-is.
-        setEditParams({ ...current.params });
-      }
-      // isDefault: check if this preset has `default: true` in its params
+      setEditParams({ ...current.params });
       setIsDefault(current.params?.default === true);
     } else {
       setEditParams({});
       setIsDefault(false);
     }
-  }, [selected, current, schema]);
+  }, [selected, current]);
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true);

@@ -15,124 +15,153 @@
  *   crashed   — proces zginął (exit ≠ 0 / sygnał) z running/starting
  *   unknown   — po starcie dashboardu brak dowodów (reconcile, §11.3, Faza 10)
  */
-import { AppError } from '../api/errors.js';
+import { AppError } from "../api/errors.js";
 
 export type InstanceState =
-  | 'starting'
-  | 'running'
-  | 'stopping'
-  | 'stopped'
-  | 'error'
-  | 'crashed'
-  | 'unknown';
+  | "starting"
+  | "running"
+  | "stopping"
+  | "stopped"
+  | "error"
+  | "crashed"
+  | "unknown";
+
+/**
+ * How an instance's process is tied to the dashboard's lifetime (the launch
+ * choice the user makes at start time).
+ * - `background` — the engine keeps running after the dashboard closes /
+ *   restarts ("Zostaje w tle"). It is spawned detached with its own stdio, so
+ *   it survives the dashboard and is re-adopted by reconcile on restart.
+ * - `session` — the engine is tied to the dashboard (current behaviour): it
+ *   stops together with the dashboard ("Znika z dashboardem").
+ */
+export type LaunchMode = "background" | "session";
+
+/** The default launch mode when the user does not choose one. */
+export const DEFAULT_LAUNCH_MODE: LaunchMode = "background";
 
 /** Events that drive the FSM (emitted by the manager, probes and the watchdog). */
 export type InstanceEvent =
   /** `start` requested (or restart). */
-  | 'start'
+  | "start"
   /** Readiness probe OK (HTTP 200). */
-  | 'probe-ok'
+  | "probe-ok"
   /** Startup budget exhausted (`startupTimeoutSec`). */
-  | 'timeout'
+  | "timeout"
   /** The spawn itself failed (binary missing / bad args). */
-  | 'spawn-failed'
+  | "spawn-failed"
   /** `stop` requested from a live state. */
-  | 'stop'
+  | "stop"
   /** Grace stop completed (SIGTERM handled, clean exit). */
-  | 'stop-complete'
+  | "stop-complete"
   /** Grace timeout, SIGKILL sent. */
-  | 'stop-timeout'
+  | "stop-timeout"
   /** Child exited cleanly (code 0, no signal). */
-  | 'exit-clean'
+  | "exit-clean"
   /** Child exited abnormally (code ≠ 0 or signal). */
-  | 'exit-abnormal'
+  | "exit-abnormal"
   /** 3× consecutive runtime probe fail while the process is alive (hang). */
-  | 'hang';
+  | "hang";
 
 export const INSTANCE_STATES: readonly InstanceState[] = [
-  'starting',
-  'running',
-  'stopping',
-  'stopped',
-  'error',
-  'crashed',
-  'unknown',
+  "starting",
+  "running",
+  "stopping",
+  "stopped",
+  "error",
+  "crashed",
+  "unknown",
 ];
 
 /**
  * The transition table (PLAN §11.2). Each legal (state, event) pair maps to
  * exactly one next state; any pair not listed is INVALID_STATE.
  */
-export const TRANSITIONS: Record<InstanceState, Partial<Record<InstanceEvent, InstanceState>>> =
-  {
-    stopped: { start: 'starting' },
-    error: { start: 'starting', stop: 'stopped' },
-    crashed: { start: 'starting' },
-    // `unknown` is resolved by reconcile (Faza 10): adopt→running, else stop.
-    unknown: { start: 'starting', stop: 'stopped' },
-    starting: {
-      'probe-ok': 'running',
-      timeout: 'error',
-      'spawn-failed': 'error',
-      'exit-abnormal': 'crashed',
-      'exit-clean': 'stopped',
-      // Interrupt a stuck/in-progress startup.
-      stop: 'stopping',
-    },
-    running: {
-      stop: 'stopping',
-      hang: 'error',
-      'exit-abnormal': 'crashed',
-      'exit-clean': 'stopped',
-    },
-    stopping: {
-      'stop-complete': 'stopped',
-      'stop-timeout': 'stopped',
-      'exit-clean': 'stopped',
-      'exit-abnormal': 'stopped',
-    },
-  };
+export const TRANSITIONS: Record<
+  InstanceState,
+  Partial<Record<InstanceEvent, InstanceState>>
+> = {
+  stopped: { start: "starting" },
+  error: { start: "starting", stop: "stopped" },
+  crashed: { start: "starting" },
+  // `unknown` is resolved by reconcile (Faza 10): adopt→running, else stop.
+  unknown: { start: "starting", stop: "stopped" },
+  starting: {
+    "probe-ok": "running",
+    timeout: "error",
+    "spawn-failed": "error",
+    "exit-abnormal": "crashed",
+    "exit-clean": "stopped",
+    // Interrupt a stuck/in-progress startup.
+    stop: "stopping",
+  },
+  running: {
+    stop: "stopping",
+    hang: "error",
+    "exit-abnormal": "crashed",
+    "exit-clean": "stopped",
+  },
+  stopping: {
+    "stop-complete": "stopped",
+    "stop-timeout": "stopped",
+    "exit-clean": "stopped",
+    "exit-abnormal": "stopped",
+  },
+};
 
 /** Next state for (state, event); throws AppError('INVALID_STATE') when illegal. */
-export function transition(state: InstanceState, event: InstanceEvent): InstanceState {
+export function transition(
+  state: InstanceState,
+  event: InstanceEvent,
+): InstanceState {
   const next = TRANSITIONS[state]?.[event];
   if (next === undefined) {
-    throw new AppError('INVALID_STATE', `invalid state transition: ${state} + ${event}`);
+    throw new AppError(
+      "INVALID_STATE",
+      `invalid state transition: ${state} + ${event}`,
+    );
   }
   return next;
 }
 
 /** True when (state, event) is a legal transition. */
-export function canTransition(state: InstanceState, event: InstanceEvent): boolean {
+export function canTransition(
+  state: InstanceState,
+  event: InstanceEvent,
+): boolean {
   return TRANSITIONS[state]?.[event] !== undefined;
 }
 
 /** States where no live child process exists. */
-export const STABLE_STATES: readonly InstanceState[] = ['stopped', 'error', 'crashed'];
+export const STABLE_STATES: readonly InstanceState[] = [
+  "stopped",
+  "error",
+  "crashed",
+];
 
 /** True when the instance currently holds a live process. */
 export function isLive(state: InstanceState): boolean {
-  return state === 'starting' || state === 'running' || state === 'stopping';
+  return state === "starting" || state === "running" || state === "stopping";
 }
 
 /** Polish labels for the UI (StatusBadge, PLAN §20). */
 export const STATE_LABELS: Record<InstanceState, string> = {
-  starting: 'startuje',
-  running: 'uruchomiony',
-  stopping: 'zatrzymywanie',
-  stopped: 'zatrzymany',
-  error: 'błąd',
-  crashed: 'kraksza',
-  unknown: 'nieznany',
+  starting: "startuje",
+  running: "uruchomiony",
+  stopping: "zatrzymywanie",
+  stopped: "zatrzymany",
+  error: "błąd",
+  crashed: "kraksza",
+  unknown: "nieznany",
 };
 
 /** Color tokens for StatusBadge (defined in tokens.css, Faza 7). */
 export const STATE_COLORS: Record<InstanceState, string> = {
-  starting: 'var(--state-starting)',
-  running: 'var(--state-running)',
-  stopping: 'var(--state-stopping)',
-  stopped: 'var(--state-stopped)',
-  error: 'var(--state-error)',
-  crashed: 'var(--state-crashed)',
-  unknown: 'var(--state-unknown)',
+  starting: "var(--state-starting)",
+  running: "var(--state-running)",
+  stopping: "var(--state-stopping)",
+  stopped: "var(--state-stopped)",
+  error: "var(--state-error)",
+  crashed: "var(--state-crashed)",
+  unknown: "var(--state-unknown)",
 };

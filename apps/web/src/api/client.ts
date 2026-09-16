@@ -6,11 +6,12 @@ import type {
   ConfigResponse,
   InstanceInfo,
   InstanceState,
+  LaunchMode,
   ModelView,
   Preset,
-} from '@ai-dashboard/shared';
+} from "@ai-dashboard/shared";
 
-export type { InstanceInfo, InstanceState, ModelView, Preset };
+export type { InstanceInfo, InstanceState, LaunchMode, ModelView, Preset };
 
 export interface DashboardStatus {
   name: string;
@@ -20,7 +21,7 @@ export interface DashboardStatus {
   timestamp: string;
   engines: unknown[];
   /** Config watch state (P-12). */
-  config?: ConfigResponse['state'];
+  config?: ConfigResponse["state"];
 }
 
 /** A registered engine as returned by `GET /api/v1/engines`. */
@@ -32,7 +33,7 @@ export interface EngineInfo {
   /** Whether a binary path is configured (engine or global layer). */
   configured: boolean;
   binary: string | null;
-  binarySource: 'engine' | 'global' | null;
+  binarySource: "engine" | "global" | null;
 }
 
 /** The resolved runtime info for a live instance (engine-specific). */
@@ -72,6 +73,8 @@ export interface InstanceDto {
   gpu?: GpuView | null;
   ttft?: { tokens: number; seconds: number; tps: number } | null;
   lastError: { exitCode: number | null; signal: string | null } | null;
+  /** The launch choice (null when the entry predates the choice). */
+  mode: LaunchMode | null;
 }
 
 /**
@@ -79,7 +82,7 @@ export interface InstanceDto {
  * captured command line (settings), port, model info, memory and start time.
  */
 export interface ExternalInstanceView {
-  detected: 'external';
+  detected: "external";
   pid: number;
   /** The full `argv` of the process. */
   cmdline: string[];
@@ -129,12 +132,16 @@ export class ApiError extends Error {
     public readonly details?: Record<string, unknown>,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
 interface ErrorEnvelope {
-  error?: { code?: string; message?: string; details?: Record<string, unknown> };
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, unknown>;
+  };
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -161,7 +168,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 function jsonInit(method: string, body: unknown): RequestInit {
   return {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   };
 }
@@ -170,100 +177,152 @@ function jsonInit(method: string, body: unknown): RequestInit {
 
 /** GET /api/v1/status */
 export function getStatus(): Promise<DashboardStatus> {
-  return request<DashboardStatus>('/api/v1/status');
+  return request<DashboardStatus>("/api/v1/status");
 }
 
 /** GET /api/v1/config — all layers + effective merge + watch state. */
 export function getConfig(): Promise<ConfigResponse> {
-  return request<ConfigResponse>('/api/v1/config');
+  return request<ConfigResponse>("/api/v1/config");
 }
 
 /** PUT /api/v1/config/global — replace the global layer. */
 export function putGlobalConfig(body: unknown): Promise<unknown> {
-  return request<unknown>('/api/v1/config/global', jsonInit('PUT', body));
+  return request<unknown>("/api/v1/config/global", jsonInit("PUT", body));
 }
 
 // --- models (FM) ---
 
 /** GET /api/v1/models */
 export function getModels(): Promise<ModelView[]> {
-  return request<{ models: ModelView[] }>('/api/v1/models').then((r) => r.models);
+  return request<{ models: ModelView[] }>("/api/v1/models").then(
+    (r) => r.models,
+  );
 }
 
 /** POST /api/v1/models/discover — rescan modelDirs. */
 export function discoverModels(): Promise<DiscoverResult> {
-  return request<DiscoverResult>('/api/v1/models/discover', jsonInit('POST', {}));
+  return request<DiscoverResult>(
+    "/api/v1/models/discover",
+    jsonInit("POST", {}),
+  );
 }
 
 /** POST /api/v1/models — manual add (FM-3). Auto-detects engine from file extension. */
-export function postModel(body: { path: string; displayName?: string }): Promise<ModelView> {
+export function postModel(body: {
+  path: string;
+  displayName?: string;
+}): Promise<ModelView> {
   // Auto-detect engine: .gguf → llama-server
-  const engineId = body.path.endsWith('.gguf') ? 'llama-server' : undefined;
-  return request<ModelView>('/api/v1/models', jsonInit('POST', { ...body, engineId }));
+  const engineId = body.path.endsWith(".gguf") ? "llama-server" : undefined;
+  return request<ModelView>(
+    "/api/v1/models",
+    jsonInit("POST", { ...body, engineId }),
+  );
 }
 
 // --- instances (FSM) ---
 
 /** GET /api/v1/instances */
 export function getInstances(): Promise<InstanceInfo[]> {
-  return request<{ instances: InstanceInfo[] }>('/api/v1/instances').then((r) => r.instances);
+  return request<{ instances: InstanceInfo[] }>("/api/v1/instances").then(
+    (r) => r.instances,
+  );
 }
 
 /** GET /api/v1/instances/:instanceId — full DTO (§14.2). */
 export function getInstance(instanceId: string): Promise<InstanceDto> {
-  return request<InstanceDto>(`/api/v1/instances/${encodeURIComponent(instanceId)}`);
+  return request<InstanceDto>(
+    `/api/v1/instances/${encodeURIComponent(instanceId)}`,
+  );
 }
 
 /** GET /api/v1/instances/external — engine processes launched outside the app (PLAN §16.4). */
 export function getExternalInstances(): Promise<ExternalInstanceView[]> {
-  return request<{ instances: ExternalInstanceView[] }>('/api/v1/instances/external').then((r) => r.instances);
+  return request<{ instances: ExternalInstanceView[] }>(
+    "/api/v1/instances/external",
+  ).then((r) => r.instances);
 }
 
-/** POST /api/v1/instances/:instanceId/start */
-export function startInstance(instanceId: string): Promise<{ instanceId: string; state: InstanceState }> {
-  return request(`/api/v1/instances/${encodeURIComponent(instanceId)}/start`, jsonInit('POST', {}));
+/** POST /api/v1/instances/:instanceId/start (`mode` = launch choice). */
+export function startInstance(
+  instanceId: string,
+  mode: LaunchMode = "background",
+): Promise<{ instanceId: string; state: InstanceState }> {
+  return request(
+    `/api/v1/instances/${encodeURIComponent(instanceId)}/start`,
+    jsonInit("POST", { mode }),
+  );
 }
 
 /** POST /api/v1/instances/:instanceId/stop */
-export function stopInstance(instanceId: string): Promise<{ instanceId: string; state: InstanceState }> {
-  return request(`/api/v1/instances/${encodeURIComponent(instanceId)}/stop`, jsonInit('POST', {}));
+export function stopInstance(
+  instanceId: string,
+): Promise<{ instanceId: string; state: InstanceState }> {
+  return request(
+    `/api/v1/instances/${encodeURIComponent(instanceId)}/stop`,
+    jsonInit("POST", {}),
+  );
 }
 
-/** POST /api/v1/instances/:instanceId/restart */
-export function restartInstance(instanceId: string): Promise<{ instanceId: string; state: InstanceState }> {
-  return request(`/api/v1/instances/${encodeURIComponent(instanceId)}/restart`, jsonInit('POST', {}));
+/** POST /api/v1/instances/:instanceId/restart (`mode` = launch choice). */
+export function restartInstance(
+  instanceId: string,
+  mode: LaunchMode = "background",
+): Promise<{ instanceId: string; state: InstanceState }> {
+  return request(
+    `/api/v1/instances/${encodeURIComponent(instanceId)}/restart`,
+    jsonInit("POST", { mode }),
+  );
 }
 
 /** POST /api/v1/instances/:instanceId/resolve — re-check PID, update state (Faza 10.1). */
-export function resolveInstance(instanceId: string): Promise<{ instanceId: string; state: InstanceState }> {
-  return request(`/api/v1/instances/${encodeURIComponent(instanceId)}/resolve`, jsonInit('POST', {}));
+export function resolveInstance(
+  instanceId: string,
+): Promise<{ instanceId: string; state: InstanceState }> {
+  return request(
+    `/api/v1/instances/${encodeURIComponent(instanceId)}/resolve`,
+    jsonInit("POST", {}),
+  );
 }
 
 // --- presets (CFG) ---
 
 /** GET /api/v1/models/:modelId/presets */
 export function getPresets(modelId: string): Promise<Preset[]> {
-  return request<{ presets: Preset[] }>(`/api/v1/models/${encodeURIComponent(modelId)}/presets`).then((r) => r.presets);
+  return request<{ presets: Preset[] }>(
+    `/api/v1/models/${encodeURIComponent(modelId)}/presets`,
+  ).then((r) => r.presets);
 }
 
 /** PUT /api/v1/models/:modelId/presets/:name */
-export function putPreset(modelId: string, name: string, body: Partial<Preset>): Promise<void> {
+export function putPreset(
+  modelId: string,
+  name: string,
+  body: Partial<Preset>,
+): Promise<void> {
   return request<void>(
     `/api/v1/models/${encodeURIComponent(modelId)}/presets/${encodeURIComponent(name)}`,
-    jsonInit('PUT', body),
+    jsonInit("PUT", body),
   );
 }
 
 /** DELETE /api/v1/models/:modelId/presets/:name */
 export function deletePreset(modelId: string, name: string): Promise<void> {
-  return request<void>(`/api/v1/models/${encodeURIComponent(modelId)}/presets/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  return request<void>(
+    `/api/v1/models/${encodeURIComponent(modelId)}/presets/${encodeURIComponent(name)}`,
+    { method: "DELETE" },
+  );
 }
 
 /** POST /api/v1/models/:modelId/presets/:name/duplicate */
-export function duplicatePreset(modelId: string, name: string, targetName: string): Promise<void> {
+export function duplicatePreset(
+  modelId: string,
+  name: string,
+  targetName: string,
+): Promise<void> {
   return request<void>(
     `/api/v1/models/${encodeURIComponent(modelId)}/presets/${encodeURIComponent(name)}/duplicate`,
-    jsonInit('POST', { name: targetName }),
+    jsonInit("POST", { name: targetName }),
   );
 }
 
@@ -271,14 +330,21 @@ export function duplicatePreset(modelId: string, name: string, targetName: strin
 
 /** GET /api/v1/engines */
 export function getEngines(): Promise<EngineInfo[]> {
-  return request<{ engines: EngineInfo[] }>('/api/v1/engines').then((r) => r.engines);
+  return request<{ engines: EngineInfo[] }>("/api/v1/engines").then(
+    (r) => r.engines,
+  );
 }
 
 /** GET /api/v1/engines/:id/schema → declarative param schema (drives SchemaForm). */
-export function getEngineSchema(engineId: string): Promise<import('@ai-dashboard/shared').ParamSchema[]> {
-  return request<{ engineId: string; schema: import('@ai-dashboard/shared').ParamSchema[] }>(
-    `/api/v1/engines/${encodeURIComponent(engineId)}/schema`,
-  ).then((r) => r.schema);
+export function getEngineSchema(
+  engineId: string,
+): Promise<import("@ai-dashboard/shared").ParamSchema[]> {
+  return request<{
+    engineId: string;
+    schema: import("@ai-dashboard/shared").ParamSchema[];
+  }>(`/api/v1/engines/${encodeURIComponent(engineId)}/schema`).then(
+    (r) => r.schema,
+  );
 }
 
 /** PUT /api/v1/engines/:id — set binary (+ validated against `--version`/vulkan). */
@@ -286,5 +352,8 @@ export function putEngine(
   id: string,
   body: { binary: string; params?: Record<string, unknown> },
 ): Promise<PutEngineResult> {
-  return request<PutEngineResult>(`/api/v1/engines/${encodeURIComponent(id)}`, jsonInit('PUT', body));
+  return request<PutEngineResult>(
+    `/api/v1/engines/${encodeURIComponent(id)}`,
+    jsonInit("PUT", body),
+  );
 }

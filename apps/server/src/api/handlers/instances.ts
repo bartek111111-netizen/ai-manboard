@@ -8,39 +8,65 @@
  * - `POST /api/v1/instances/:instanceId/stop`     → stop (grace)
  * - `POST /api/v1/instances/:instanceId/restart`  → restart
  */
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { InstanceState } from '@ai-dashboard/shared';
-import type { LifecycleManager } from '../../core/process/lifecycle.js';
+import type { FastifyReply, FastifyRequest } from "fastify";
+import {
+  DEFAULT_LAUNCH_MODE,
+  type InstanceState,
+  type LaunchMode,
+} from "@ai-dashboard/shared";
+import type { LifecycleManager } from "../../core/process/lifecycle.js";
 
 const param = (request: FastifyRequest): string =>
   String((request.params as Record<string, string>).instanceId);
 
+/** Reads the launch-mode choice from the request body (defaults to background). */
+const launchMode = (request: FastifyRequest): LaunchMode => {
+  const body = request.body as { mode?: LaunchMode } | undefined;
+  const mode = body?.mode;
+  return mode === "session" ? "session" : DEFAULT_LAUNCH_MODE;
+};
+
 export function makeInstanceHandlers(lifecycle: LifecycleManager) {
   return {
     /** GET /api/v1/instances */
-    list: async (_request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    list: async (
+      _request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       reply.send({ instances: lifecycle.listInstances() });
     },
 
     /** GET /api/v1/instances/external → engine processes launched outside the app (PLAN §16.4). */
-    external: async (_request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    external: async (
+      _request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       reply.send({ instances: await lifecycle.detectExternalInstances() });
     },
 
     /** GET /api/v1/instances/:instanceId → full DTO (Faza 6.3, §14.2). */
-    get: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    get: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       const instanceId = param(request);
       reply.send(await lifecycle.getFullDto(instanceId));
     },
 
     /** GET /api/v1/instances/:instanceId/metrics (Faza 6.3). */
-    metrics: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    metrics: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       const instanceId = param(request);
       reply.send(await lifecycle.getMetrics(instanceId));
     },
 
     /** GET /api/v1/instances/:instanceId/logs?limit= (Faza 6.3). */
-    logs: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    logs: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       const instanceId = param(request);
       const query = request.query as { limit?: string };
       const limit = query.limit ? Number(query.limit) : undefined;
@@ -48,28 +74,46 @@ export function makeInstanceHandlers(lifecycle: LifecycleManager) {
     },
 
     /** POST /api/v1/instances/:instanceId/start → `starting` (probe settles in background). */
-    start: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    start: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       const instanceId = param(request);
-      const state: InstanceState = await lifecycle.start(instanceId);
+      const state: InstanceState = await lifecycle.start(
+        instanceId,
+        launchMode(request),
+      );
       reply.send({ instanceId, state });
     },
 
     /** POST /api/v1/instances/:instanceId/stop → `stopped` (grace). */
-    stop: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    stop: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       const instanceId = param(request);
       await lifecycle.stop(instanceId);
       reply.send({ instanceId, state: lifecycle.getState(instanceId) });
     },
 
     /** POST /api/v1/instances/:instanceId/restart → new `starting`. */
-    restart: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    restart: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       const instanceId = param(request);
-      const state: InstanceState = await lifecycle.restart(instanceId);
+      const state: InstanceState = await lifecycle.restart(
+        instanceId,
+        launchMode(request),
+      );
       reply.send({ instanceId, state });
     },
 
     /** POST /api/v1/instances/:instanceId/resolve → re-check PID, update state (Faza 10.1). */
-    resolve: async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    resolve: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
       const instanceId = param(request);
       const state: InstanceState = lifecycle.resolve(instanceId);
       reply.send({ instanceId, state });

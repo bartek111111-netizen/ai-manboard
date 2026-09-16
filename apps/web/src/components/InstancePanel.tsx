@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { InstanceState } from '@ai-dashboard/shared';
+import { useCallback, useEffect, useState } from "react";
+import type { InstanceState } from "@ai-dashboard/shared";
 import {
   getInstance,
   resolveInstance,
@@ -7,13 +7,15 @@ import {
   startInstance,
   stopInstance,
   type InstanceDto,
-} from '../api/client';
-import { openEventStream } from '../api/sse';
-import { t } from '../i18n';
-import { errInfo } from '../ui/errors';
-import { isLiveState } from '../ui/state';
-import { ErrorNotice } from './ErrorNotice';
-import { StatusBadge } from './StatusBadge';
+} from "../api/client";
+import { openEventStream } from "../api/sse";
+import { t } from "../i18n";
+import { errInfo } from "../ui/errors";
+import { isLiveState } from "../ui/state";
+import type { LaunchMode } from "../api/client";
+import { ErrorNotice } from "./ErrorNotice";
+import { LaunchModeModal } from "./LaunchModeModal";
+import { StatusBadge } from "./StatusBadge";
 
 const POLL_MS = 3000;
 
@@ -22,13 +24,33 @@ const POLL_MS = 3000;
  * endpoint (copy) + [Start][Stop][Restart]. Polls the full DTO and listens to
  * the SSE state stream so the badge updates in real time.
  */
-export function InstancePanel({ modelId, presetName }: { modelId: string; presetName: string }) {
+export function InstancePanel({
+  modelId,
+  presetName,
+}: {
+  modelId: string;
+  presetName: string;
+}) {
   const instanceId = `${modelId}--${presetName}`;
   const [dto, setDto] = useState<InstanceDto | null>(null);
-  const [state, setState] = useState<InstanceState>('unknown');
-  const [error, setError] = useState<{ message: string; code?: string } | null>(null);
+  const [state, setState] = useState<InstanceState>("unknown");
+  const [error, setError] = useState<{ message: string; code?: string } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** The pending launch (start/restart) awaiting the user's mode choice. */
+  const [launchTarget, setLaunchTarget] = useState<{
+    action: "start" | "restart";
+  } | null>(null);
+
+  const handleLaunch = (mode: LaunchMode): void => {
+    if (!launchTarget) return;
+    const { action } = launchTarget;
+    setLaunchTarget(null);
+    const call = action === "restart" ? restartInstance : startInstance;
+    void run(() => call(instanceId, mode));
+  };
 
   const poll = useCallback((): void => {
     getInstance(instanceId)
@@ -81,7 +103,7 @@ export function InstancePanel({ modelId, presetName }: { modelId: string; preset
 
   // Chat UI root (the llama-server web UI at the instance base, e.g.
   // `http://127.0.0.1:8080/`); the API endpoint is `<origin>/v1/`.
-  const chatUrl = dto ? new URL(dto.endpoint).origin + '/' : null;
+  const chatUrl = dto ? new URL(dto.endpoint).origin + "/" : null;
 
   return (
     <section>
@@ -93,24 +115,34 @@ export function InstancePanel({ modelId, presetName }: { modelId: string; preset
       <ErrorNotice message={error?.message ?? null} code={error?.code} />
 
       <dl className="kv">
-        <dt>{t('fieldState')}</dt>
+        <dt>{t("fieldState")}</dt>
         <dd>
           <StatusBadge state={state} small />
         </dd>
-        <dt>{t('fieldPreset')}</dt>
+        <dt>{t("fieldPreset")}</dt>
         <dd>{presetName}</dd>
-        <dt>{t('fieldPort')}</dt>
-        <dd>{dto?.port ?? '—'}</dd>
-        <dt>{t('fieldPid')}</dt>
-        <dd>{dto?.pid ?? '—'}</dd>
-        <dt>{t('fieldUptime')}</dt>
-        <dd>{dto?.uptimeSec !== null && dto ? `${dto.uptimeSec} s` : '—'}</dd>
-        <dt>{t('fieldEndpoint')}</dt>
+        {dto?.mode && (
+          <>
+            <dt>{t("launchModeTag")}</dt>
+            <dd>
+              {dto.mode === "background"
+                ? `🟢 ${t("launchModeBackground")}`
+                : `⚪ ${t("launchModeSession")}`}
+            </dd>
+          </>
+        )}
+        <dt>{t("fieldPort")}</dt>
+        <dd>{dto?.port ?? "—"}</dd>
+        <dt>{t("fieldPid")}</dt>
+        <dd>{dto?.pid ?? "—"}</dd>
+        <dt>{t("fieldUptime")}</dt>
+        <dd>{dto?.uptimeSec !== null && dto ? `${dto.uptimeSec} s` : "—"}</dd>
+        <dt>{t("fieldEndpoint")}</dt>
         <dd className="endpoint">
-          {dto?.endpoint ?? '—'}
+          {dto?.endpoint ?? "—"}
           {dto && (
             <button type="button" className="btn small" onClick={copyEndpoint}>
-              {copied ? t('copied') : t('copy')}
+              {copied ? t("copied") : t("copy")}
             </button>
           )}
         </dd>
@@ -118,38 +150,70 @@ export function InstancePanel({ modelId, presetName }: { modelId: string; preset
 
       {dto?.lastError && (
         <p className="status-error">
-          {t('lastError')} (exit: {dto.lastError.exitCode ?? '—'}
-          {dto.lastError.signal ? `, signal: ${dto.lastError.signal}` : ''})
+          {t("lastError")} (exit: {dto.lastError.exitCode ?? "—"}
+          {dto.lastError.signal ? `, signal: ${dto.lastError.signal}` : ""})
         </p>
       )}
 
       <div className="instance-actions">
         {!live && (
-          <button type="button" className="btn" disabled={busy} onClick={() => run(() => startInstance(instanceId))}>
-            {t('actionStart')}
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => setLaunchTarget({ action: "start" })}
+          >
+            {t("actionStart")}
           </button>
         )}
         {live && chatUrl && (
-          <a className="btn" href={chatUrl} target="_blank" rel="noreferrer noopener">
-            {t('openChatInBrowser')}
+          <a
+            className="btn"
+            href={chatUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            {t("openChatInBrowser")}
           </a>
         )}
         {live && (
-          <button type="button" className="btn" disabled={busy} onClick={() => run(() => stopInstance(instanceId))}>
-            {t('actionStop')}
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => run(() => stopInstance(instanceId))}
+          >
+            {t("actionStop")}
           </button>
         )}
         {live && (
-          <button type="button" className="btn" disabled={busy} onClick={() => run(() => restartInstance(instanceId))}>
-            {t('actionRestart')}
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => setLaunchTarget({ action: "restart" })}
+          >
+            {t("actionRestart")}
           </button>
         )}
-        {state === 'unknown' && (
-          <button type="button" className="btn" disabled={busy} onClick={() => run(() => resolveInstance(instanceId))}>
-            {t('actionResolve')}
+        {state === "unknown" && (
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => run(() => resolveInstance(instanceId))}
+          >
+            {t("actionResolve")}
           </button>
         )}
       </div>
+
+      {launchTarget && (
+        <LaunchModeModal
+          onSelect={handleLaunch}
+          onClose={() => setLaunchTarget(null)}
+        />
+      )}
     </section>
   );
 }

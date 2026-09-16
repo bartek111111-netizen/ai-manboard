@@ -21,29 +21,42 @@ import {
   type InstanceInfo,
   type InstanceState,
   type InstanceView,
+  type LaunchMode,
   type ModelInfo,
   type RuntimeInfo,
-} from '@ai-dashboard/shared';
-import type { LogLine } from '../logs/ringbuffer.js';
-import type { LogWriter } from '../logs/writer.js';
-import type { ConfigStore } from '../config/store.js';
-import { type HealthProber, type ProbeSource, type RuntimeHandle } from '../health/prober.js';
-import { InstanceResolver, resolveInstanceId, type ResolvedInstance } from './resolve.js';
-import type { ProcessManager } from './manager.js';
-import type { PidRegistry } from './registry.js';
-import { reconcileAll as reconcileAllFn, resolveInstance as resolveInstanceFn, isPidAlive } from './reconcile.js';
-import { writeAutoLog } from '../logs/store.js';
-import { readGpuInfo, type GpuInfo } from '../../gpu.js';
-import { readFileSync } from 'node:fs';
-import { basename } from 'node:path';
-import si from 'systeminformation';
+} from "@ai-dashboard/shared";
+import type { LogLine } from "../logs/ringbuffer.js";
+import type { LogWriter } from "../logs/writer.js";
+import type { ConfigStore } from "../config/store.js";
+import {
+  type HealthProber,
+  type ProbeSource,
+  type RuntimeHandle,
+} from "../health/prober.js";
+import {
+  InstanceResolver,
+  resolveInstanceId,
+  type ResolvedInstance,
+} from "./resolve.js";
+import type { ProcessManager } from "./manager.js";
+import type { PidRegistry } from "./registry.js";
+import {
+  reconcileAll as reconcileAllFn,
+  resolveInstance as resolveInstanceFn,
+  isPidAlive,
+} from "./reconcile.js";
+import { writeAutoLog } from "../logs/store.js";
+import { readGpuInfo, type GpuInfo } from "../../gpu.js";
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
+import si from "systeminformation";
 import {
   scanEngineProcesses,
   readRssMB,
   readUptimeSec,
   type ExternalInstanceView,
   type ExternalProcessInfo,
-} from './external.js';
+} from "./external.js";
 
 export interface LifecycleDeps {
   store: ConfigStore;
@@ -96,6 +109,11 @@ export interface InstanceDto {
   ttft?: { tokens: number; seconds: number; tps: number } | null;
   /** The last abnormal exit (null when none since start). */
   lastError: { exitCode: number | null; signal: string | null } | null;
+  /**
+   * The launch choice ("Zostaje w tle" = background, "Znika z dashboardem" =
+   * session). Null when the entry predates the choice.
+   */
+  mode: LaunchMode | null;
 }
 
 export class LifecycleManager {
@@ -125,7 +143,7 @@ export class LifecycleManager {
 
   /** Current FSM state, or `unknown` when the instance is not known/tracked. */
   getState(instanceId: string): InstanceState {
-    return this.deps.manager.getState(instanceId) ?? 'unknown';
+    return this.deps.manager.getState(instanceId) ?? "unknown";
   }
 
   /**
@@ -138,11 +156,14 @@ export class LifecycleManager {
     const engine = this.enginesByInstance.get(instanceId);
     // Prefer the persistent disk tail (survives the in-memory ring being
     // dropped on exit); fall back to the live ring.
-    const diskTail = this.deps.logs ? this.deps.logs.readTail(instanceId, 100) : [];
+    const diskTail = this.deps.logs
+      ? this.deps.logs.readTail(instanceId, 100)
+      : [];
     const ring = this.deps.manager.getLogs(instanceId, 100);
-    const logTail = diskTail.length > 0 ? diskTail : ring.map((l: LogLine) => l.line);
+    const logTail =
+      diskTail.length > 0 ? diskTail : ring.map((l: LogLine) => l.line);
     const errorLines = engine
-      ? logTail.filter((line) => engine.classifyLog(line).level === 'error')
+      ? logTail.filter((line) => engine.classifyLog(line).level === "error")
       : [];
     return {
       instanceId,
@@ -165,6 +186,7 @@ export class LifecycleManager {
       port: entry?.port ?? null,
       pid: entry?.pid ?? null,
       startedAt: entry?.startedAt ?? null,
+      mode: entry?.mode ?? null,
     };
   }
 
@@ -178,11 +200,11 @@ export class LifecycleManager {
     const entry = this.deps.registry.get(instanceId);
     let state = this.getState(instanceId);
     // Check if the process is actually alive (prevents stale 'running' state)
-    if ((state === 'running' || state === 'starting') && entry?.pid) {
+    if ((state === "running" || state === "starting") && entry?.pid) {
       const alive = isPidAlive(entry.pid);
       if (!alive) {
-        state = 'error';
-        this.deps.manager.setInstanceState(instanceId, 'error');
+        state = "error";
+        this.deps.manager.setInstanceState(instanceId, "error");
       }
     }
     // configSource: which layer supplied each param (§14.2 "pełne DTO").
@@ -191,11 +213,14 @@ export class LifecycleManager {
       configSource[key] = resolved.source;
     }
     // Runtime info (slots/tokensPerSec/gpu) — best-effort (null when not live).
-    const runtime = state === 'running' || state === 'starting'
-      ? await inst.engine.fetchRuntimeInfo(inst.base)
-      : null;
+    const runtime =
+      state === "running" || state === "starting"
+        ? await inst.engine.fetchRuntimeInfo(inst.base)
+        : null;
     const startedAt = entry?.startedAt ?? null;
-    const uptimeSec = startedAt ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000) : null;
+    const uptimeSec = startedAt
+      ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+      : null;
     const system = this.getSystemMetrics(instanceId, state);
     return {
       instanceId,
@@ -204,7 +229,7 @@ export class LifecycleManager {
       state,
       pid: entry?.pid ?? null,
       port: inst.port,
-      command: [inst.launch.binary, ...inst.launch.args].join(' '),
+      command: [inst.launch.binary, ...inst.launch.args].join(" "),
       endpoint: `${inst.base}/v1/`,
       startedAt,
       uptimeSec,
@@ -213,9 +238,11 @@ export class LifecycleManager {
       process: await this.getProcessMetrics(instanceId),
       gpu: system.gpu,
       ttft: system.ttft,
-      lastError: entry && (entry.lastExitCode !== null || entry.lastSignal)
-        ? { exitCode: entry.lastExitCode, signal: entry.lastSignal ?? null }
-        : null,
+      lastError:
+        entry && (entry.lastExitCode !== null || entry.lastSignal)
+          ? { exitCode: entry.lastExitCode, signal: entry.lastSignal ?? null }
+          : null,
+      mode: entry?.mode ?? null,
     };
   }
 
@@ -223,11 +250,19 @@ export class LifecycleManager {
   async getMetrics(instanceId: string): Promise<Record<string, unknown>> {
     const inst = await this.resolver.resolve(instanceId);
     const state = this.getState(instanceId);
-    const runtime = state === 'running' || state === 'starting'
-      ? await inst.engine.fetchRuntimeInfo(inst.base)
-      : null;
+    const runtime =
+      state === "running" || state === "starting"
+        ? await inst.engine.fetchRuntimeInfo(inst.base)
+        : null;
     const system = this.getSystemMetrics(instanceId, state);
-    return { instanceId, state, runtime, process: await this.getProcessMetrics(instanceId), gpu: system.gpu, ttft: system.ttft };
+    return {
+      instanceId,
+      state,
+      runtime,
+      process: await this.getProcessMetrics(instanceId),
+      gpu: system.gpu,
+      ttft: system.ttft,
+    };
   }
 
   /**
@@ -235,18 +270,27 @@ export class LifecycleManager {
    * sysfs / `nvidia-smi`) and the last request's prefill timing (TTFT) from
    * the instance's log. Best-effort — null when unavailable.
    */
-  private getSystemMetrics(instanceId: string, state: InstanceState): { gpu: GpuInfo | null; ttft: { tokens: number; seconds: number; tps: number } | null } {
+  private getSystemMetrics(
+    instanceId: string,
+    state: InstanceState,
+  ): {
+    gpu: GpuInfo | null;
+    ttft: { tokens: number; seconds: number; tps: number } | null;
+  } {
     const gpu = readGpuInfo();
-    const ttft = (state === 'running' || state === 'starting') && this.deps.logs
-      ? this.deps.logs.readLastPromptProcessing(instanceId)
-      : null;
+    const ttft =
+      (state === "running" || state === "starting") && this.deps.logs
+        ? this.deps.logs.readLastPromptProcessing(instanceId)
+        : null;
     return { gpu, ttft };
   }
 
   /** Gets CPU% and RSS for the instance's process. */
-  private async getProcessMetrics(instanceId: string): Promise<{ cpuPct: number | null; rssMB: number | null }> {
+  private async getProcessMetrics(
+    instanceId: string,
+  ): Promise<{ cpuPct: number | null; rssMB: number | null }> {
     const state = this.getState(instanceId);
-    if (state !== 'running') {
+    if (state !== "running") {
       return { cpuPct: null, rssMB: null };
     }
 
@@ -270,13 +314,13 @@ export class LifecycleManager {
       }
 
       // Fallback to /proc if not found
-      const procMem = readFileSync(`/proc/${pid}/status`, 'utf8');
+      const procMem = readFileSync(`/proc/${pid}/status`, "utf8");
       const rssMatch = procMem.match(/VmRSS:\s+(\d+)\s+kB/);
       const rssKB = rssMatch ? parseInt(rssMatch[1], 10) : 0;
       const rssMB = rssKB / 1024;
       return { cpuPct: 0, rssMB: Math.round(rssMB) };
     } catch (err) {
-      console.error('Failed to get process metrics:', err);
+      console.error("Failed to get process metrics:", err);
       return { cpuPct: null, rssMB: null };
     }
   }
@@ -306,24 +350,38 @@ export class LifecycleManager {
 
     // PIDs the dashboard manages — exclude them; the rest are external.
     const appPids = new Set<number>();
-    for (const inst of this.listInstances()) if (inst.pid) appPids.add(inst.pid);
+    for (const inst of this.listInstances())
+      if (inst.pid) appPids.add(inst.pid);
 
-    const external = scanEngineProcesses(binaryBases).filter((p) => !appPids.has(p.pid));
+    const external = scanEngineProcesses(binaryBases).filter(
+      (p) => !appPids.has(p.pid),
+    );
     return Promise.all(external.map((p) => this.enrichExternalInstance(p)));
   }
 
   /** Enriches one external process: live `/v1/models`, RSS, uptime, GPU + the app match. */
-  private async enrichExternalInstance(p: ExternalProcessInfo): Promise<ExternalInstanceView> {
-    const runtime = p.port ? await fetchLlamaServerRuntimeInfo(`http://${p.host}:${p.port}`) : null;
+  private async enrichExternalInstance(
+    p: ExternalProcessInfo,
+  ): Promise<ExternalInstanceView> {
+    const runtime = p.port
+      ? await fetchLlamaServerRuntimeInfo(`http://${p.host}:${p.port}`)
+      : null;
     const model = this.matchRegisteredModel(p.modelPath);
     const inst = model ? this.matchRegisteredInstance(model, p.port) : null;
     // The live server's `/v1/models` meta (works even without `--metrics`).
-    const meta = ((runtime?.extras?.models as { data?: Array<Record<string, unknown>> })?.data?.[0] ?? {}) as Record<string, unknown>;
+    const meta = ((
+      runtime?.extras?.models as { data?: Array<Record<string, unknown>> }
+    )?.data?.[0] ?? {}) as Record<string, unknown>;
     const metaObj = (meta.meta as Record<string, unknown>) ?? {};
-    const contextSize = runtime?.contextSize ?? (typeof metaObj.n_ctx === 'number' ? metaObj.n_ctx : null);
-    const quantization = (typeof metaObj.ftype === 'string' ? metaObj.ftype : null) ?? (runtime?.extras?.modelQuant as string | undefined) ?? null;
+    const contextSize =
+      runtime?.contextSize ??
+      (typeof metaObj.n_ctx === "number" ? metaObj.n_ctx : null);
+    const quantization =
+      (typeof metaObj.ftype === "string" ? metaObj.ftype : null) ??
+      (runtime?.extras?.modelQuant as string | undefined) ??
+      null;
     return {
-      detected: 'external',
+      detected: "external",
       pid: p.pid,
       cmdline: p.cmdline,
       params: p.args,
@@ -332,7 +390,10 @@ export class LifecycleManager {
       host: p.host,
       rssMB: readRssMB(p.pid),
       uptimeSec: readUptimeSec(p.pid),
-      modelName: (p.modelPath ? basename(p.modelPath) : null) ?? runtime?.modelLoaded ?? null,
+      modelName:
+        (p.modelPath ? basename(p.modelPath) : null) ??
+        runtime?.modelLoaded ??
+        null,
       contextSize,
       quantization,
       gpu: readGpuInfo(),
@@ -347,7 +408,12 @@ export class LifecycleManager {
     if (!path) return null;
     for (const id of this.deps.store.listModelIds()) {
       const registered = this.deps.store.readModel(id)?.params?.model;
-      if (typeof registered === 'string' && (path === registered || path.endsWith(registered) || registered.endsWith(path))) {
+      if (
+        typeof registered === "string" &&
+        (path === registered ||
+          path.endsWith(registered) ||
+          registered.endsWith(path))
+      ) {
         return id;
       }
     }
@@ -355,7 +421,10 @@ export class LifecycleManager {
   }
 
   /** The registered instance for (modelId, port): exact port first, else any for the model. */
-  private matchRegisteredInstance(modelId: string, port: number | null): InstanceInfo | null {
+  private matchRegisteredInstance(
+    modelId: string,
+    port: number | null,
+  ): InstanceInfo | null {
     const forModel = this.listInstances().filter((i) => i.modelId === modelId);
     if (port) {
       const byPort = forModel.find((i) => i.port === port);
@@ -370,12 +439,22 @@ export class LifecycleManager {
    * Starts an instance. Validates (engine.validate + preflight) first, then
    * spawns (state → `starting`) and returns immediately; the readiness probe
    * settles the instance to `running` or `error` in the background.
+   * `mode` is the launch choice: `background` ("Zostaje w tle") survives a
+   * dashboard restart; `session` ("Znika z dashboardem") stops with it.
    * @throws AppError when the instance is already live, or validation/preflight fails.
    */
-  async start(instanceId: string): Promise<InstanceState> {
+  async start(
+    instanceId: string,
+    mode: LaunchMode = "background",
+  ): Promise<InstanceState> {
     const current = this.getState(instanceId);
     if (isLive(current)) {
-      throw new AppError('INVALID_STATE', `instance is already ${current}`, { instanceId }, 409);
+      throw new AppError(
+        "INVALID_STATE",
+        `instance is already ${current}`,
+        { instanceId },
+        409,
+      );
     }
 
     const inst = await this.resolver.resolve(instanceId);
@@ -383,7 +462,7 @@ export class LifecycleManager {
     this.enginesByInstance.set(instanceId, inst.engine);
 
     // Spawn (state → starting). The readiness probe runs in the background.
-    await this.deps.manager.spawn(instanceId, inst.launch, inst.port);
+    await this.deps.manager.spawn(instanceId, inst.launch, inst.port, mode);
     void this.driveStartup(instanceId, inst);
     return this.getState(instanceId);
   }
@@ -400,12 +479,12 @@ export class LifecycleManager {
     const current = this.getState(instanceId);
     if (isLive(current)) {
       await this.deps.manager.stop(instanceId);
-    } else if (current === 'error') {
+    } else if (current === "error") {
       if (this.deps.manager.isTracked(instanceId)) {
-        await this.deps.manager.terminate(instanceId, 'stopped');
+        await this.deps.manager.terminate(instanceId, "stopped");
       } else {
         // Child already gone (startup timeout) — settle the registry.
-        this.deps.manager.setInstanceState(instanceId, 'stopped');
+        this.deps.manager.setInstanceState(instanceId, "stopped");
       }
     }
     // Auto-save logs when stopping
@@ -416,8 +495,10 @@ export class LifecycleManager {
   private autoSaveLogs(instanceId: string, logs: LogLine[]): void {
     try {
       if (logs.length === 0) return;
-      const modelId = instanceId.split('--')[0];
-      const content = logs.map((l) => `[${new Date(l.ts).toISOString()}] ${l.line}`).join('\n');
+      const modelId = instanceId.split("--")[0];
+      const content = logs
+        .map((l) => `[${new Date(l.ts).toISOString()}] ${l.line}`)
+        .join("\n");
       writeAutoLog(modelId, content);
     } catch {
       // Best-effort — don't fail the stop on log errors
@@ -425,9 +506,12 @@ export class LifecycleManager {
   }
 
   /** Restarts an instance (stop + start). */
-  async restart(instanceId: string): Promise<InstanceState> {
+  async restart(
+    instanceId: string,
+    mode: LaunchMode = "background",
+  ): Promise<InstanceState> {
     await this.stop(instanceId);
-    return this.start(instanceId);
+    return this.start(instanceId, mode);
   }
 
   /** Stops all live runtime loops (dashboard shutdown). */
@@ -474,16 +558,26 @@ export class LifecycleManager {
   private async runChecks(inst: ResolvedInstance): Promise<void> {
     const model = this.deps.store.readModel(inst.modelId);
     if (!model) {
-      throw new AppError('MODEL_NOT_FOUND', `model not found: ${inst.modelId}`, { instanceId: inst.instanceId }, 404);
+      throw new AppError(
+        "MODEL_NOT_FOUND",
+        `model not found: ${inst.modelId}`,
+        { instanceId: inst.instanceId },
+        404,
+      );
     }
     const modelInfo: ModelInfo = {
       id: inst.modelId,
-      path: typeof model.params?.model === 'string' ? model.params.model : '',
+      path: typeof model.params?.model === "string" ? model.params.model : "",
       engineId: inst.engine.id,
     };
     const errors = inst.engine.validate(modelInfo, inst.resolved);
     if (errors.length > 0) {
-      throw new AppError('VALIDATION_FAILED', errors.join('; '), { instanceId: inst.instanceId, errors }, 400);
+      throw new AppError(
+        "VALIDATION_FAILED",
+        errors.join("; "),
+        { instanceId: inst.instanceId, errors },
+        400,
+      );
     }
     if (inst.engine.preflight) {
       const ctx = {
@@ -496,8 +590,8 @@ export class LifecycleManager {
       const pre = await inst.engine.preflight(ctx);
       if (!pre.ok) {
         throw new AppError(
-          'PREFLIGHT_FAILED',
-          pre.errors.map((e) => e.message).join('; '),
+          "PREFLIGHT_FAILED",
+          pre.errors.map((e) => e.message).join("; "),
           { instanceId: inst.instanceId, errors: pre.errors },
           400,
         );
@@ -510,26 +604,39 @@ export class LifecycleManager {
    *   probe-ok  → `starting`→`running` + start the runtime loop (hang → `error`).
    *   timeout   → `starting`→`error` + terminate the stuck child.
    */
-  private async driveStartup(instanceId: string, inst: ResolvedInstance): Promise<void> {
+  private async driveStartup(
+    instanceId: string,
+    inst: ResolvedInstance,
+  ): Promise<void> {
     const source = this.probeSourceFor(inst);
     const outcome = await this.deps.prober.waitReady(source, inst.base);
     const current = this.deps.manager.getState(instanceId);
     if (outcome.ok) {
-      if (current === 'starting') {
-        this.deps.manager.setInstanceState(instanceId, transition(current, 'probe-ok'));
+      if (current === "starting") {
+        this.deps.manager.setInstanceState(
+          instanceId,
+          transition(current, "probe-ok"),
+        );
         this.runtimes.set(
           instanceId,
           this.deps.prober.startRuntime(source, inst.base, {
             onHang: () => {
               const s = this.deps.manager.getState(instanceId);
-              if (s === 'running') this.deps.manager.setInstanceState(instanceId, transition(s, 'hang'));
+              if (s === "running")
+                this.deps.manager.setInstanceState(
+                  instanceId,
+                  transition(s, "hang"),
+                );
               this.stopRuntime(instanceId);
             },
           }),
         );
       }
-    } else if (current === 'starting') {
-      await this.deps.manager.terminate(instanceId, transition(current, 'timeout'));
+    } else if (current === "starting") {
+      await this.deps.manager.terminate(
+        instanceId,
+        transition(current, "timeout"),
+      );
     }
   }
 

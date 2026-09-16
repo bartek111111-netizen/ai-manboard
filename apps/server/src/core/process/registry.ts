@@ -6,12 +6,20 @@
  * reconcile can tell `crashed` / `stopped` / `unknown` apart (by the stored
  * `lastExitCode` / `signal`).
  */
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { AppError } from '@ai-dashboard/shared';
-import { assertSafeId } from '../config/store.js';
-import type { DashboardHome } from '../config/paths.js';
-import type { InstanceState } from '@ai-dashboard/shared';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  writeSync,
+} from "node:fs";
+import { dirname } from "node:path";
+import { AppError } from "@ai-dashboard/shared";
+import { assertSafeId } from "../config/store.js";
+import type { DashboardHome } from "../config/paths.js";
+import type { InstanceState, LaunchMode } from "@ai-dashboard/shared";
 
 /** One entry in `state/registry.json`. */
 export interface RegistryEntry {
@@ -26,6 +34,12 @@ export interface RegistryEntry {
   lastExitCode: number | null;
   /** Signal that ended the process (e.g. `SIGKILL`), when relevant. */
   lastSignal?: string;
+  /**
+   * How this instance's process is tied to the dashboard (the launch choice).
+   * Older entries (predating the choice) omit it; readers default to `session`
+   * (the pre-feature behaviour).
+   */
+  mode?: LaunchMode;
 }
 
 interface RegistryFile {
@@ -36,7 +50,7 @@ interface RegistryFile {
 function readRegistry(file: string): RegistryFile {
   if (!existsSync(file)) return { instances: {} };
   try {
-    const raw = JSON.parse(readFileSync(file, 'utf-8'));
+    const raw = JSON.parse(readFileSync(file, "utf-8"));
     const instances = (raw?.instances ?? {}) as Record<string, RegistryEntry>;
     return { instances };
   } catch {
@@ -50,7 +64,7 @@ function atomicWrite(file: string, data: unknown): void {
   mkdirSync(dirname(file), { recursive: true });
   const content = `${JSON.stringify(data, null, 2)}\n`;
   const tmp = `${file}.tmp.${process.pid}.${Date.now()}`;
-  const handle = openSync(tmp, 'w');
+  const handle = openSync(tmp, "w");
   try {
     writeSync(handle, content);
   } finally {
@@ -75,13 +89,13 @@ export class PidRegistry {
 
   /** The entry for `instanceId`, or null when absent. */
   get(instanceId: string): RegistryEntry | null {
-    assertSafeId(instanceId, 'instanceId');
+    assertSafeId(instanceId, "instanceId");
     return readRegistry(this.file).instances[instanceId] ?? null;
   }
 
   /** Records an entry (full replace) — one atomic write. */
   set(instanceId: string, entry: RegistryEntry): void {
-    assertSafeId(instanceId, 'instanceId');
+    assertSafeId(instanceId, "instanceId");
     const file: RegistryFile = readRegistry(this.file);
     file.instances[instanceId] = entry;
     atomicWrite(this.file, file);
@@ -92,13 +106,13 @@ export class PidRegistry {
    * Creates the entry if absent.
    */
   update(instanceId: string, patch: Partial<RegistryEntry>): void {
-    assertSafeId(instanceId, 'instanceId');
+    assertSafeId(instanceId, "instanceId");
     const file = readRegistry(this.file);
     const current: RegistryEntry = file.instances[instanceId] ?? {
       instanceId,
       pid: null,
       port: 0,
-      state: 'stopped',
+      state: "stopped",
       startedAt: new Date(0).toISOString(),
       lastExitCode: null,
     };
@@ -109,7 +123,7 @@ export class PidRegistry {
 
   /** Drops the entry (instance removed from the dashboard). */
   remove(instanceId: string): void {
-    assertSafeId(instanceId, 'instanceId');
+    assertSafeId(instanceId, "instanceId");
     const file = readRegistry(this.file);
     if (!(instanceId in file.instances)) return;
     delete file.instances[instanceId];
@@ -119,7 +133,7 @@ export class PidRegistry {
   /** Ports currently claimed by any registered instance (for `ports.ts`). */
   takenPorts(): number[] {
     return this.list()
-      .filter((e) => e.state !== 'stopped' || e.pid !== null)
+      .filter((e) => e.state !== "stopped" || e.pid !== null)
       .map((e) => e.port);
   }
 

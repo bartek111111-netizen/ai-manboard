@@ -12,18 +12,23 @@
  * The manager is engine-agnostic: it spawns any `LaunchCommand`, which is what
  * makes the Faza 4 acceptance test ("spawn/kill a dummy process") possible.
  */
-import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { spawn, type ChildProcess } from "node:child_process";
+import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs";
+import { join } from "node:path";
 import {
   AppError,
   transition,
   type InstanceState,
   type LaunchCommand,
-} from '@ai-dashboard/shared';
-import { PidRegistry } from './registry.js';
-import { RingBuffer, type LogLine, type LogSource } from '../logs/ringbuffer.js';
-import { LogWriter } from '../logs/writer.js';
+  type LaunchMode,
+} from "@ai-dashboard/shared";
+import { PidRegistry } from "./registry.js";
+import {
+  RingBuffer,
+  type LogLine,
+  type LogSource,
+} from "../logs/ringbuffer.js";
+import { LogWriter } from "../logs/writer.js";
 
 export interface ProcessManagerOptions {
   registry: PidRegistry;
@@ -45,6 +50,8 @@ interface ActiveInstance {
   /** Disk log file for this start ('' when no writer). */
   logFile: string;
   state: InstanceState;
+  /** The launch choice (background = survives the dashboard, session = tied to it). */
+  mode: LaunchMode;
   /** True once `stop()` has begun signaling the child. */
   stopping: boolean;
   /**
@@ -54,7 +61,7 @@ interface ActiveInstance {
    */
   forcedState?: InstanceState;
   /** Residual (not-yet-newline-terminated) output per stream. */
-  partial: Record<'stdout' | 'stderr', string>;
+  partial: Record<"stdout" | "stderr", string>;
   /** Resolves when the child exits. */
   exitPromise: Promise<{ code: number | null; signal: string | null }>;
   resolveExit: (value: { code: number | null; signal: string | null }) => void;
@@ -64,6 +71,10 @@ export class ProcessManager {
   private readonly active = new Map<string, ActiveInstance>();
   private readonly stopTimeoutMs: number;
   private readonly ringLines: number;
+  /** File-tail timers (background-mode instances read their log file back). */
+  private readonly tailTimers = new Map<string, NodeJS.Timeout>();
+  /** Byte offset already read per instance's log file (file-tail). */
+  private readonly tailOffsets = new Map<string, number>();
 
   constructor(private readonly opts: ProcessManagerOptions) {
     this.stopTimeoutMs = (opts.stopTimeoutSec ?? 10) * 1000;
@@ -93,26 +104,67 @@ export class ProcessManager {
   /**
    * Spawns the instance's child process and begins tracking it.
    * State: a stable state (stopped/error/crashed) → `starting`.
+   *
+   * `mode` is the launch choice:
+   * - `background` ("Zostaje w tle"): the engine's stdout/stderr are the log
+   *   FILE and it runs detached (own process group). Both let the engine
+   *   SURVIVE a dashboard restart — a closed dashboard can't SIGPIPE it, and
+   *   Ctrl-C / exit on the dashboard's group can't signal it. The dashboard
+   *   reads the log file back for the live log view (file-tail poller).
+   * - `session` ("Znika z dashboardem"): legacy behaviour — the engine's
+   *   output is on the dashboard's pipes and it shares the dashboard's process
+   *   group, so it stops together with the dashboard.
    * @returns the child PID (0 when the spawn could not assign one).
    */
-  async spawn(instanceId: string, cmd: LaunchCommand, port: number): Promise<number> {
+  async spawn(
+    instanceId: string,
+    cmd: LaunchCommand,
+    port: number,
+    mode: LaunchMode = "background",
+  ): Promise<number> {
     if (this.active.has(instanceId)) {
-      throw new AppError('INVALID_STATE', `instance already active (state: ${this.getState(instanceId)})`, {
-        instanceId,
-      });
+      throw new AppError(
+        "INVALID_STATE",
+        `instance already active (state: ${this.getState(instanceId)})`,
+        {
+          instanceId,
+        },
+      );
     }
 
     const ring = new RingBuffer<LogLine>(this.ringLines);
-    const logFile = this.opts.logs?.start(instanceId, this.stamp(instanceId)) ?? '';
+    const logFile =
+      this.opts.logs?.start(instanceId, this.stamp(instanceId)) ?? "";
 
+    // `background`: open the log file and point the child's stdout/stderr at it
+    // (so the engine writes to disk, not to our pipes). `session`: plain pipes.
+    let logFd: number | undefined;
+    if (mode === "background" && logFile) {
+      logFd = openSync(logFile, "a");
+    }
     const child = spawn(cmd.binary, cmd.args, {
       cwd: cmd.cwd,
       env: { ...process.env, ...cmd.env },
-      stdio: ['pipe', 'pipe', 'pipe'],
+      detached: mode === "background",
+      stdio:
+        logFd !== undefined
+          ? ["ignore", logFd, logFd]
+          : ["pipe", "pipe", "pipe"],
     });
+    // Hand the fd to the child; close our copy (the child holds it).
+    if (logFd !== undefined) {
+      try {
+        closeSync(logFd);
+      } catch {
+        /* already closed */
+      }
+    }
 
-    let resolveExit: ActiveInstance['resolveExit'] = () => {};
-    const exitPromise = new Promise<{ code: number | null; signal: string | null }>((resolve) => {
+    let resolveExit: ActiveInstance["resolveExit"] = () => {};
+    const exitPromise = new Promise<{
+      code: number | null;
+      signal: string | null;
+    }>((resolve) => {
       resolveExit = resolve;
     });
 
@@ -121,9 +173,10 @@ export class ProcessManager {
       child,
       ring,
       logFile,
-      state: 'starting',
+      state: "starting",
+      mode,
       stopping: false,
-      partial: { stdout: '', stderr: '' },
+      partial: { stdout: "", stderr: "" },
       exitPromise,
       resolveExit: () => {},
     };
@@ -131,26 +184,36 @@ export class ProcessManager {
     this.active.set(instanceId, active);
 
     // Spawn failure (binary missing / bad args): the child never starts.
-    child.on('error', (err: Error) => {
+    child.on("error", (err: Error) => {
       if (settled) return;
       settled = true;
-      active.state = 'error';
-      this.opts.registry.update(instanceId, { state: 'error', pid: null });
-      this.opts.onStateChange?.(instanceId, 'error');
+      active.state = "error";
+      this.stopTail(instanceId);
+      this.opts.registry.update(instanceId, { state: "error", pid: null });
+      this.opts.onStateChange?.(instanceId, "error");
       this.cleanup(instanceId);
       active.resolveExit({ code: null, signal: null });
       void err;
     });
 
-    child.stdout?.on('data', (chunk: Buffer) => this.onOutput(instanceId, 'stdout', chunk));
-    child.stderr?.on('data', (chunk: Buffer) => this.onOutput(instanceId, 'stderr', chunk));
+    // `session` mode captures the pipes live. `background` mode: `child.stdout`
+    // /`stderr` are the log file (not pipes) so these are no-ops; the file-tail
+    // below reads the lines back instead.
+    child.stdout?.on("data", (chunk: Buffer) =>
+      this.onOutput(instanceId, "stdout", chunk),
+    );
+    child.stderr?.on("data", (chunk: Buffer) =>
+      this.onOutput(instanceId, "stderr", chunk),
+    );
+    if (mode === "background" && logFile) this.startTail(instanceId);
 
     // Watchdog: the process ended — update FSM + registry + resolve waiters.
-    child.on('exit', (code: number | null, signal: string | null) => {
+    child.on("exit", (code: number | null, signal: string | null) => {
       if (settled) return;
       settled = true;
       const next = active.forcedState ?? this.finalState(active, code, signal);
       active.state = next;
+      this.stopTail(instanceId);
       this.opts.registry.update(instanceId, {
         state: next,
         pid: null,
@@ -167,11 +230,12 @@ export class ProcessManager {
       instanceId,
       pid: child.pid ?? 0,
       port,
-      state: 'starting',
+      state: "starting",
+      mode,
       startedAt: new Date().toISOString(),
       lastExitCode: null,
     });
-    this.opts.onStateChange?.(instanceId, 'starting');
+    this.opts.onStateChange?.(instanceId, "starting");
 
     return child.pid ?? 0;
   }
@@ -199,7 +263,10 @@ export class ProcessManager {
    * grace → SIGKILL) and pins the exit watchdog to `finalState` so the
    * deliberate SIGKILL is not read as a crash. No-op when not tracked.
    */
-  async terminate(instanceId: string, finalState: InstanceState): Promise<void> {
+  async terminate(
+    instanceId: string,
+    finalState: InstanceState,
+  ): Promise<void> {
     const active = this.active.get(instanceId);
     if (!active) return;
     active.forcedState = finalState;
@@ -207,11 +274,11 @@ export class ProcessManager {
     this.opts.registry.update(instanceId, { state: finalState });
     this.opts.onStateChange?.(instanceId, finalState);
     if (active.child.exitCode === null && !active.child.killed) {
-      active.child.kill('SIGTERM');
+      active.child.kill("SIGTERM");
     }
     await this.awaitExit(instanceId, this.stopTimeoutMs);
     if (active.child.exitCode === null) {
-      active.child.kill('SIGKILL');
+      active.child.kill("SIGKILL");
       await this.awaitExit(instanceId, 5000);
     }
   }
@@ -225,9 +292,14 @@ export class ProcessManager {
     if (!active) {
       // Not live (already exited / never spawned). Ensure the registry settles.
       const entry = this.opts.registry.get(instanceId);
-      if (entry && (entry.state === 'starting' || entry.state === 'running' || entry.state === 'stopping')) {
-        this.opts.registry.update(instanceId, { state: 'stopped', pid: null });
-        this.opts.onStateChange?.(instanceId, 'stopped');
+      if (
+        entry &&
+        (entry.state === "starting" ||
+          entry.state === "running" ||
+          entry.state === "stopping")
+      ) {
+        this.opts.registry.update(instanceId, { state: "stopped", pid: null });
+        this.opts.onStateChange?.(instanceId, "stopped");
       }
       return;
     }
@@ -238,25 +310,25 @@ export class ProcessManager {
       return;
     }
 
-    if (active.state !== 'running' && active.state !== 'starting') {
+    if (active.state !== "running" && active.state !== "starting") {
       // In a stable state with no live process to signal.
       return;
     }
 
     // Begin graceful stop (running/starting → stopping).
     active.stopping = true;
-    active.state = 'stopping';
-    this.opts.registry.update(instanceId, { state: 'stopping' });
-    this.opts.onStateChange?.(instanceId, 'stopping');
+    active.state = "stopping";
+    this.opts.registry.update(instanceId, { state: "stopping" });
+    this.opts.onStateChange?.(instanceId, "stopping");
 
     if (active.child.exitCode === null && !active.child.killed) {
-      active.child.kill('SIGTERM');
+      active.child.kill("SIGTERM");
     }
 
     const result = await this.awaitExit(instanceId, this.stopTimeoutMs);
     if (!result && active.child.exitCode === null) {
       // Still alive after the grace period → SIGKILL.
-      active.child.kill('SIGKILL');
+      active.child.kill("SIGKILL");
       await this.awaitExit(instanceId, 5000);
     }
     // The final `stopped` state is recorded by the exit watchdog.
@@ -276,32 +348,42 @@ export class ProcessManager {
     if (timeoutMs <= 0) return null;
     return await Promise.race([
       active.exitPromise,
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), timeoutMs),
+      ),
     ]);
   }
 
   // ------------------------------------------------------------------ internal
 
   /** Decides the final state when the child exits. */
-  private finalState(active: ActiveInstance, code: number | null, signal: string | null): InstanceState {
-    if (active.stopping) return 'stopped'; // a stop we initiated always lands on `stopped`
+  private finalState(
+    active: ActiveInstance,
+    code: number | null,
+    signal: string | null,
+  ): InstanceState {
+    if (active.stopping) return "stopped"; // a stop we initiated always lands on `stopped`
     const clean = code === 0 && signal === null;
-    const event = clean ? 'exit-clean' : 'exit-abnormal';
+    const event = clean ? "exit-clean" : "exit-abnormal";
     try {
       return transition(active.state, event);
     } catch {
-      return 'stopped';
+      return "stopped";
     }
   }
 
-  private onOutput(instanceId: string, source: 'stdout' | 'stderr', chunk: Buffer): void {
+  private onOutput(
+    instanceId: string,
+    source: "stdout" | "stderr",
+    chunk: Buffer,
+  ): void {
     const active = this.active.get(instanceId);
     if (!active) return;
-    const text = active.partial[source] + chunk.toString('utf8');
-    const lines = text.split('\n');
-    active.partial[source] = lines.pop() ?? ''; // keep the unterminated tail
+    const text = active.partial[source] + chunk.toString("utf8");
+    const lines = text.split("\n");
+    active.partial[source] = lines.pop() ?? ""; // keep the unterminated tail
     for (const line of lines) {
-      if (line !== '') this.pushLine(instanceId, source, line);
+      if (line !== "") this.pushLine(instanceId, source, line);
     }
   }
 
@@ -309,10 +391,10 @@ export class ProcessManager {
   private flushPartial(instanceId: string): void {
     const active = this.active.get(instanceId);
     if (!active) return;
-    for (const source of ['stdout', 'stderr'] as const) {
-      if (active.partial[source] !== '') {
+    for (const source of ["stdout", "stderr"] as const) {
+      if (active.partial[source] !== "") {
         this.pushLine(instanceId, source, active.partial[source]);
-        active.partial[source] = '';
+        active.partial[source] = "";
       }
     }
   }
@@ -327,20 +409,91 @@ export class ProcessManager {
       line,
     };
     active.ring.push(logLine);
-    if (active.logFile) this.opts.logs?.append(active.logFile, line);
+    // `session` mode: the engine's output is on our pipes, so we write the disk
+    // log here. `background` mode: the engine writes the file ITSELF (via its
+    // own stdio, which is the file), so appending would duplicate the lines.
+    if (active.mode === "session" && active.logFile)
+      this.opts.logs?.append(active.logFile, line);
     this.opts.onLogLine?.(instanceId, logLine);
   }
 
   /** Classifies log level based on content. */
-  private classifyLevel(line: string): 'info' | 'warn' | 'error' {
+  private classifyLevel(line: string): "info" | "warn" | "error" {
     // Llama-server uses "E" prefix for errors, "W" for warnings
     const trimmed = line.trim();
-    if (/^[Ee]rror|E\s/.test(trimmed)) return 'error';
-    if (/^[Ww]arn/.test(trimmed)) return 'warn';
+    if (/^[Ee]rror|E\s/.test(trimmed)) return "error";
+    if (/^[Ww]arn/.test(trimmed)) return "warn";
     // Some engines output "ERROR:" or "WARN:" prefixes
-    if (trimmed.includes('ERROR') || trimmed.includes('FATAL')) return 'error';
-    if (trimmed.includes('WARN') || trimmed.includes('WARNING')) return 'warn';
-    return 'info';
+    if (trimmed.includes("ERROR") || trimmed.includes("FATAL")) return "error";
+    if (trimmed.includes("WARN") || trimmed.includes("WARNING")) return "warn";
+    return "info";
+  }
+
+  // ------------------------------------------------------------------ file-tail
+
+  /**
+   * Starts the file-tail poller for a `background`-mode instance. The engine
+   * writes its log file directly (its stdio is the file), so the dashboard
+   * reads new bytes back to feed the ring buffer + live log stream.
+   */
+  private startTail(instanceId: string): void {
+    const active = this.active.get(instanceId);
+    if (!active || !active.logFile) return;
+    if (this.tailTimers.has(instanceId)) return;
+    this.tailOffsets.set(instanceId, 0);
+    const timer = setInterval(() => this.tailRead(instanceId), 500);
+    this.tailTimers.set(instanceId, timer);
+  }
+
+  /** Stops the file-tail poller for an instance (exit / error / stop). */
+  private stopTail(instanceId: string): void {
+    const timer = this.tailTimers.get(instanceId);
+    if (timer) {
+      clearInterval(timer);
+      this.tailTimers.delete(instanceId);
+    }
+    this.tailOffsets.delete(instanceId);
+  }
+
+  /** Reads new, complete lines from the instance's log file and pushes them. */
+  private tailRead(instanceId: string): void {
+    const active = this.active.get(instanceId);
+    if (!active || !active.logFile) {
+      this.stopTail(instanceId);
+      return;
+    }
+    const logFile = active.logFile;
+    let size: number;
+    try {
+      size = statSync(logFile).size;
+    } catch {
+      return; // not ready yet
+    }
+    let offset = this.tailOffsets.get(instanceId) ?? 0;
+    if (size < offset) offset = 0; // truncated — re-read from the start
+    if (size === offset) return; // no new bytes
+    let content: string;
+    try {
+      const fd = openSync(logFile, "r");
+      try {
+        const buf = Buffer.alloc(size - offset);
+        readSync(fd, buf, 0, buf.length, offset);
+        content = buf.toString("utf8");
+      } finally {
+        closeSync(fd);
+      }
+    } catch {
+      return;
+    }
+    // Consume only complete lines (up to the last newline); leave any partial
+    // tail for the next poll so we never push a half-written line.
+    const lastNl = content.lastIndexOf("\n");
+    const consumed = lastNl === -1 ? 0 : lastNl + 1;
+    this.tailOffsets.set(instanceId, offset + consumed);
+    const complete = lastNl === -1 ? "" : content.slice(0, lastNl);
+    for (const line of complete.split("\n")) {
+      if (line !== "") this.pushLine(instanceId, "stdout", line);
+    }
   }
 
   private cleanup(instanceId: string): void {

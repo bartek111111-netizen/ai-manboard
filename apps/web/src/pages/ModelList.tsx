@@ -1,22 +1,40 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import type { InstanceInfo, ModelView, Preset } from '@ai-dashboard/shared';
-import { AddModelModal } from '../components/AddModelModal';
-import { CapabilityIcons } from '../components/CapabilityIcons';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { StatusBadge } from '../components/StatusBadge';
-import { discoverModels, restartInstance, startInstance, stopInstance } from '../api/client';
-import { t } from '../i18n';
-import { useModelData } from '../hooks/useModelData';
-import { errInfo } from '../ui/errors';
-import { isLiveState } from '../ui/state';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import type {
+  InstanceInfo,
+  LaunchMode,
+  ModelView,
+  Preset,
+} from "@ai-dashboard/shared";
+import { AddModelModal } from "../components/AddModelModal";
+import { CapabilityIcons } from "../components/CapabilityIcons";
+import { ErrorNotice } from "../components/ErrorNotice";
+import { LaunchModeModal } from "../components/LaunchModeModal";
+import { StatusBadge } from "../components/StatusBadge";
+import {
+  discoverModels,
+  restartInstance,
+  startInstance,
+  stopInstance,
+} from "../api/client";
+import { t } from "../i18n";
+import { useModelData } from "../hooks/useModelData";
+import { errInfo } from "../ui/errors";
+import { isLiveState } from "../ui/state";
 
-function instanceFor(instances: InstanceInfo[], modelId: string, presetName: string): InstanceInfo | null {
-  return instances.find((i) => i.modelId === modelId && i.preset === presetName) ?? null;
+function instanceFor(
+  instances: InstanceInfo[],
+  modelId: string,
+  presetName: string,
+): InstanceInfo | null {
+  return (
+    instances.find((i) => i.modelId === modelId && i.preset === presetName) ??
+    null
+  );
 }
 
 function formatSize(bytes: number | null): string {
-  if (bytes === null) return '—';
+  if (bytes === null) return "—";
   const gb = bytes / (1024 * 1024 * 1024);
   if (gb >= 1) return `${gb.toFixed(1)} GB`;
   const mb = bytes / (1024 * 1024);
@@ -30,9 +48,25 @@ function formatSize(bytes: number | null): string {
 export function ModelList() {
   const { models, instances, presets, error, refresh } = useModelData();
   const [selected, setSelected] = useState<Record<string, string>>({});
-  const [actionError, setActionError] = useState<{ message: string; code?: string } | null>(null);
+  const [actionError, setActionError] = useState<{
+    message: string;
+    code?: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  /** The pending launch (start/restart) awaiting the user's mode choice. */
+  const [launchTarget, setLaunchTarget] = useState<{
+    instanceId: string;
+    action: "start" | "restart";
+  } | null>(null);
+
+  const handleLaunch = (mode: LaunchMode): void => {
+    if (!launchTarget) return;
+    const { instanceId, action } = launchTarget;
+    setLaunchTarget(null);
+    const call = action === "restart" ? restartInstance : startInstance;
+    void run(() => call(instanceId, mode));
+  };
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true);
@@ -48,9 +82,14 @@ export function ModelList() {
   };
 
   const selectedPreset = (model: ModelView): string | undefined =>
-    selected[model.id] ?? (presets[model.id]?.[0]?.name ?? undefined);
+    selected[model.id] ?? presets[model.id]?.[0]?.name ?? undefined;
 
-  const [scanResult, setScanResult] = useState<{ added: number; removed: number; total: number; hidden: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{
+    added: number;
+    removed: number;
+    total: number;
+    hidden: number;
+  } | null>(null);
 
   const handleScan = async (): Promise<void> => {
     setBusy(true);
@@ -62,7 +101,12 @@ export function ModelList() {
       // Use the models state (which is now updated by refresh)
       setTimeout(() => {
         const hiddenCount = models.filter((m) => m.hidden).length;
-        setScanResult({ added: result.added, removed: result.removed, total: result.total, hidden: hiddenCount });
+        setScanResult({
+          added: result.added,
+          removed: result.removed,
+          total: result.total,
+          hidden: hiddenCount,
+        });
       }, 100);
     } catch (err) {
       setActionError(errInfo(err));
@@ -75,27 +119,38 @@ export function ModelList() {
     <>
       <div className="toolbar">
         <button type="button" onClick={handleScan} className="btn">
-          {t('actionScan')}
+          {t("actionScan")}
         </button>
-        <button type="button" className="btn" onClick={() => setShowAddModal(true)}>
-          {t('actionAddModel')}
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setShowAddModal(true)}
+        >
+          {t("actionAddModel")}
         </button>
         <Link to="/settings" className="btn">
-          {t('navSettings')}
+          {t("navSettings")}
         </Link>
       </div>
 
-      <ErrorNotice message={actionError?.message ?? null} code={actionError?.code} />
-      {error && (
-        <ErrorNotice message={error} />
-      )}
+      <ErrorNotice
+        message={actionError?.message ?? null}
+        code={actionError?.code}
+      />
+      {error && <ErrorNotice message={error} />}
       {scanResult && (
         <div className="scan-result">
           <span>
-            {t('scanResult')} +{scanResult.added}, łącznie {scanResult.total}
-            {scanResult.hidden > 0 ? ` (${scanResult.hidden} ukryte)` : ''}
+            {t("scanResult")} +{scanResult.added}, łącznie {scanResult.total}
+            {scanResult.hidden > 0 ? ` (${scanResult.hidden} ukryte)` : ""}
           </span>
-          <button type="button" className="btn small" onClick={() => setScanResult(null)}>×</button>
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => setScanResult(null)}
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -106,48 +161,71 @@ export function ModelList() {
         />
       )}
 
+      {launchTarget && (
+        <LaunchModeModal
+          onSelect={handleLaunch}
+          onClose={() => setLaunchTarget(null)}
+        />
+      )}
+
       {models.length === 0 ? (
-        <p className="muted">{t('modelsEmpty')}</p>
+        <p className="muted">{t("modelsEmpty")}</p>
       ) : (
         <table className="model-table">
           <thead>
             <tr>
-              <th>{t('colName')}</th>
-              <th>{t('colEngine')}</th>
-              <th>{t('colCapabilities')}</th>
-              <th>{t('colSize')}</th>
-              <th>{t('colPreset')}</th>
-              <th>{t('colPort')}</th>
-              <th>{t('colState')}</th>
-              <th>{t('colActions')}</th>
+              <th>{t("colName")}</th>
+              <th>{t("colEngine")}</th>
+              <th>{t("colCapabilities")}</th>
+              <th>{t("colSize")}</th>
+              <th>{t("colPreset")}</th>
+              <th>{t("colPort")}</th>
+              <th>{t("colState")}</th>
+              <th>{t("colActions")}</th>
             </tr>
           </thead>
           <tbody>
             {models.map((model) => {
               const presetList: Preset[] = presets[model.id] ?? [];
               const presetName = selectedPreset(model);
-              const instance = presetName ? instanceFor(instances, model.id, presetName) : null;
-              const state = instance?.state ?? 'unknown';
+              const instance = presetName
+                ? instanceFor(instances, model.id, presetName)
+                : null;
+              const state = instance?.state ?? "unknown";
               return (
                 <tr key={model.id}>
                   <td>
-                    <Link to={`/models/${encodeURIComponent(model.id)}`} className="model-name" title={model.path}>
+                    <Link
+                      to={`/models/${encodeURIComponent(model.id)}`}
+                      className="model-name"
+                      title={model.path}
+                    >
                       {model.displayName}
                     </Link>
                   </td>
                   <td>{model.engineId}</td>
                   <td>
-                    <CapabilityIcons flags={model.capabilities.flags} manual={model.capabilities.source === 'manual'} />
+                    <CapabilityIcons
+                      flags={model.capabilities.flags}
+                      manual={model.capabilities.source === "manual"}
+                    />
                   </td>
                   <td>{formatSize(model.sizeBytes)}</td>
                   <td>
                     <select
                       className="preset-select"
-                      value={presetName ?? ''}
-                      onChange={(e) => setSelected((prev) => ({ ...prev, [model.id]: e.target.value }))}
+                      value={presetName ?? ""}
+                      onChange={(e) =>
+                        setSelected((prev) => ({
+                          ...prev,
+                          [model.id]: e.target.value,
+                        }))
+                      }
                       disabled={presetList.length === 0}
                     >
-                      {presetList.length === 0 && <option value="">{t('presetNone')}</option>}
+                      {presetList.length === 0 && (
+                        <option value="">{t("presetNone")}</option>
+                      )}
                       {presetList.map((preset) => (
                         <option key={preset.name} value={preset.name}>
                           {preset.name}
@@ -155,12 +233,27 @@ export function ModelList() {
                       ))}
                     </select>
                   </td>
-                  <td>{instance?.port ?? '—'}</td>
+                  <td>{instance?.port ?? "—"}</td>
                   <td>
                     <StatusBadge state={state} small />
                   </td>
                   <td className="actions">
-                    <button type="button" className="btn small" title="Ukryj" onClick={() => run(() => fetch(`/api/v1/models/${model.id}/hide`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hidden: true }) }))}>👁</button>
+                    <button
+                      type="button"
+                      className="btn small"
+                      title="Ukryj"
+                      onClick={() =>
+                        run(() =>
+                          fetch(`/api/v1/models/${model.id}/hide`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ hidden: true }),
+                          }),
+                        )
+                      }
+                    >
+                      👁
+                    </button>
                     {presetName && (
                       <>
                         {!isLiveState(state) && (
@@ -169,7 +262,12 @@ export function ModelList() {
                             className="btn small"
                             title="Start"
                             disabled={busy}
-                            onClick={() => run(() => startInstance(`${model.id}--${presetName}`))}
+                            onClick={() =>
+                              setLaunchTarget({
+                                instanceId: `${model.id}--${presetName}`,
+                                action: "start",
+                              })
+                            }
                           >
                             ▶
                           </button>
@@ -180,7 +278,11 @@ export function ModelList() {
                             className="btn small"
                             title="Stop"
                             disabled={busy}
-                            onClick={() => run(() => stopInstance(`${model.id}--${presetName}`))}
+                            onClick={() =>
+                              run(() =>
+                                stopInstance(`${model.id}--${presetName}`),
+                              )
+                            }
                           >
                             ⏹
                           </button>
@@ -191,7 +293,12 @@ export function ModelList() {
                             className="btn small"
                             title="Restart"
                             disabled={busy}
-                            onClick={() => run(() => restartInstance(`${model.id}--${presetName}`))}
+                            onClick={() =>
+                              setLaunchTarget({
+                                instanceId: `${model.id}--${presetName}`,
+                                action: "restart",
+                              })
+                            }
                           >
                             ↻
                           </button>

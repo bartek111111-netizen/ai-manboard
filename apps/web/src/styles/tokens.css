@@ -56,7 +56,7 @@
 
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', sans-serif;
+  font-family: system-ui, "Segoe UI", sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
 }
@@ -352,6 +352,49 @@ body {
   gap: var(--spacing-s);
 }
 
+/* Launch-mode choice (start/restart) — a compact two-option modal. */
+.modal--sm {
+  max-width: 360px;
+}
+
+.launch-mode-intro {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.launch-mode-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-m);
+  cursor: pointer;
+  font: inherit;
+}
+
+.launch-mode-option:hover {
+  border-color: var(--state-running);
+  background: color-mix(in srgb, var(--state-running) 8%, var(--color-surface));
+}
+
+.launch-mode-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.launch-mode-desc {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.launch-mode-cancel {
+  align-self: center;
+}
+
 .file-input-row {
   display: flex;
   gap: var(--spacing-s);
@@ -421,12 +464,14 @@ body {
 
 .status-dot.on {
   background: var(--color-state-running);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-state-running) 70%, transparent);
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--color-state-running) 70%, transparent);
 }
 
 .status-dot.off {
   background: var(--color-state-error);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-state-error) 50%, transparent);
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--color-state-error) 50%, transparent);
 }
 
 .status-dot.blink {
@@ -435,12 +480,15 @@ body {
 }
 
 @keyframes pulse-dot {
-  0%, 100% {
-    box-shadow: 0 0 6px color-mix(in srgb, var(--color-state-error) 60%, transparent);
+  0%,
+  100% {
+    box-shadow: 0 0 6px
+      color-mix(in srgb, var(--color-state-error) 60%, transparent);
     opacity: 1;
   }
   50% {
-    box-shadow: 0 0 12px color-mix(in srgb, var(--color-state-error) 80%, transparent);
+    box-shadow: 0 0 12px
+      color-mix(in srgb, var(--color-state-error) 80%, transparent);
     opacity: 0.7;
   }
 }
@@ -513,7 +561,8 @@ body {
   color: var(--color-muted);
   margin: 0 0 var(--spacing-s);
   padding-bottom: var(--spacing-s);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-border) 50%, transparent);
 }
 
 .sidebar-section-empty {
@@ -585,7 +634,9 @@ body {
 /* Hover over a label or a value → it bolds (subtle, per-item). */
 .kv dt,
 .kv dd {
-  transition: color 0.15s ease, font-weight 0.15s ease;
+  transition:
+    color 0.15s ease,
+    font-weight 0.15s ease;
 }
 
 .kv dt:hover,
@@ -619,7 +670,9 @@ body {
   border-radius: var(--radius);
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .btn:hover:not(:disabled) {
@@ -678,7 +731,11 @@ body {
 }
 
 .model-table tbody tr:hover {
-  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-accent) 5%);
+  background: color-mix(
+    in srgb,
+    var(--color-surface) 80%,
+    var(--color-accent) 5%
+  );
 }
 
 .model-name {
@@ -716,7 +773,9 @@ body {
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .tab:hover:not(:disabled) {
@@ -736,9 +795,9 @@ body {
 /* --- Select / inputs --- */
 .preset-select,
 select,
-input[type='text'],
-input[type='number'],
-input[type='password'],
+input[type="text"],
+input[type="number"],
+input[type="password"],
 textarea {
   padding: 8px 12px;
   font-size: 0.9rem;
@@ -775,26 +834,62 @@ textarea {
 }
 
 .status-badge::before {
-  content: '';
+  content: "";
   width: 8px;
   height: 8px;
   border-radius: 50%;
 }
 
-.status-badge.running   { background: color-mix(in srgb, var(--color-state-running) 20%, transparent); color: var(--color-state-running); }
-.status-badge.running::before   { background: var(--color-state-running); }
-.status-badge.stopped   { background: color-mix(in srgb, var(--color-state-stopped) 20%, transparent); color: var(--color-state-stopped); }
-.status-badge.stopped::before   { background: var(--color-state-stopped); }
-.status-badge.starting  { background: color-mix(in srgb, var(--color-state-starting) 20%, transparent); color: var(--color-state-starting); }
-.status-badge.starting::before  { background: var(--color-state-starting); animation: pulse 1.5s ease-in-out infinite; }
-.status-badge.stopping  { background: color-mix(in srgb, var(--color-state-stopping) 20%, transparent); color: var(--color-state-stopping); }
-.status-badge.stopping::before  { background: var(--color-state-stopping); }
-.status-badge.error     { background: color-mix(in srgb, var(--color-state-error) 20%, transparent); color: var(--color-state-error); }
-.status-badge.error::before     { background: var(--color-state-error); }
-.status-badge.crashed   { background: color-mix(in srgb, var(--color-state-crashed) 20%, transparent); color: var(--color-state-crashed); }
-.status-badge.crashed::before   { background: var(--color-state-crashed); }
-.status-badge.unknown   { background: color-mix(in srgb, var(--color-state-unknown) 20%, transparent); color: var(--color-state-unknown); }
-.status-badge.unknown::before   { background: var(--color-state-unknown); }
+.status-badge.running {
+  background: color-mix(in srgb, var(--color-state-running) 20%, transparent);
+  color: var(--color-state-running);
+}
+.status-badge.running::before {
+  background: var(--color-state-running);
+}
+.status-badge.stopped {
+  background: color-mix(in srgb, var(--color-state-stopped) 20%, transparent);
+  color: var(--color-state-stopped);
+}
+.status-badge.stopped::before {
+  background: var(--color-state-stopped);
+}
+.status-badge.starting {
+  background: color-mix(in srgb, var(--color-state-starting) 20%, transparent);
+  color: var(--color-state-starting);
+}
+.status-badge.starting::before {
+  background: var(--color-state-starting);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.status-badge.stopping {
+  background: color-mix(in srgb, var(--color-state-stopping) 20%, transparent);
+  color: var(--color-state-stopping);
+}
+.status-badge.stopping::before {
+  background: var(--color-state-stopping);
+}
+.status-badge.error {
+  background: color-mix(in srgb, var(--color-state-error) 20%, transparent);
+  color: var(--color-state-error);
+}
+.status-badge.error::before {
+  background: var(--color-state-error);
+}
+.status-badge.crashed {
+  background: color-mix(in srgb, var(--color-state-crashed) 20%, transparent);
+  color: var(--color-state-crashed);
+}
+.status-badge.crashed::before {
+  background: var(--color-state-crashed);
+}
+.status-badge.unknown {
+  background: color-mix(in srgb, var(--color-state-unknown) 20%, transparent);
+  color: var(--color-state-unknown);
+}
+.status-badge.unknown::before {
+  background: var(--color-state-unknown);
+}
 
 .status-badge.small {
   padding: 2px 8px;
@@ -802,8 +897,13 @@ textarea {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* --- Error notice --- */
@@ -812,8 +912,13 @@ textarea {
   padding: 10px 16px;
   font-size: 0.9rem;
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--color-state-error) 15%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-state-error) 40%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-state-error) 15%,
+    var(--color-surface)
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--color-state-error) 40%, transparent);
   color: var(--color-state-error);
 }
 
@@ -993,7 +1098,7 @@ details > summary {
   cursor: pointer;
 }
 
-.log-autoscroll input[type='checkbox'] {
+.log-autoscroll input[type="checkbox"] {
   accent-color: var(--color-accent);
 }
 
@@ -1009,7 +1114,7 @@ details > summary {
   border-radius: var(--radius);
   padding: var(--spacing-s);
   font-size: 0.8rem;
-  font-family: 'Cascadia Mono', 'Fira Code', monospace;
+  font-family: "Cascadia Mono", "Fira Code", monospace;
   overflow-x: auto;
   overflow-y: auto;
   max-height: 500px;
@@ -1052,9 +1157,15 @@ details > summary {
   text-align: center;
 }
 
-.log-level-info { color: var(--color-text); }
-.log-level-warn { color: var(--color-state-stopping); }
-.log-level-error { color: var(--color-state-error); }
+.log-level-info {
+  color: var(--color-text);
+}
+.log-level-warn {
+  color: var(--color-state-stopping);
+}
+.log-level-error {
+  color: var(--color-state-error);
+}
 
 .log-text {
   flex: 1;
@@ -1423,7 +1534,9 @@ section {
   font-size: 0.95rem;
   text-align: left;
   color: var(--color-text);
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .file-picker-entry:hover {
@@ -1611,13 +1724,21 @@ section {
 .status-card {
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+  transition:
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
 /* Hover over a card → a light halo outside the border. */
 .status-card:hover {
-  box-shadow: 0 0 0 1px var(--color-glow), 0 0 18px 3px var(--color-glow);
-  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  box-shadow:
+    0 0 0 1px var(--color-glow),
+    0 0 18px 3px var(--color-glow);
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 55%,
+    var(--color-border)
+  );
 }
 
 .status-card-header {
@@ -1735,7 +1856,7 @@ section {
 
 /* Monospace values (the captured command line / model path). */
 .kv-mono {
-  font-family: ui-monospace, 'SF Mono', 'Consolas', monospace;
+  font-family: ui-monospace, "SF Mono", "Consolas", monospace;
   font-size: 12px;
   word-break: break-all;
 }
@@ -1754,7 +1875,7 @@ section {
 }
 
 .info-btn .info-icon {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: Georgia, "Times New Roman", serif;
   font-style: italic;
   font-weight: 700;
   font-size: 13px;
@@ -1783,7 +1904,7 @@ section {
 
 /* Invisible hover-bridge so the popup doesn't dismiss in the gap. */
 .info-popup::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -10px;
   left: 0;
@@ -1808,7 +1929,7 @@ section {
 .cmd-block {
   margin: 0;
   padding: 8px;
-  font-family: ui-monospace, 'SF Mono', 'Consolas', monospace;
+  font-family: ui-monospace, "SF Mono", "Consolas", monospace;
   font-size: 11.5px;
   line-height: 1.55;
   color: var(--color-text);
@@ -1890,8 +2011,14 @@ section {
 }
 
 @keyframes toastIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* --- Log actions row --- */
@@ -1950,8 +2077,13 @@ section {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* --- Sidebar: DSH control button --- */

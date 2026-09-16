@@ -7,8 +7,8 @@ import type {
   ModelConfig,
   Preset,
   ResolvedConfig,
-} from '../config/types.js';
-import type { InstanceState } from '../process/states.js';
+} from "../config/types.js";
+import type { InstanceState, LaunchMode } from "../process/states.js";
 
 /** All stored config layers at a point in time (PLAN §14.1: `GET /config`). */
 export interface ConfigSnapshot {
@@ -57,7 +57,7 @@ export interface ModelCapabilitiesView {
   /** Effective capability flags, e.g. `{ text: true, vision: false }`. */
   flags: Record<string, boolean>;
   /** `manual` = the user set them (authoritative); `heuristic` = engine suggestion. */
-  source: 'manual' | 'heuristic';
+  source: "manual" | "heuristic";
 }
 
 /** GGUF header metadata (FM-5) — read from the file header only (fast, safe). */
@@ -92,7 +92,7 @@ export interface ModelView {
   /** Whether the model file still exists on disk. */
   fileExists: boolean;
   /** Where the model came from. */
-  origin: 'discover' | 'manual';
+  origin: "discover" | "manual";
   /** Whether the model is hidden from the list. */
   hidden?: boolean;
 }
@@ -144,4 +144,6 @@ export interface InstanceInfo {
   port: number | null;
   pid: number | null;
   startedAt: string | null;
+  /** The launch choice (null when the entry predates the choice). */
+  mode: LaunchMode | null;
 }

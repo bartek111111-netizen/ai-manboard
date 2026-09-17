@@ -57,6 +57,8 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
           ttft={dto.ttft}
           port={dto.port}
           uptimeSec={dto.uptimeSec}
+          command={dto.command}
+          mode={dto.mode}
         />
       )}
     </section>

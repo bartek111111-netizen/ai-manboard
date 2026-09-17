@@ -36,9 +36,18 @@ export function CommandBlock({ command, className = '' }: { command: string; cla
 export function CommandPopover({ command, label }: { command: string; label: string }) {
   return (
     <span className="info-btn" tabIndex={0} aria-label={label}>
-      <span className="info-icon" aria-hidden="true">
-        i
-      </span>
+      <svg
+        className="info-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 11v5" strokeLinecap="round" />
+        <circle cx="12" cy="8" r="1.3" fill="currentColor" stroke="none" />
+      </svg>
       <span className="info-popup">
         <p className="info-popup-label">{label}</p>
         <CommandBlock command={command} />

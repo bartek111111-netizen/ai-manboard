@@ -29,6 +29,7 @@ interface ModelMetrics {
   command: string;
   endpoint: string;
   uptimeSec: number | null;
+  mode: InstanceDto['mode'];
   runtime: InstanceDto['runtime'];
   process: InstanceDto['process'];
   gpu?: InstanceDto['gpu'];
@@ -68,6 +69,7 @@ export function StatusPage() {
                   command: dto.command,
                   endpoint: dto.endpoint,
                   uptimeSec: dto.uptimeSec,
+                  mode: dto.mode,
                   runtime: dto.runtime,
                   process: dto.process,
                   gpu: dto.gpu,
@@ -169,6 +171,7 @@ export function StatusPage() {
                     port={m.port}
                     uptimeSec={m.uptimeSec}
                     command={m.command}
+                    mode={m.mode}
                   />
                 </div>
               ) : (

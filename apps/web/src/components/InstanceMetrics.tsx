@@ -8,7 +8,7 @@
  *   - Process: CPU% and RSS of the backend process.
  *   - GPU: VRAM and utilization (system-wide, sysfs / `nvidia-smi`).
  */
-import type { GpuView, InstanceDto, RuntimeInfoView } from '../api/client.js';
+import type { GpuView, InstanceDto, RuntimeInfoView, LaunchMode } from '../api/client.js';
 import { t } from '../i18n/index.js';
 import { CommandPopover } from './CommandBlock.js';
 
@@ -21,9 +21,11 @@ interface InstanceMetricsProps {
   uptimeSec: number | null;
   /** The launch command (binary + args) — revealed via the ⓘ on the Engine header. */
   command?: string | null;
+  /** The launch mode ("Zostaje w tle" / "Znika z dashboardem") — a chip on the Engine header. */
+  mode?: LaunchMode | null;
 }
 
-export function InstanceMetrics({ runtime, process, gpu, ttft, port, uptimeSec, command }: InstanceMetricsProps) {
+export function InstanceMetrics({ runtime, process, gpu, ttft, port, uptimeSec, command, mode }: InstanceMetricsProps) {
   const prefillTps = runtime?.extras?.prefillTps as number | undefined;
   const workTimeSec = runtime?.extras?.workTimeSec as number | undefined;
   const contextSize = runtime?.contextSize;
@@ -34,6 +36,20 @@ export function InstanceMetrics({ runtime, process, gpu, ttft, port, uptimeSec, 
       <section className="metric-group">
         <h4 className="metric-group-title">
           {t('groupEngine')}
+          {mode ? (
+            <span
+              className="launch-mode-chip"
+              title={
+                mode === 'background'
+                  ? t('launchModeBackgroundDesc')
+                  : t('launchModeSessionDesc')
+              }
+            >
+              {mode === 'background'
+                ? `🟢 ${t('launchModeBackground')}`
+                : `⚪ ${t('launchModeSession')}`}
+            </span>
+          ) : null}
           {command ? <CommandPopover command={command} label={t('launchCommand')} /> : null}
         </h4>
         <dl className="kv">

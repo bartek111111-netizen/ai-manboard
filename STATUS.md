@@ -1,5 +1,23 @@
 # STATUS
 
+## UI: czytelniejsza „Komenda startowa” + wyraźniejsza ikona ⓘ + tryb uruchomienia w Metrykach — ✅ ZROBIONE (2026-09-17)
+
+Trzy poprawki w UI (strona **Status** + zakładka **Metryki** — wspólny komponent
+`InstanceMetrics`):
+
+1. **Ikonka ⓘ (komenda startowa)** — zamiast ledwo widocznego kursywnego „i”
+   (Georgia) teraz **wyraźna ikona SVG** (okrąg + kropka + lufcik), `currentColor`
+   → podświetla się na hover/focus (przycisk większy, z tłem na hover). Bardziej
+   czytelna i **jednoznaczna** (widać, że to „info”).
+2. **Okno komendy (popup)** — szersze (440px), większy padding + odstęp między
+   wierszami (tekst nie „siedzi" na górnej/dolnej krawędzi obramowania), a długa
+   komenda **scrolluje się** (`max-height: 42vh`) zamiast rozbudowywać okno.
+3. **Tryb uruchomienia w Metrykach** — w nagłówku grupy „Engine", obok ikony ⓘ,
+   nowy chip: **🟢 Zostaje w tle / ⚪ Znika z dashboardem** (tooltip = opis
+   trybu). Widoczny zarówno na stronie **Status** jak i w zakładce **Metryki**.
+
+Gates: typecheck/lint/testy (server 168/168, web 15/15) + web build zielone.
+
 ## Fix: Stop nie zabijał adoptowanej instancji (orphan po restarcie) + CPU/RAM po restarcie — ✅ ZROBIONE (2026-09-17)
 
 Po rebuildzie + restarcie dashboardu adoptowana instancja (`background` —

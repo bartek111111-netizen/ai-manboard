@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import type { ModelView } from '@ai-dashboard/shared';
 import { ApiError, getModels, getPresets } from '../api/client';
+import type { Preset } from '../api/client';
 import { CapabilityIcons } from '../components/CapabilityIcons';
 import { InstancePanel } from '../components/InstancePanel';
 import { LogViewer } from '../components/LogViewer';
@@ -16,27 +17,58 @@ function nameFromPath(path: string): string {
 }
 
 type Tab = 'preview' | 'config' | 'instance' | 'logs' | 'metrics';
+const TAB_IDS: readonly string[] = ['preview', 'config', 'instance', 'logs', 'metrics'];
 
 /**
  * Model detail view (Faza 7, PLAN §20.2): tabs — Podgląd, Konfiguracja
  * (PresetSelect), Instancja (InstancePanel); Logi/Metryki = Faza 8.
+ *
+ * The selected sub-tab + preset live in the URL search params
+ * (`#/models/:id?tab=logs&preset=...`), so a sub-page is a stable hard-link:
+ * a refresh (or the Status page's "Konfiguracja" / "Logi" shortcuts) restores
+ * the exact sub-view instead of bouncing back to "Instancja".
  */
 export function ModelDetail() {
   const { modelId } = useParams<{ modelId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [model, setModel] = useState<ModelView | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('instance');
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [editName, setEditName] = useState<string>('');
   const [savingName, setSavingName] = useState(false);
-  // Guards the one-time default so we don't overwrite the user's choice.
-  const presetDefaulted = useRef(false);
+  const [presets, setPresets] = useState<Preset[]>([]);
 
+  // The sub-tab + preset are persisted in the URL (see the component note).
+  const tab: Tab = TAB_IDS.includes(searchParams.get('tab') ?? '')
+    ? (searchParams.get('tab') as Tab)
+    : 'instance';
+  const preset = searchParams.get('preset');
+
+  const updateTab = (next: Tab): void =>
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev.toString());
+        p.set('tab', next);
+        return p;
+      },
+      { replace: true },
+    );
+
+  const updatePreset = (name: string | null): void =>
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev.toString());
+        if (name) p.set('preset', name);
+        else p.delete('preset');
+        return p;
+      },
+      { replace: true },
+    );
+
+  // Load the model + its presets (on model change).
   useEffect(() => {
-    presetDefaulted.current = false;
-    setSelectedPreset(null);
     setModel(null);
     setError(null);
+    setPresets([]);
     getModels()
       .then((models) => {
         const found = models.find((m) => m.id === modelId) ?? null;
@@ -49,18 +81,20 @@ export function ModelDetail() {
       })
       .catch((err: unknown) => setError(err instanceof ApiError ? err.message : String(err)));
 
-    // Default to the first preset (fast path: list → model → preset).
     getPresets(modelId ?? '')
-      .then((list) => {
-        if (list.length > 0 && !presetDefaulted.current) {
-          presetDefaulted.current = true;
-          setSelectedPreset(list[0].name);
-        }
-      })
+      .then((list) => setPresets(list))
       .catch(() => {
         // presets unavailable — the PresetSelect shows its own error
       });
   }, [modelId]);
+
+  // Default to the first preset (fast path: list → model → preset) when the
+  // URL carries none — a fresh navigation lands ready to run.
+  useEffect(() => {
+    if (!preset && presets.length > 0) {
+      updatePreset(presets[0].name);
+    }
+  }, [preset, presets]);
 
   const saveName = async (): Promise<void> => {
     if (!model) return;
@@ -82,7 +116,7 @@ export function ModelDetail() {
     }
   };
 
-  const tabs: Array<{ id: Tab; label: string; disabled?: boolean }> = [
+  const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'preview', label: t('tabPreview') },
     { id: 'config', label: t('tabConfig') },
     { id: 'instance', label: t('tabInstance') },
@@ -107,8 +141,7 @@ export function ModelDetail() {
                 key={tabDef.id}
                 type="button"
                 className={`tab${tab === tabDef.id ? ' active' : ''}`}
-                disabled={tabDef.disabled}
-                onClick={() => setTab(tabDef.id)}
+                onClick={() => updateTab(tabDef.id)}
               >
                 {tabDef.label}
               </button>
@@ -162,30 +195,30 @@ export function ModelDetail() {
           {tab === 'config' && (
             <PresetSelect
               modelId={model.id}
-              selected={selectedPreset}
+              selected={preset}
               onSelect={(name) => {
-                setSelectedPreset(name);
-                if (name) setTab('instance');
+                updatePreset(name);
+                if (name) updateTab('instance');
               }}
             />
           )}
 
           {tab === 'instance' &&
-            (selectedPreset ? (
-              <InstancePanel modelId={model.id} presetName={selectedPreset} />
+            (preset ? (
+              <InstancePanel modelId={model.id} presetName={preset} />
             ) : (
               <p className="muted">{t('presetRequired')}</p>
             ))}
 
           {tab === 'logs' &&
-            (selectedPreset ? (
-              <LogViewer instanceId={`${model.id}--${selectedPreset}`} modelId={model.id} />
+            (preset ? (
+              <LogViewer instanceId={`${model.id}--${preset}`} modelId={model.id} />
             ) : (
               <p className="muted">{t('presetRequired')}</p>
             ))}
           {tab === 'metrics' &&
-            (selectedPreset ? (
-              <MetricsPanel instanceId={`${model.id}--${selectedPreset}`} />
+            (preset ? (
+              <MetricsPanel instanceId={`${model.id}--${preset}`} />
             ) : (
               <p className="muted">{t('presetRequired')}</p>
             ))}

@@ -1,5 +1,38 @@
 # STATUS
 
+## Logi: jeden folder per model + czytelne nazwy + podstrony z hardlinkami + odnośniki w Status — ✅ ZROBIONE (2026-09-17)
+
+Cztery poprawki po sprawozdaniu użytkownika:
+
+1. **Logi: jeden folder per model (bez `--preset`) + czytelne nazwy.**
+   `writer.ts` (logi LIVE) zapisywał do `logs/<modelId>--<presetName>/` (osobny
+   folder per instancja), a `store.ts` (logi ZAPISANE) do `logs/<modelId>/`
+   (jeden folder per model) — dwa różne katalogi. Fix: `LogWriter.instanceDir()`
+   teraz zwraca `logs/<modelId>/` (parsuje `modelId` z `instanceId` przez
+   pierwszy `--`), a `start()` nazywa plik `<preset>-<YYYY-MM-DD_HH-mm-ss>.log`
+   (np. `112k_Context-2026-09-17_22-04-14.log`) — czytelna nazwa (widać preset
+   + czas startu). Kolizje (dwa starty w tej samej sekundzie) dostają dopisek
+   `-2`, `-3` itd. `latestFile`/`prune` sortują po stemplu (regex z pliku).
+   `manager.stamp()` uprościł się do `Date.now()` (kolizje w `LogWriter.start`).
+   Obie ścieżki (LIVE + ZAPISANE) teraz dzielą ten sam katalog `logs/<modelId>/`.
+2. **Podstrony modelu: trwale linki (`?tab=` + `?preset=`).** `ModelDetail`
+   przepisany — `tab` + `preset` pochodzą z `useSearchParams` (parametry URL),
+   a nie ze stanu lokalnego. Dzięki temu odświeżenie strony **nie** resetuje
+   na podstronę „Instancje" — URL zachowuje wybraną zakładkę + preset.
+3. **Status: odnośniki Konfiguracja + Logi per karta.** `StatusPage` — karta
+   z bieżącą instancją ma teraz dwa odnośniki (`status-nav-link`): „Konfiguracja"
+   → `#/models/<id>?tab=config&preset=<preset>` i „Logi" → `?tab=logs`. Kliknięcie
+   przenosi **odrazu** na odpowiednią podstronę (bez kilkukrotnego klikania).
+4. **`.cmd-block` (okno komendy) — padding przy zalamaniu.** `.cmd-block`
+   w `tokens.css` przepisany: bez obramowania (tylko `background` + `border-radius`),
+   `padding: 14px 16px`, `line-height: 1.7`, `max-height: 42vh` — tekst przy
+   zalamaniu nie „siedzi" na krawędziach. Nowy token `--color-bg-alt`
+   (dark `#242528` / light `#ffffff`).
+
+Gates: typecheck/lint/testy (server 168/168, web 15/15) + web build zielone.
+Uwaga: zmiana #1 (LogWriter) wchodzi przy **następnym starcie dashboardu**;
+#2–4 to FE (build web).
+
 ## UI: czytelniejsza „Komenda startowa” + wyraźniejsza ikona ⓘ + tryb uruchomienia w Metrykach — ✅ ZROBIONE (2026-09-17)
 
 Trzy poprawki w UI (strona **Status** + zakładka **Metryki** — wspólny komponent

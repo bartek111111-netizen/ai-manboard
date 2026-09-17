@@ -161,6 +161,24 @@ export function StatusPage() {
                 </a>
               )}
 
+              {/* Direct sub-page shortcuts (deep-links into the model detail):
+                  Konfiguracja + Logi land on the exact sub-view, so there is no
+                  need to hop through the "Instancja" tab first. */}
+              <div className="status-card-nav">
+                <a
+                  className="status-nav-link"
+                  href={`#/models/${inst.modelId}?tab=config&preset=${encodeURIComponent(inst.preset)}`}
+                >
+                  ⚙️ {t('tabConfig')}
+                </a>
+                <a
+                  className="status-nav-link"
+                  href={`#/models/${inst.modelId}?tab=logs&preset=${encodeURIComponent(inst.preset)}`}
+                >
+                  📜 {t('tabLogs')}
+                </a>
+              </div>
+
               {m ? (
                 <div className="status-card-metrics">
                   <InstanceMetrics

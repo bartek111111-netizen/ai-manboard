@@ -13,8 +13,7 @@
  * makes the Faza 4 acceptance test ("spawn/kill a dummy process") possible.
  */
 import { spawn, type ChildProcess } from "node:child_process";
-import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { closeSync, openSync, readSync, statSync } from "node:fs";
 import {
   AppError,
   transition,
@@ -171,7 +170,7 @@ export class ProcessManager {
 
     this.rings.set(instanceId, new RingBuffer<LogLine>(this.ringLines));
     const logFile =
-      this.opts.logs?.start(instanceId, this.stamp(instanceId)) ?? "";
+      this.opts.logs?.start(instanceId, this.stamp()) ?? "";
 
     // `background`: open the log file and point the child's stdout/stderr at it
     // (so the engine writes to disk, not to our pipes). `session`: plain pipes.
@@ -605,16 +604,8 @@ export class ProcessManager {
     this.active.delete(instanceId);
   }
 
-  /** A sortable, collision-safe per-start log file name (epoch ms). */
-  private stamp(instanceId: string): string {
-    const dir = this.opts.logs?.instanceDir(instanceId);
-    if (!dir) return String(Date.now());
-    let name = String(Date.now());
-    let n = 0;
-    while (existsSync(join(dir, `${name}.log`))) {
-      n += 1;
-      name = `${Date.now()}-${n}`;
-    }
-    return name;
+  /** Per-start base stamp (epoch ms). Collision safety lives in LogWriter.start. */
+  private stamp(): string {
+    return String(Date.now());
   }
 }

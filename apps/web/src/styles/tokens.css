@@ -5,6 +5,7 @@
 :root {
   --color-bg: #1a1b1e;
   --color-surface: #242528;
+  --color-bg-alt: #242528;
   --color-text: #e6e7ea;
   --color-muted: #9a9ca2;
   --color-accent: #4f8ccf;
@@ -39,6 +40,7 @@
   :root {
     --color-bg: #f4f4f5;
     --color-surface: #ffffff;
+    --color-bg-alt: #ffffff;
     --color-text: #1f2023;
     --color-muted: #6b6e75;
     --color-border: #d7d8dc;
@@ -1855,6 +1857,30 @@ section {
   background: color-mix(in srgb, var(--color-accent) 28%, transparent);
 }
 
+/* Direct sub-page shortcuts (Konfiguracja / Logi deep-links into the model
+   detail, so a running card can jump straight to its config or logs). */
+.status-card-nav {
+  display: flex;
+  gap: 8px;
+  margin: 10px 14px 0;
+}
+
+.status-nav-link {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-accent);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.status-nav-link:hover {
+  background: color-mix(in srgb, var(--color-accent) 26%, transparent);
+}
+
 /* External instances (detected outside the app, PLAN §16.4): a lighter, warm
    card with a distinct "SPOZA APLIKACJI" badge, so it reads at a glance that
    the dashboard did not start it. */
@@ -1969,19 +1995,19 @@ section {
   color: var(--color-muted);
 }
 
-/* The launch command, monospace + wrap, directly copyable. Generous padding and
-   line-height keep wrapped lines from crowding the border; a max-height keeps a
-   long arg list from blowing out the popup (it scrolls instead). */
+/* The launch command, monospace + wrap, directly copyable. A soft filled panel
+   (no border — the border + wrap made the top/bottom lines crowd it) with
+   generous line-height keeps wrapped lines breathing; a max-height keeps a long
+   arg list from blowing out the popup (it scrolls instead). */
 .cmd-block {
   margin: 0;
-  padding: 10px 12px;
+  padding: 14px 16px;
   font-family: ui-monospace, "SF Mono", "Consolas", monospace;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.7;
   color: var(--color-text);
-  background: color-mix(in srgb, var(--color-bg) 78%, transparent);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  background: var(--color-bg);
+  border-radius: 8px;
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 42vh;

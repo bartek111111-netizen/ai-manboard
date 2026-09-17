@@ -6,7 +6,7 @@
  * marker) once they exceed `maxFileBytes` (~10 MB) so a runaway backend can
  * never fill the disk.
  */
-import { mkdirSync, openSync, writeSync, closeSync, readdirSync, unlinkSync, statSync, readFileSync } from 'node:fs';
+import { mkdirSync, openSync, writeSync, closeSync, readdirSync, unlinkSync, statSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** Marker line inserted when a log file is truncated at the size cap. */
@@ -33,19 +33,43 @@ export class LogWriter {
     this.maxFileBytes = options.maxFileBytes;
   }
 
-  /** Directory `logs/<instanceId>/`. */
+  /**
+   * Directory `logs/<modelId>/` — one folder per model, shared across all of
+   * its presets. The `instanceId` is `<modelId>--<presetName>`, so the model
+   * id is everything before the first `--`. (The old layout nested by full
+   * `instanceId`, which produced unreadable dirs; the user asked to group logs
+   * by model and name files so the preset + start time are visible.)
+   */
   instanceDir(instanceId: string): string {
-    return join(this.logsDir, instanceId);
+    const modelId = instanceId.split('--')[0] || instanceId;
+    return join(this.logsDir, modelId);
+  }
+
+  /** A sortable, human-readable start stamp: `YYYY-MM-DD_HH-mm-ss`. */
+  private stampName(ts: string): string {
+    const d = new Date(Number(ts) || Date.now());
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
   }
 
   /**
-   * Opens a new per-start log file `logs/<instanceId>/<ts>.log` and applies
-   * retention. Returns the absolute path (the manager keeps it for `append`).
+   * Opens a new per-start log file `logs/<modelId>/<preset>-<start>.log` and
+   * applies retention. Returns the absolute path (the manager keeps it for
+   * `append`).
    */
   start(instanceId: string, ts: string): string {
     const dir = this.instanceDir(instanceId);
     mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${ts}.log`);
+    const presetName = instanceId.split('--')[1] ?? 'default';
+    const base = `${presetName}-${this.stampName(ts)}`;
+    // Collision-safe: two runs in the same second would share the readable
+    // stamp, so append a counter until the path is fresh.
+    let file = join(dir, `${base}.log`);
+    let n = 0;
+    while (existsSync(file)) {
+      n += 1;
+      file = join(dir, `${base}-${n}.log`);
+    }
     // Seed the file so an empty-but-started run still has a log on disk.
     const handle = openSync(file, 'a');
     try {
@@ -75,7 +99,13 @@ export class LogWriter {
     this.byteCounts.set(file, size + data.length);
   }
 
-  /** The newest `logs/<instanceId>/*.log` file path, or null when none. */
+  /** The sortable start stamp from a log file name, or the raw name as fallback. */
+  private sortKey(file: string): string {
+    const m = file.match(/(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})/);
+    return m ? m[1] : file;
+  }
+
+  /** The newest `logs/<modelId>/*.log` file path, or null when none. */
   latestFile(instanceId: string): string | null {
     const dir = this.instanceDir(instanceId);
     let files: string[];
@@ -85,7 +115,7 @@ export class LogWriter {
       return null; // dir not created yet
     }
     if (files.length === 0) return null;
-    files.sort(); // zero-padded timestamps → lexicographic = time order
+    files.sort((a, b) => this.sortKey(a).localeCompare(this.sortKey(b), undefined, { numeric: true }));
     return join(dir, files[files.length - 1]);
   }
 
@@ -129,7 +159,7 @@ export class LogWriter {
     return null;
   }
 
-  /** Keeps the newest `retentionFiles` files in `logs/<instanceId>/`. */
+  /** Keeps the newest `retentionFiles` files in `logs/<modelId>/`. */
   prune(instanceId: string): void {
     const dir = this.instanceDir(instanceId);
     let files: string[];
@@ -138,8 +168,8 @@ export class LogWriter {
     } catch {
       return; // dir not created yet
     }
-    // Timestamps are zero-padded ISO-ish, so lexicographic order = time order.
-    files.sort();
+    // Sort by the start stamp so the newest run (latest date) is kept.
+    files.sort((a, b) => this.sortKey(a).localeCompare(this.sortKey(b), undefined, { numeric: true }));
     const excess = files.length - this.retentionFiles;
     for (let i = 0; i < excess; i++) {
       const file = join(dir, files[i]);

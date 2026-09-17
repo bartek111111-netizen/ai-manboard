@@ -49,7 +49,6 @@ import { writeAutoLog } from "../logs/store.js";
 import { readGpuInfo, type GpuInfo } from "../../gpu.js";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-import si from "systeminformation";
 import {
   scanEngineProcesses,
   readRssMB,
@@ -123,6 +122,15 @@ export class LifecycleManager {
   private readonly runtimes = new Map<string, RuntimeHandle>();
   /** Engine per instance (cached at spawn) for log-pattern classification. */
   private readonly enginesByInstance = new Map<string, InferenceEngine>();
+  /**
+   * Per-instance previous sample of the cumulative /metrics token counter.
+   * Derives a LIVE tok/s (delta over the poll interval) so the panel tracks the
+   * CURRENT generation speed during a long task, not a lifetime average that
+   * lags behind a new task. Cleared on stop.
+   */
+  private readonly lastCounters = new Map<string, { tokens: number; ts: number }>();
+  /** Per-instance previous CPU jiffies (for a LIVE cpu% from /proc deltas). */
+  private readonly lastJiffies = new Map<string, { jiffies: number; ts: number }>();
 
   constructor(deps: LifecycleDeps) {
     this.deps = deps;
@@ -212,16 +220,18 @@ export class LifecycleManager {
     for (const [key, resolved] of Object.entries(inst.resolved)) {
       configSource[key] = resolved.source;
     }
-    // Runtime info (slots/tokensPerSec/gpu) — best-effort (null when not live).
-    const runtime =
-      state === "running" || state === "starting"
-        ? await inst.engine.fetchRuntimeInfo(inst.base)
-        : null;
     const startedAt = entry?.startedAt ?? null;
     const uptimeSec = startedAt
       ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
       : null;
-    const system = this.getSystemMetrics(instanceId, state);
+    // Runtime / process / GPU / prefill (shared with the /metrics endpoint;
+    // the generation tok/s is a LIVE rate over the poll interval).
+    const m = await this.collectRuntimeMetrics(
+      instanceId,
+      state,
+      inst.engine,
+      inst.base,
+    );
     return {
       instanceId,
       modelId: inst.modelId,
@@ -234,10 +244,10 @@ export class LifecycleManager {
       startedAt,
       uptimeSec,
       configSource,
-      runtime,
-      process: await this.getProcessMetrics(instanceId),
-      gpu: system.gpu,
-      ttft: system.ttft,
+      runtime: m.runtime,
+      process: m.process,
+      gpu: m.gpu,
+      ttft: m.ttft,
       lastError:
         entry && (entry.lastExitCode !== null || entry.lastSignal)
           ? { exitCode: entry.lastExitCode, signal: entry.lastSignal ?? null }
@@ -250,16 +260,47 @@ export class LifecycleManager {
   async getMetrics(instanceId: string): Promise<Record<string, unknown>> {
     const inst = await this.resolver.resolve(instanceId);
     const state = this.getState(instanceId);
-    const runtime =
-      state === "running" || state === "starting"
-        ? await inst.engine.fetchRuntimeInfo(inst.base)
-        : null;
-    const system = this.getSystemMetrics(instanceId, state);
+    // Runtime / process / GPU / prefill (shared with `getFullDto`).
+    const m = await this.collectRuntimeMetrics(
+      instanceId,
+      state,
+      inst.engine,
+      inst.base,
+    );
     return {
       instanceId,
       state,
-      runtime,
-      process: await this.getProcessMetrics(instanceId),
+      runtime: m.runtime,
+      process: m.process,
+      gpu: m.gpu,
+      ttft: m.ttft,
+    };
+  }
+
+  /**
+   * Shared metrics collection behind `getFullDto` and the `/metrics` endpoint:
+   * the engine runtime info (the generation tok/s as a LIVE rate over the poll
+   * interval — see `applyLiveRate`), the per-process CPU/RSS (from /proc),
+   * the system GPU and the last prefill (TTFT) from the log. Best-effort —
+   * null when the instance is not live.
+   */
+  private async collectRuntimeMetrics(
+    instanceId: string,
+    state: InstanceState,
+    engine: InferenceEngine,
+    base: string,
+  ): Promise<{
+    runtime: RuntimeInfo | null;
+    process: { cpuPct: number | null; rssMB: number | null };
+    gpu: GpuInfo | null;
+    ttft: { tokens: number; seconds: number; tps: number } | null;
+  }> {
+    const isLive = state === "running" || state === "starting";
+    const rawRuntime = isLive ? await engine.fetchRuntimeInfo(base) : null;
+    const system = this.getSystemMetrics(instanceId, state);
+    return {
+      runtime: this.applyLiveRate(instanceId, rawRuntime),
+      process: this.readProcessMetrics(instanceId),
       gpu: system.gpu,
       ttft: system.ttft,
     };
@@ -285,44 +326,84 @@ export class LifecycleManager {
     return { gpu, ttft };
   }
 
-  /** Gets CPU% and RSS for the instance's process. */
-  private async getProcessMetrics(
-    instanceId: string,
-  ): Promise<{ cpuPct: number | null; rssMB: number | null }> {
-    const state = this.getState(instanceId);
-    if (state !== "running") {
+  /**
+   * Per-process CPU%/RSS read directly from /proc (the project is Linux-only,
+   * PLAN §27) — no full process-table scan. CPU% is a LIVE rate over the poll
+   * interval (delta of the process's cumulative CPU jiffies), so the first poll
+   * after a start reports null for CPU%.
+   */
+  private readProcessMetrics(instanceId: string): {
+    cpuPct: number | null;
+    rssMB: number | null;
+  } {
+    if (this.getState(instanceId) !== "running") {
       return { cpuPct: null, rssMB: null };
     }
+    const pid = this.deps.manager.getActiveEntry(instanceId)?.child?.pid;
+    if (!pid) return { cpuPct: null, rssMB: null };
 
-    const entry = this.deps.manager.getActiveEntry(instanceId);
-    if (!entry) {
-      return { cpuPct: null, rssMB: null };
-    }
-
+    // RSS (KB) from /proc/<pid>/status.
+    let rssMB: number | null = null;
     try {
-      const pid = entry.child.pid;
-
-      // Use systeminformation for CPU% and RSS
-      const allProcs = await si.processes();
-      const proc = allProcs.list.find((p) => p.pid === pid);
-      if (proc) {
-        // memRss is in KB
-        return {
-          cpuPct: proc.cpu ?? 0,
-          rssMB: Math.round((proc.memRss ?? 0) / 1024),
-        };
-      }
-
-      // Fallback to /proc if not found
-      const procMem = readFileSync(`/proc/${pid}/status`, "utf8");
-      const rssMatch = procMem.match(/VmRSS:\s+(\d+)\s+kB/);
-      const rssKB = rssMatch ? parseInt(rssMatch[1], 10) : 0;
-      const rssMB = rssKB / 1024;
-      return { cpuPct: 0, rssMB: Math.round(rssMB) };
-    } catch (err) {
-      console.error("Failed to get process metrics:", err);
-      return { cpuPct: null, rssMB: null };
+      const status = readFileSync(`/proc/${pid}/status`, "utf8");
+      const match = status.match(/VmRSS:\s+(\d+)\s+kB/);
+      if (match) rssMB = Math.round(parseInt(match[1], 10) / 1024);
+    } catch {
+      // RSS unavailable — leave null
     }
+
+    // CPU% from the delta of cumulative jiffies (/proc/<pid>/stat).
+    let cpuPct: number | null = null;
+    const jiffies = readProcCpuJiffies(pid);
+    if (jiffies !== null) {
+      const now = Date.now();
+      const prev = this.lastJiffies.get(instanceId);
+      if (prev) {
+        const dtSec = (now - prev.ts) / 1000;
+        if (dtSec > 0) {
+          const cpuSec = (jiffies - prev.jiffies) / 100; // 100 Hz kernel tick
+          cpuPct = Math.max(0, (cpuSec / dtSec) * 100);
+        }
+      }
+      this.lastJiffies.set(instanceId, { jiffies, ts: Date.now() });
+    }
+    return { cpuPct, rssMB };
+  }
+
+  /**
+   * Derives the LIVE generation tok/s: the delta of the cumulative
+   * `tokens_predicted_total` counter over the poll interval. While a slot is
+   * generating, this is the CURRENT speed (not a lifetime average, which lags
+   * during a long task). When idle (no tokens in the window) or on the first
+   * poll (no previous sample) it falls back to the cumulative average, so the
+   * panel never reads a misleading 0.
+   */
+  private applyLiveRate(
+    instanceId: string,
+    runtime: RuntimeInfo | null,
+  ): RuntimeInfo | null {
+    if (!runtime) return runtime;
+    const counters = (runtime.extras.counters ?? null) as
+      | { tokensPredictedTotal?: number }
+      | null;
+    const total = counters?.tokensPredictedTotal;
+    if (typeof total !== "number" || !Number.isFinite(total)) {
+      return runtime; // no usable counter — keep the cumulative value as-is
+    }
+    const now = Date.now();
+    const prev = this.lastCounters.get(instanceId);
+    let live: number | undefined = runtime.tokensPerSec;
+    if (prev) {
+      const dtSec = (now - prev.ts) / 1000;
+      if (dtSec > 0) {
+        const rate = (total - prev.tokens) / dtSec;
+        live = rate > 0 ? rate : (runtime.tokensPerSec ?? 0); // idle → keep the avg
+      }
+    }
+    this.lastCounters.set(instanceId, { tokens: total, ts: now });
+    runtime.extras.tokensPerSecAvg = runtime.tokensPerSec ?? null; // keep the avg
+    runtime.tokensPerSec = live;
+    return runtime;
   }
 
   /** Recent log lines (in-memory ring), most recent last (Faza 6.3). */
@@ -474,6 +555,9 @@ export class LifecycleManager {
    */
   async stop(instanceId: string): Promise<void> {
     this.stopRuntime(instanceId);
+    // Drop the per-instance metric samplers so a restart starts fresh.
+    this.lastCounters.delete(instanceId);
+    this.lastJiffies.delete(instanceId);
     // Capture logs BEFORE stopping (cleanup deletes the active entry)
     const logs = this.deps.manager.getLogs(instanceId);
     const current = this.getState(instanceId);
@@ -518,6 +602,8 @@ export class LifecycleManager {
   shutdown(): void {
     for (const handle of this.runtimes.values()) handle.stop();
     this.runtimes.clear();
+    this.lastCounters.clear();
+    this.lastJiffies.clear();
   }
 
   /**
@@ -643,5 +729,26 @@ export class LifecycleManager {
   private stopRuntime(instanceId: string): void {
     this.runtimes.get(instanceId)?.stop();
     this.runtimes.delete(instanceId);
+  }
+}
+
+/**
+ * Reads the process's cumulative CPU jiffies (utime+stime) from
+ * /proc/<pid>/stat. Returns null when the file can't be read (process gone).
+ * The (comm) field may contain spaces, so the fields are split after the LAST
+ * ')': after it, field 14 (utime) is token index 11 and field 15 (stime) is
+ * token index 12.
+ */
+function readProcCpuJiffies(pid: number): number | null {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    const close = stat.lastIndexOf(")");
+    const fields = stat.slice(close + 1).trim().split(/\s+/);
+    const utime = Number(fields[11]); // field 14
+    const stime = Number(fields[12]); // field 15
+    if (!Number.isFinite(utime) || !Number.isFinite(stime)) return null;
+    return utime + stime;
+  } catch {
+    return null;
   }
 }

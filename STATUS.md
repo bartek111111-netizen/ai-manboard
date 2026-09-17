@@ -1,5 +1,40 @@
 # STATUS
 
+## Metryki NA ŻYWO (tok/s podczas generowania) + uproszczenia (metryki /proc, dedup) — ✅ ZROBIONE (2026-09-17)
+
+Trzy zmiany po sprawozdaniu użytkownika („gdy model aktywnie generuje — ma slot
+aktywny — to mierz tok/s / prefill itd. na bieżąco; teraz wszystko aktualizuje
+się dopiero, gdy model skończy całe zadanie"):
+
+1. **Tok/s generowania to był ŚREDNI KUMULATYWNY, nie bieżąca szybkość.**
+   `probe.ts` liczył `tokensPerSec = tokens_predicted_total / tokens_predicted_seconds_total`
+   — to **średnia od startu** serwera, więc przy długim zadaniu (10+ min) liczba
+   „leciała" i nie odzwierciedlała obecnego tempa. **Koncepcja zmieniona:**
+   `probe.ts` wystawia teraz **surowe liczniki** (`extras.counters`:
+   `tokensPredictedTotal` itd.); `lifecycle.ts → applyLiveRate()` trzyma poprzednią
+   próbkę licznika per instancja i liczy **LIVE rate = Δtokens / Δczas** okna
+   odczytu (UI pyta co 3 s). Gdy slot aktywnie generuje → **bieżąca** szybkość;
+   gdy idle / przy 1. odczycie (brak poprzedniej próbki) → **fallback** do średniej
+   kumulatywnej (nie pokazujemy mylącego 0). `extras.tokensPerSecAvg` trzyma
+   średnią od startu do referencji. Prefill/TTFT i tak pochodzi z loga
+   (`prompt processing` — pojawia się na **początku** żądania) i jest bieżący;
+   `prefillTps` zostaje śr. od startu (oznaczony „śr.").
+2. **Metryki procesu z `/proc` zamiast pełnego skanu procesów (uproszczenie + fix).**
+   `getProcessMetrics()` używał `systeminformation.processes()` — **skanował CAŁĄ
+   tabelę procesów** przy każdym odczycie (co 3 s). Fix: `readProcessMetrics()`
+   czyta **bezpośrednio** `/proc/<pid>/status` (RSS) i `/proc/<pid>/stat`
+   (jiffies CPU); CPU% = **LIVE rate** z różnicy jiffies w oknie odczytu (1. odczyt
+   po starcie = null). Projekt Linux-only (§27) → `/proc` w porządku. Usunięty
+   import `systeminformation` (już niepotrzebny).
+3. **Dedup `getFullDto` / `getMetrics` (uproszczenie).** Obie metody **trzykrotnie**
+   składały to samo (`fetchRuntimeInfo` + `applyLiveRate` + `getSystemMetrics` +
+   metryki procesu). Fix: wspólny `collectRuntimeMetrics()` zwraca
+   `{ runtime, process, gpu, ttft }`; obie metody go wywołują.
+
+Gates: typecheck/lint/testy (server 167/167, web 15/15) + web build zielone.
+Nowy test: `lifecycle.test.ts → derives a LIVE tok/s from the cumulative counter delta`.
+Uwaga: zmiany serwera (1–3) wchodzą przy **następnym starcie dashboardu**.
+
 ## Kolory tytułów w modalu trybu (ciemny motyw) + kill DSH (cała grupa procesów) — ✅ ZROBIONE (2026-09-17)
 
 Dwie poprawki po sprawozdaniu użytkownika:

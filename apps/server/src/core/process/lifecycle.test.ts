@@ -7,6 +7,7 @@ import {
   type InferenceEngine,
   type ModelConfig,
   type Preset,
+  type RuntimeInfo,
 } from '@ai-dashboard/shared';
 import { ensureHome, resolveHome } from '../config/paths.js';
 import { ConfigStore } from '../config/store.js';
@@ -68,12 +69,18 @@ function seed(home: string, port?: number): ConfigStore {
   return store;
 }
 
-function stack(store: ConfigStore, home: string, ready = () => true, startupTimeoutMs = 4000): LifecycleManager {
+function stack(
+  store: ConfigStore,
+  home: string,
+  ready = () => true,
+  startupTimeoutMs = 4000,
+  engine: InferenceEngine = dummyEngine(ready),
+): LifecycleManager {
   const registry = new PidRegistry(resolveHome(home));
   const logs = new LogWriter({ logsDir: `${home}/logs`, retentionFiles: 10, maxFileBytes: 10_000_000 });
   const manager = new ProcessManager({ registry, logs, ringLines: 50, stopTimeoutSec: 2 });
   const prober = new HealthProber({ startupIntervalMs: 25, startupTimeoutMs, runtimeIntervalMs: 25, runtimeFailThreshold: 3 });
-  return new LifecycleManager({ store, engines: [dummyEngine(ready)], manager, registry, prober, logs });
+  return new LifecycleManager({ store, engines: [engine], manager, registry, prober, logs });
 }
 
 describe('LifecycleManager', () => {
@@ -160,6 +167,57 @@ describe('LifecycleManager', () => {
       expect(list.find((i) => i.instanceId === INSTANCE)?.state).toBe('unknown');
     } finally {
       lifecycle.shutdown();
+    }
+  });
+
+  it('derives a LIVE tok/s from the cumulative counter delta (Faza 10 metrics)', async () => {
+    const home = tempHome('lc-live');
+    let tokensTotal = 0;
+    const engine: InferenceEngine = {
+      id: 'dummy',
+      displayName: 'Dummy',
+      description: 'test',
+      filePatterns: ['*.gguf'],
+      schema: [{ key: 'port', label: 'Port', type: 'int', default: 8080, group: 'server' }],
+      detectCapabilities: () => [],
+      buildLaunch: async (ctx) => ({
+        binary: 'sh',
+        args: ['-c', 'sleep 30'],
+        cwd: ctx.cwd ?? process.cwd(),
+        env: {},
+      }),
+      isReady: async () => true,
+      fetchRuntimeInfo: async () => ({
+        slots: { used: 1, total: 1 },
+        tokensPerSec: 5, // cumulative average — the fallback marker
+        contextSize: 4096,
+        extras: { counters: { tokensPredictedTotal: tokensTotal } },
+      }),
+      classifyLog: () => ({ level: 'info' }),
+      validate: () => [],
+    };
+    const lifecycle = stack(seed(home, 8091), home, () => true, 4000, engine);
+    try {
+      await lifecycle.start(INSTANCE);
+      await vi.waitFor(() => expect(lifecycle.getState(INSTANCE)).toBe('running'));
+
+      // First sample: no previous → falls back to the cumulative average.
+      const first = await lifecycle.getMetrics(INSTANCE);
+      const firstRuntime = first.runtime as RuntimeInfo | null;
+      expect(firstRuntime?.tokensPerSec).toBe(5);
+
+      // Bump the counter by 200 over ~250ms → live rate ≈ 800 tok/s, far above
+      // the cumulative average of 5 (a lifetime average would otherwise lag).
+      tokensTotal = 200;
+      await new Promise((r) => setTimeout(r, 250));
+      const second = await lifecycle.getMetrics(INSTANCE);
+      const rate = (second.runtime as RuntimeInfo | null)?.tokensPerSec;
+      expect(rate).toBeDefined();
+      expect(rate!).toBeGreaterThan(300);
+      expect(rate!).toBeLessThan(1200);
+    } finally {
+      lifecycle.shutdown();
+      await lifecycle.stop(INSTANCE);
     }
   });
 });

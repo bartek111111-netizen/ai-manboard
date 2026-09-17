@@ -96,6 +96,9 @@ export async function fetchLlamaServerRuntimeInfo(base: string): Promise<Runtime
       const tokensTotal = metrics['llamacpp:tokens_predicted_total'];
       const tokensTime = metrics['llamacpp:tokens_predicted_seconds_total'];
       if (tokensTotal !== undefined && tokensTime > 0) {
+        // CUMULATIVE average over all generation since launch. The dashboard
+        // overwrites this with a LIVE rate (delta over the poll interval) — see
+        // lifecycle's per-instance sampler. Kept here as the raw fallback.
         info.tokensPerSec = tokensTotal / tokensTime;
       }
 
@@ -120,6 +123,26 @@ export async function fetchLlamaServerRuntimeInfo(base: string): Promise<Runtime
       }
       if (prefillTokens !== undefined && prefillTime > 0) {
         info.extras.prefillTps = prefillTokens / prefillTime;
+      }
+
+      // Raw cumulative COUNTERS. These grow over the server's life; the
+      // dashboard keeps the previous sample per instance and derives a LIVE
+      // rate from the delta over the poll interval (current tok/s while a slot
+      // is active), which is what the user actually wants to see during a long
+      // generation. A cumulative average alone lags behind a new task.
+      const counters: Record<string, number> = {};
+      const counterKeys: Record<string, string> = {
+        'llamacpp:tokens_predicted_total': 'tokensPredictedTotal',
+        'llamacpp:tokens_predicted_seconds_total': 'tokensPredictedSeconds',
+        'llamacpp:prompt_tokens_total': 'promptTokensTotal',
+        'llamacpp:prompt_seconds_total': 'promptSecondsTotal',
+      };
+      for (const [metric, key] of Object.entries(counterKeys)) {
+        const v = metrics[metric];
+        if (v !== undefined && Number.isFinite(v)) counters[key] = v;
+      }
+      if (Object.keys(counters).length > 0) {
+        info.extras.counters = counters;
       }
     }
   } catch {

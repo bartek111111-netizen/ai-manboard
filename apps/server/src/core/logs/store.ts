@@ -55,7 +55,11 @@ export function listRunLogs(modelId: string): { file: string; ts: string; size: 
       const full = join(dir, f);
       const st = statSync(full);
       const type = f.startsWith('auto-') ? 'auto' as const : 'manual' as const;
-      const ts = f.replace(/^(auto-|manual-)/, '').replace('.log', '');
+      // The filename carries a UTC stamp with NO timezone marker, and parsing
+      // it as local time shifted the displayed time (e.g. 2 h in CEST). The
+      // file's mtime is the trustworthy write instant — return it as a full
+      // ISO string (with `Z`) so clients render it in the viewer's local TZ.
+      const ts = new Date(st.mtimeMs).toISOString();
       return { file: f, ts, size: st.size, type };
     })
     .sort((a, b) => (a.ts < b.ts ? 1 : -1));

@@ -23,6 +23,7 @@ import {
   type LaunchMode,
 } from "@ai-dashboard/shared";
 import { PidRegistry } from "./registry.js";
+import { isPidAlive } from "./reconcile.js";
 import {
   RingBuffer,
   type LogLine,
@@ -46,7 +47,6 @@ export interface ProcessManagerOptions {
 
 interface ActiveInstance {
   child: ChildProcess;
-  ring: RingBuffer<LogLine>;
   /** Disk log file for this start ('' when no writer). */
   logFile: string;
   state: InstanceState;
@@ -71,10 +71,22 @@ export class ProcessManager {
   private readonly active = new Map<string, ActiveInstance>();
   private readonly stopTimeoutMs: number;
   private readonly ringLines: number;
-  /** File-tail timers (background-mode instances read their log file back). */
-  private readonly tailTimers = new Map<string, NodeJS.Timeout>();
-  /** Byte offset already read per instance's log file (file-tail). */
-  private readonly tailOffsets = new Map<string, number>();
+  /**
+   * The instance's ring buffer (live log lines), keyed by instanceId. Kept
+   * OUTSIDE `active` so it also exists for adopted instances (a background
+   * engine that survived a dashboard restart — see `adoptLogTails`): the SSE
+   * replay reads the ring, not the child process.
+   */
+  private readonly rings = new Map<string, RingBuffer<LogLine>>();
+  /**
+   * File-tail pollers (background-mode instances read their log file back):
+   * one record per tailed file — timer, the file being read, and the byte
+   * offset already consumed.
+   */
+  private readonly tails = new Map<
+    string,
+    { timer: NodeJS.Timeout; logFile: string; offset: number }
+  >();
 
   constructor(private readonly opts: ProcessManagerOptions) {
     this.stopTimeoutMs = (opts.stopTimeoutSec ?? 10) * 1000;
@@ -98,7 +110,32 @@ export class ProcessManager {
 
   /** The instance's in-memory log lines (live view), most recent last. */
   getLogs(instanceId: string, limit?: number): LogLine[] {
-    return this.active.get(instanceId)?.ring.lines(limit) ?? [];
+    return this.rings.get(instanceId)?.lines(limit) ?? [];
+  }
+
+  /**
+   * Re-attaches live-log capture to instances that are live but NOT owned by
+   * this manager process — a dashboard restart while a `background`
+   * ("Zostaje w tle") engine keeps running: reconcile settles the registry
+   * state back to `running`, but the in-memory ring + tail poller are gone
+   * (they live in the previous process). This tails the latest per-start log
+   * file — the engine still writes it — so the Logi tab (ring replay on SSE
+   * connect + live lines) works again WITHOUT restarting the engine.
+   *
+   * Returns the attached instanceIds.
+   */
+  adoptLogTails(registry: PidRegistry): string[] {
+    const attached: string[] = [];
+    for (const entry of registry.list()) {
+      if (this.active.has(entry.instanceId)) continue; // spawn manages it itself
+      if (entry.state !== "running" && entry.state !== "starting") continue;
+      if (!entry.pid || !isPidAlive(entry.pid)) continue;
+      const file = this.opts.logs?.latestFile(entry.instanceId);
+      if (!file) continue;
+      this.startTail(entry.instanceId, file);
+      attached.push(entry.instanceId);
+    }
+    return attached;
   }
 
   /**
@@ -132,7 +169,7 @@ export class ProcessManager {
       );
     }
 
-    const ring = new RingBuffer<LogLine>(this.ringLines);
+    this.rings.set(instanceId, new RingBuffer<LogLine>(this.ringLines));
     const logFile =
       this.opts.logs?.start(instanceId, this.stamp(instanceId)) ?? "";
 
@@ -171,7 +208,6 @@ export class ProcessManager {
     let settled = false;
     const active: ActiveInstance = {
       child,
-      ring,
       logFile,
       state: "starting",
       mode,
@@ -205,7 +241,7 @@ export class ProcessManager {
     child.stderr?.on("data", (chunk: Buffer) =>
       this.onOutput(instanceId, "stderr", chunk),
     );
-    if (mode === "background" && logFile) this.startTail(instanceId);
+    if (mode === "background" && logFile) this.startTail(instanceId, logFile);
 
     // Watchdog: the process ended — update FSM + registry + resolve waiters.
     child.on("exit", (code: number | null, signal: string | null) => {
@@ -400,19 +436,20 @@ export class ProcessManager {
   }
 
   private pushLine(instanceId: string, source: LogSource, line: string): void {
+    const ring = this.rings.get(instanceId);
+    if (!ring) return;
     const active = this.active.get(instanceId);
-    if (!active) return;
     const logLine: LogLine = {
       ts: new Date().toISOString(),
       level: this.classifyLevel(line),
       source,
       line,
     };
-    active.ring.push(logLine);
+    ring.push(logLine);
     // `session` mode: the engine's output is on our pipes, so we write the disk
     // log here. `background` mode: the engine writes the file ITSELF (via its
     // own stdio, which is the file), so appending would duplicate the lines.
-    if (active.mode === "session" && active.logFile)
+    if (active && active.mode === "session" && active.logFile)
       this.opts.logs?.append(active.logFile, line);
     this.opts.onLogLine?.(instanceId, logLine);
   }
@@ -432,44 +469,58 @@ export class ProcessManager {
   // ------------------------------------------------------------------ file-tail
 
   /**
-   * Starts the file-tail poller for a `background`-mode instance. The engine
-   * writes its log file directly (its stdio is the file), so the dashboard
-   * reads new bytes back to feed the ring buffer + live log stream.
+   * Starts (or replaces) the file-tail poller for an instance's log file. The
+   * engine writes the file directly (its stdio is the file), so the dashboard
+   * reads new bytes back to feed the ring buffer + live log stream. Used by
+   * `background`-mode spawns and by `adoptLogTails` after a dashboard
+   * restart (offset 0, so the ring is seeded with the file's existing tail).
    */
-  private startTail(instanceId: string): void {
-    const active = this.active.get(instanceId);
-    if (!active || !active.logFile) return;
-    if (this.tailTimers.has(instanceId)) return;
-    this.tailOffsets.set(instanceId, 0);
+  private startTail(instanceId: string, logFile: string): void {
+    this.stopTail(instanceId); // replacing (e.g. a new start with a new file)
+    if (!this.rings.has(instanceId)) {
+      this.rings.set(instanceId, new RingBuffer<LogLine>(this.ringLines));
+    }
     const timer = setInterval(() => this.tailRead(instanceId), 500);
-    this.tailTimers.set(instanceId, timer);
+    this.tails.set(instanceId, { timer, logFile, offset: 0 });
   }
 
-  /** Stops the file-tail poller for an instance (exit / error / stop). */
+  /** Stops the file-tail poller for an instance (exit / error / stop / dead). */
   private stopTail(instanceId: string): void {
-    const timer = this.tailTimers.get(instanceId);
-    if (timer) {
-      clearInterval(timer);
-      this.tailTimers.delete(instanceId);
+    const tail = this.tails.get(instanceId);
+    if (tail) {
+      clearInterval(tail.timer);
+      this.tails.delete(instanceId);
     }
-    this.tailOffsets.delete(instanceId);
   }
 
   /** Reads new, complete lines from the instance's log file and pushes them. */
   private tailRead(instanceId: string): void {
-    const active = this.active.get(instanceId);
-    if (!active || !active.logFile) {
-      this.stopTail(instanceId);
-      return;
+    const tail = this.tails.get(instanceId);
+    if (!tail) return;
+    // Adopted tails (no child owned by this process) end when the engine is
+    // gone: dead PID or the registry no longer reports it live. Spawned
+    // instances are handled by the exit handler instead (which stops the tail).
+    if (!this.active.has(instanceId)) {
+      const entry = this.opts.registry.get(instanceId);
+      if (
+        !entry ||
+        entry.state === "stopped" ||
+        entry.state === "crashed" ||
+        entry.state === "error" ||
+        (entry.pid !== null && !isPidAlive(entry.pid))
+      ) {
+        this.stopTail(instanceId);
+        return;
+      }
     }
-    const logFile = active.logFile;
+    const logFile = tail.logFile;
     let size: number;
     try {
       size = statSync(logFile).size;
     } catch {
       return; // not ready yet
     }
-    let offset = this.tailOffsets.get(instanceId) ?? 0;
+    let offset = tail.offset;
     if (size < offset) offset = 0; // truncated — re-read from the start
     if (size === offset) return; // no new bytes
     let content: string;
@@ -489,7 +540,7 @@ export class ProcessManager {
     // tail for the next poll so we never push a half-written line.
     const lastNl = content.lastIndexOf("\n");
     const consumed = lastNl === -1 ? 0 : lastNl + 1;
-    this.tailOffsets.set(instanceId, offset + consumed);
+    tail.offset = offset + consumed;
     const complete = lastNl === -1 ? "" : content.slice(0, lastNl);
     for (const line of complete.split("\n")) {
       if (line !== "") this.pushLine(instanceId, "stdout", line);

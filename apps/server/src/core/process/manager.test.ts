@@ -189,6 +189,48 @@ describe("ProcessManager (PLAN §11.5, §11.2, TT-9)", () => {
     await manager.stop("m--survive");
   });
 
+  it("adopts a background instance's log file after a dashboard restart (new manager tails the file)", async () => {
+    const { manager, registry, home } = tempManager();
+    const published: string[] = [];
+    // "Dashboard" #1: spawn a long-running background engine that keeps logging.
+    const pid = await manager.spawn(
+      "m--adopt",
+      dummy(
+        home.root,
+        "let n=0; setInterval(()=>{console.log('tick-'+(++n));},200); setTimeout(()=>{},60000);",
+      ),
+      8081,
+      "background",
+    );
+    expect(pid).toBeGreaterThan(0);
+    await waitFor(() => manager.getLogs("m--adopt").length >= 2, 5000);
+
+    // "Dashboard restart": a brand-new manager (fresh in-memory state) over
+    // the same home. The registry entry is still `starting`/`running` and the
+    // PID is alive — reconcile settles it back to `running` on boot.
+    const manager2 = new ProcessManager({
+      registry,
+      logs: new LogWriter({
+        logsDir: home.logsDir,
+        retentionFiles: 10,
+        maxFileBytes: 10 * 1024 * 1024,
+      }),
+      ringLines: 100,
+      onLogLine: (_id, line) => published.push(line.line),
+    });
+    expect(manager2.getLogs("m--adopt")).toEqual([]); // fresh process: no ring yet
+    const attached = manager2.adoptLogTails(registry);
+    expect(attached).toContain("m--adopt");
+    // The ring is seeded from the file AND keeps streaming new lines — that
+    // is what feeds the Logi tab (SSE replay + live lines) after a restart.
+    await waitFor(() => manager2.getLogs("m--adopt").length >= 3, 5000);
+    const lines = manager2.getLogs("m--adopt").map((l) => l.line);
+    expect(lines.some((l) => l.startsWith("tick-"))).toBe(true);
+    // The onLogLine hook fires too (the SSE publisher subscribes to it).
+    expect(published.some((l) => l.startsWith("tick-"))).toBe(true);
+    await manager.stop("m--adopt"); // the FIRST manager still owns the child
+  });
+
   it("session mode: the child writes to the dashboard pipes (its stdio is a pipe)", async () => {
     if (process.platform !== "linux") return;
     const { manager, home } = tempManager();

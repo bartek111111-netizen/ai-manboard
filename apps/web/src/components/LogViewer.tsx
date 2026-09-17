@@ -53,6 +53,23 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
       .catch(() => setSavedLogs([]));
   }, [modelId]);
 
+  // Instance state — decides whether the live view IS the current log
+  // (the instance runs) or the newest saved run should auto-open instead.
+  const [instanceState, setInstanceState] = useState<string | null>(null);
+  useEffect(() => {
+    setInstanceState(null);
+    fetch("/api/v1/instances")
+      .then((r) => r.json())
+      .then((data) =>
+        setInstanceState(
+          data.instances.find(
+            (i: { instanceId: string }) => i.instanceId === instanceId,
+          )?.state ?? null,
+        ),
+      )
+      .catch(() => setInstanceState(null));
+  }, [instanceId]);
+
   // Load a specific saved log
   const loadSavedLog = useCallback(
     (file: string) => {
@@ -68,6 +85,23 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
     },
     [modelId],
   );
+
+  // When the instance is not running, the live view is empty — auto-open the
+  // newest saved run (once) so the "current" log is visible without a click.
+  // While the instance runs, the live stream IS the current log.
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (autoLoadedRef.current || viewingLog) return;
+    if (savedLogs.length === 0 || instanceState === null) return;
+    if (
+      instanceState === "running" ||
+      instanceState === "starting" ||
+      instanceState === "stopping"
+    )
+      return;
+    autoLoadedRef.current = true;
+    loadSavedLog(savedLogs[0].file);
+  }, [savedLogs, instanceState, viewingLog, loadSavedLog]);
 
   // Save current log
   const saveCurrentLog = useCallback(() => {
@@ -206,11 +240,9 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
                   onClick={() => loadSavedLog(log.file)}
                 >
                   {log.type === "auto" ? "🤖 " : "📝 "}
-                  {/* `ts` keeps the date dashes but dashes the time (`T12-34-56`);
-                      convert only the time part so the date stays valid. */}
-                  {new Date(
-                    log.ts.replace(/T(\d{2})-(\d{2})-(\d{2})/, "T$1:$2:$3"),
-                  ).toLocaleString()}
+                  {/* The server sends a full ISO timestamp (with `Z`);
+                      `toLocaleString` renders it in the viewer's local TZ. */}
+                  {new Date(log.ts).toLocaleString()}
                 </button>
                 <button
                   type="button"

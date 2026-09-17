@@ -104,6 +104,14 @@ async function main(): Promise<void> {
   if (reconciled.length > 0) {
     console.log(`[dashboard] reconciled ${reconciled.length} instance(s): ${reconciled.join(', ')}`);
   }
+  // Re-attach live-log capture to `background` engines that survived a
+  // dashboard restart (reconcile settled them to `running`): the ring +
+  // file-tail are in-memory, so without this the Logi tab would stay empty
+  // forever. Tails the latest per-start log file — no engine restart.
+  const adoptedLogs = manager.adoptLogTails(registry);
+  if (adoptedLogs.length > 0) {
+    console.log(`[dashboard] re-attached live logs for: ${adoptedLogs.join(', ')}`);
+  }
 
   const app = await buildApp({
     store,

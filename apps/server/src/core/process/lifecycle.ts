@@ -339,7 +339,13 @@ export class LifecycleManager {
     if (this.getState(instanceId) !== "running") {
       return { cpuPct: null, rssMB: null };
     }
-    const pid = this.deps.manager.getActiveEntry(instanceId)?.child?.pid;
+    // The registry holds the PID for BOTH spawned and adopted instances (an
+    // adopted engine survived a restart and has no in-memory child here); fall
+    // back to the live child's pid.
+    const pid =
+      this.deps.registry.get(instanceId)?.pid ??
+      this.deps.manager.getActiveEntry(instanceId)?.child?.pid ??
+      null;
     if (!pid) return { cpuPct: null, rssMB: null };
 
     // RSS (KB) from /proc/<pid>/status.

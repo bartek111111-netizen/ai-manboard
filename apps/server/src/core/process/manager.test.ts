@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { mkdtempSync, readlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +12,7 @@ import {
 import { LogWriter } from "../logs/writer.js";
 import { ProcessManager } from "./manager.js";
 import { PidRegistry } from "./registry.js";
+import { isPidAlive } from "./reconcile.js";
 
 /** A throwaway `~/.ai-dashboard` under /tmp, with a manager wired to it. */
 function tempManager(stopTimeoutSec = 3): {
@@ -229,6 +231,40 @@ describe("ProcessManager (PLAN §11.5, §11.2, TT-9)", () => {
     // The onLogLine hook fires too (the SSE publisher subscribes to it).
     expect(published.some((l) => l.startsWith("tick-"))).toBe(true);
     await manager.stop("m--adopt"); // the FIRST manager still owns the child
+  });
+
+  it("stop() signals an adopted instance (no child, but a live registry pid) — no orphan", async () => {
+    if (process.platform !== "linux") return;
+    const { manager, registry } = tempManager();
+    // A long-running process spawned OUTSIDE the manager: the child object lives
+    // in another process, so this manager has no child — only a live PID in the
+    // registry (the state after a dashboard restart adopts the engine).
+    const child = spawn(process.execPath, ["-e", "setTimeout(()=>{},60000)"], {
+      cwd: process.cwd(),
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+    const pid = child.pid;
+    if (pid === undefined) throw new Error("spawn did not assign a pid");
+    expect(pid).toBeGreaterThan(0);
+
+    registry.set("m--adopt-stop", {
+      instanceId: "m--adopt-stop",
+      pid,
+      port: 8081,
+      state: "running",
+      startedAt: new Date().toISOString(),
+      lastExitCode: null,
+      mode: "background",
+    });
+
+    await manager.stop("m--adopt-stop");
+    expect(registry.get("m--adopt-stop")?.state).toBe("stopped");
+    // The actual process is GONE — the old code marked it `stopped` without
+    // signalling the pid, orphaning the engine (it kept running / VRAM stayed).
+    await waitFor(() => !isPidAlive(pid), 5000);
+    expect(isPidAlive(pid)).toBe(false);
   });
 
   it("session mode: the child writes to the dashboard pipes (its stdio is a pipe)", async () => {

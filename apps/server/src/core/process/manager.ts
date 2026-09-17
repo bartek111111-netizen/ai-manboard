@@ -304,7 +304,17 @@ export class ProcessManager {
     finalState: InstanceState,
   ): Promise<void> {
     const active = this.active.get(instanceId);
-    if (!active) return;
+    if (!active) {
+      // Adopted instance (no child here): still signal the live registry pid
+      // so a stop can't orphan the engine.
+      const entry = this.opts.registry.get(instanceId);
+      if (entry && entry.pid && isPidAlive(entry.pid)) {
+        await this.signalPid(entry.pid, entry.mode ?? "session");
+      }
+      this.opts.registry.update(instanceId, { state: finalState, pid: null });
+      this.opts.onStateChange?.(instanceId, finalState);
+      return;
+    }
     active.forcedState = finalState;
     active.state = finalState;
     this.opts.registry.update(instanceId, { state: finalState });
@@ -326,7 +336,11 @@ export class ProcessManager {
   async stop(instanceId: string): Promise<void> {
     const active = this.active.get(instanceId);
     if (!active) {
-      // Not live (already exited / never spawned). Ensure the registry settles.
+      // Not spawned by THIS process. An *adopted* instance (a `background`
+      // engine that survived a dashboard restart) still has a LIVE PID in the
+      // registry but no child object here — signal THAT pid directly, else the
+      // process is ORPHANED: the "stop" only clears our bookkeeping while the
+      // engine keeps running (and later resurfaces as an external instance).
       const entry = this.opts.registry.get(instanceId);
       if (
         entry &&
@@ -334,6 +348,9 @@ export class ProcessManager {
           entry.state === "running" ||
           entry.state === "stopping")
       ) {
+        if (entry.pid && isPidAlive(entry.pid)) {
+          await this.signalPid(entry.pid, entry.mode ?? "session");
+        }
         this.opts.registry.update(instanceId, { state: "stopped", pid: null });
         this.opts.onStateChange?.(instanceId, "stopped");
       }
@@ -388,6 +405,33 @@ export class ProcessManager {
         setTimeout(() => resolve(null), timeoutMs),
       ),
     ]);
+  }
+
+  /**
+   * Signals a PID we don't hold a ChildProcess for — an *adopted* instance
+   * (a `background` engine that survived a dashboard restart): SIGTERM → wait
+   * the grace period → SIGKILL. `background` engines run detached in their own
+   * process group (pid = pgid), so signal the whole group (`-pid`) to reach the
+   * engine and any of its children.
+   */
+  private async signalPid(pid: number, mode: LaunchMode): Promise<void> {
+    const target = mode === "background" ? -pid : pid;
+    const send = (sig: NodeJS.Signals): void => {
+      try {
+        process.kill(target, sig);
+      } catch {
+        // Already gone.
+      }
+    };
+    send("SIGTERM");
+    const deadline = Date.now() + this.stopTimeoutMs;
+    while (Date.now() < deadline && isPidAlive(pid)) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    if (isPidAlive(pid)) {
+      send("SIGKILL");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 
   // ------------------------------------------------------------------ internal

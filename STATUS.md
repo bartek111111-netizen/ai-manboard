@@ -1,5 +1,38 @@
 # STATUS
 
+## Fix: Stop nie zabijał adoptowanej instancji (orphan po restarcie) + CPU/RAM po restarcie — ✅ ZROBIONE (2026-09-17)
+
+Po rebuildzie + restarcie dashboardu adoptowana instancja (`background` —
+przeżyła restart) **nie dostawała metryk CPU/RAM** (widać tylko VRAM), a **Stop
+ją osierocał**: „stop" czyścił rejestr, ale **nie zabijał procesu** (VRAM/RAM
+zostały, instancja wróciła jako „spoza aplikacji" i doszedł **drugi proces**
+tego samego modelu → podwójne zużycie RAM).
+
+Przyczyna (jeden wspólny): `manager.active` trzyma obiekt `ChildProcess` **tylko**
+dla procesów **uruchomionych przez BIECZĄCY** proces dashboardu. Adoptowana
+instancja (przeżyła restart) ma żywy **PID w rejestrze**, ale **brak child**.
+Dwie ścieżki polegały na `child`:
+
+1. **`manager.stop()`** — przy `!active` **tylko** oznaczał rejestr `stopped` i
+   wracał (**bez sygnału do PID**) → **orphan** (proces żyje, dashboard o nim
+   zapomniał, detekcja → „spoza aplikacji").
+2. **`readProcessMetrics()`** — brała PID z `manager.getActiveEntry(...).child.pid`
+   → dla adoptowanej `undefined` → brak CPU/RAM (stąd tylko VRAM — on jest
+   globalny z GPU, więc „zgadzał się").
+
+Fix:
+1. **`manager.stop()` / `terminate()`** — gdy brak `active`, ale w rejestrze jest
+   **żywy PID** (running/starting/stopping), **sygnalizuje ten PID**: SIGTERM →
+   grace → SIGKILL. `background` działa detached (własna grupa, pid = pgid) →
+   sygnał do **grupy** (`-pid`), żeby trafić w silnik + dzieci. Nowy helper
+   `signalPid()`.
+2. **`readProcessMetrics()`** — PID teraz z **rejestru** (`registry.get(...).pid`),
+   fallback na `child.pid` → metryki CPU/RAM działają też dla adoptowanych.
+
+Gates: typecheck/lint/testy (server 168/168, web 15/15) + web build zielone.
+Nowy test: `manager.test.ts → stop() signals an adopted instance (no orphan)`.
+Uwaga: fix serwera wchodzi przy **następnym starcie dashboardu**.
+
 ## Metryki NA ŻYWO (tok/s podczas generowania) + uproszczenia (metryki /proc, dedup) — ✅ ZROBIONE (2026-09-17)
 
 Trzy zmiany po sprawozdaniu użytkownika („gdy model aktywnie generuje — ma slot

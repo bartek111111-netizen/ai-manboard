@@ -48,6 +48,12 @@
     --color-external-badge-bg: #efe0b8;
     --color-glow: rgba(79, 140, 207, 0.35);
   }
+  /* Launch-mode modal: in light mode the muted gray reads almost black —
+     lighten the option text so it stays clearly secondary. */
+  .launch-mode-intro,
+  .launch-mode-desc {
+    color: #7c7f88;
+  }
 }
 
 * {
@@ -374,6 +380,9 @@ body {
   padding: var(--spacing-m);
   cursor: pointer;
   font: inherit;
+  /* A raw <button> does not inherit `color` (it defaults to black); pin the
+     title text to the theme so it stays readable in dark mode. */
+  color: var(--color-text);
 }
 
 .launch-mode-option:hover {

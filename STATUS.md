@@ -1,5 +1,97 @@
 # STATUS
 
+## Kolory tytułów w modalu trybu (ciemny motyw) + kill DSH (cała grupa procesów) — ✅ ZROBIONE (2026-09-17)
+
+Dwie poprawki po sprawozdaniu użytkownika:
+
+1. **Tytuły w modalu trybu startu ledwo widoczne w ciemnym motywie.**
+   `.launch-mode-title` siedzi w surowym `<button class="launch-mode-option">`,
+   a `<button>` **nie dziedziczy** `color` (domyślnie czarny w przeglądarce)
+   → w ciemnym motywie tytuły „Zostaje w tle" / „Znika z dashboardem" były
+   czarne na ciemnym tle. Fix: `.launch-mode-option { color: var(--color-text) }`
+   — tytuł dopasowuje się do motywu (jasny w dark, ciemny w light). Wcześniejszy
+   scoped override light (`.launch-mode-intro`/`-desc → #7c7f88`) zostaje — to
+   opisy w jasnym motywie.
+2. **Kliknięcie „Stop DSH" nie robiło nicu.** Stara `findDshProcess()` trafiała
+   tylko na wrapper `pnpm dsh web` (argv prawdziwego serwera DSH to
+   `node … apps/cli/src/bin.ts web`, nie pasujący do grepów
+   `dsh web|deepseek-harness`) i zabijała **jeden** PID — SIGTERM do wrappera
+   zostawiał serwer DSH jako osierocony proces (wciąż działał). Fix
+   (`api/handlers/dsh.ts`): `findDshProcesses()` zbiera PID **+ PGID** (grupa
+   procesów); `killTargetFor()` = `-pgid` gdy proces jest liderem własnej grupy
+   (nasz detached spawn — zabijamy całe drzewo), inaczej sam PID (nie ciągniemy
+   cudzej grupy); stop = SIGTERM do całej grupy, po 3 s SIGKILL przetrwałym.
+   Testy jednostkowe: `parseDshPs`, `killTargetFor` (`dsh.test.ts`).
+
+Gates: typecheck/lint/testy (server 166/166, web 15/15) + web build zielone.
+Uwaga: fix #2 (server) wchodzi przy **następnym starcie dashboardu**; #1 to FE
+(build web / HMR dev).
+
+## Logi: czasy w listie + automatyczne otwarcie bieżącego logu + kolory modala trybu — ✅ ZROBIONE (2026-09-17)
+
+Trzy poprawki FE/server po sprawozdaniu użytkownika:
+
+1. **Czas „przesunięty o 2h do tyłu" w nazwach zapisanych uruchomień.**
+   Nazwy plików `auto-*.log`/`manual-*.log` niosą stempl **UTC bez znacznika
+   strefy** (`2026-09-16T23-09-14`); FE parsował go jako lokalny → w CEST
+   (UTC+2) czas wychodził o 2h wstecz. Fix: `store.ts → listRunLogs()` zwraca
+   `ts` z **mtime pliku** jako pełny ISO z `Z` (pewna chwila zapisu); FE
+   (`LogViewer`) rysuje `new Date(ts).toLocaleString()` → czas lokalny.
+2. **Bieżący log nie otwierał się automatycznie.** Gdy instancja **nie działa**,
+   widok live był pusty i użytkownik musiał klikać plik na liście. Fix:
+   `LogViewer` pobiera stan instancji (`GET /api/v1/instances`); jeśli stan
+   nie jest `running`/`starting`/`stopping`, po załadowaniu listy **sam otwiera
+   najnowszy zapisany log** (raz; `autoLoadedRef`). Gdy instancja działa —
+   widok live (SSE + replay ringu) JEST bieżącym logiem i nic się nie otwiera.
+3. **Modal trybu startu — opisy „prawie czarne".** W jasnym motywie
+   `--color-muted` (`#6b6e75`) na białym tle wyglądało niemal czarno. Fix:
+   scoped override w `tokens.css` (sekcja `prefers-color-scheme: light`):
+   `.launch-mode-intro` + `.launch-mode-desc` → `#7c7f88`.
+
+Gates: typecheck/lint/testy (server 162/162, web 15/15) + web build zielone.
+Uwaga: fix #1 (server) wchodzi przy **następnym starcie dashboardu**; #2/#3 to
+FE (build web / HMR dev).
+
+**Kontekst „2 wykryte instancje":** diagnoza na żywo — o 01:07 użytkownik
+uruchomił nowy model, gdy stary silnik (00:09) wciąż się zamykał i trzymał
+port **8080**; nowy engine zajął **8081** (auto-increment llama.cpp), a stary —
+już zatrzymany z aplikacji, PID usunięty z rejestru — pojawił się jako
+**zewnętrzny** (poprawne zachowanie detekcji, `detectExternalInstances`).
+Ctrl+C dashboardu zabił grupę procesów (stary + nowy silnik, oba `session`).
+Teraz: jeden czysty run na **8080** (session, pid 3711507).
+
+## Logi: przywracanie przechwytywania logów dla zadoptowanych instancji tła — ✅ ZROBIONE (2026-09-17)
+
+**Bug (wprowadzony przez tryby startu, `2181096d`):** dla instancji w trybie
+**„Zostaje w tle"** (`background`) po **restartzie dashboardu** zakładka Logi
+była trwale pusta. Reconcile poprawnie przywracał stan `running` (PID żyje),
+ale ring buffer + file-tail poller żyły tylko w pamięci starego procesu
+(`ProcessManager`): `getLogs()` → `[]`, replay SSE pusty, `onLogLine` nigdy
+nie wywoływany — silnik pisał dalej do `logs/<instanceId>/*.log`, ale nic tego
+nie odczytywało. Ścieżka `session` działała bez zmian (zweryfikowane na żywo
+end-to-end: ring, SSE bezpośredni i przez proxy Vite, bundle świeży).
+
+**Zmiany (`apps/server/src/core/process/manager.ts` + `index.ts`):**
+- Ringi przeniesione z `ActiveInstance` do wspólnego `rings: Map` — istnieją
+  także dla instancji zadoptowanych (bez własnego child process).
+- `tails` — jeden rekord per tailowany plik (`timer` + `logFile` + `offset`);
+  `startTail(instanceId, logFile)` zastępuje stary tail (nowy start = nowy plik).
+- **Nowy `adoptLogTails(registry)`** (publiczne): dla wpisów rejestru ze stanem
+  `running`/`starting` i żywym PID, bez entry w `active` — odpala file-tail na
+  najsnowszym pliku `logs/<instanceId>/` (offset 0 → ring dostaje seed z istniejącego
+  pliku, potem kolejne linie na żywo). Wywoływane w `index.ts` po
+  `reconcileAll()`; log `re-attached live logs for: …`.
+- `tailRead` dla zadoptowanych taili kończy się, gdy PID umarł lub stan
+  rejestru jest stabilny (timer nie wycieka).
+- Test regresyjny: „adopts a background instance's log file after a dashboard
+  restart" — nowy manager nad tym samym home podąża za plikiem istniejącego
+  silnika; ring zasilany + `onLogLine` (SSE) działa.
+
+Gates: typecheck/lint/testy (server 162/162, łącznie 227) + web build zielone.
+**Uwaga:** fix wchodzi przy **następnym starcie dashboardu** (restart zabija
+instancje `session` — grupa procesów). Instancje `background` przeżywają restart
+i odzyskują logi automatycznie.
+
 ## Poprawka reguły: parametry z pliku presetu (nie „≠ default") + fix ubatch-size default — ✅ ZROBIONE (2026-09-16)
 
 **Reguła (poprawiona po wyjaśnieniu użytkownika):** parametry **ustawione przez

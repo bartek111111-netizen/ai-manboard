@@ -64,6 +64,25 @@ export function ModelDetail() {
       { replace: true },
     );
 
+  // Select a preset AND move to the instance tab in ONE navigation. Two
+  // back-to-back setSearchParams calls in the same tick both read the same
+  // stale base and the last one wins, clobbering the preset we just set —
+  // this was the "old profile still in the URL" bug.
+  const selectPreset = (name: string | null): void =>
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev.toString());
+        if (name) {
+          p.set('preset', name);
+          p.set('tab', 'instance');
+        } else {
+          p.delete('preset');
+        }
+        return p;
+      },
+      { replace: true },
+    );
+
   // Load the model + its presets (on model change).
   useEffect(() => {
     setModel(null);
@@ -196,10 +215,7 @@ export function ModelDetail() {
             <PresetSelect
               modelId={model.id}
               selected={preset}
-              onSelect={(name) => {
-                updatePreset(name);
-                if (name) updateTab('instance');
-              }}
+              onSelect={selectPreset}
             />
           )}
 

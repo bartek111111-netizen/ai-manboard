@@ -6,11 +6,21 @@
  * marker) once they exceed `maxFileBytes` (~10 MB) so a runaway backend can
  * never fill the disk.
  */
-import { mkdirSync, openSync, writeSync, closeSync, readdirSync, unlinkSync, statSync, readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  mkdirSync,
+  openSync,
+  writeSync,
+  closeSync,
+  readdirSync,
+  unlinkSync,
+  statSync,
+  readFileSync,
+  existsSync,
+} from "node:fs";
+import { join } from "node:path";
 
 /** Marker line inserted when a log file is truncated at the size cap. */
-const TRUNCATE_MARKER = '\n[log truncated: max file size reached]\n';
+const TRUNCATE_MARKER = "\n[log truncated: max file size reached]\n";
 
 export interface LogWriterOptions {
   /** `logs/` root (home.logsDir). */
@@ -41,14 +51,14 @@ export class LogWriter {
    * by model and name files so the preset + start time are visible.)
    */
   instanceDir(instanceId: string): string {
-    const modelId = instanceId.split('--')[0] || instanceId;
+    const modelId = instanceId.split("--")[0] || instanceId;
     return join(this.logsDir, modelId);
   }
 
   /** A sortable, human-readable start stamp: `YYYY-MM-DD_HH-mm-ss`. */
   private stampName(ts: string): string {
     const d = new Date(Number(ts) || Date.now());
-    const p = (n: number) => String(n).padStart(2, '0');
+    const p = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
   }
 
@@ -60,7 +70,7 @@ export class LogWriter {
   start(instanceId: string, ts: string): string {
     const dir = this.instanceDir(instanceId);
     mkdirSync(dir, { recursive: true });
-    const presetName = instanceId.split('--')[1] ?? 'default';
+    const presetName = instanceId.split("--")[1] ?? "default";
     const base = `${presetName}-${this.stampName(ts)}`;
     // Collision-safe: two runs in the same second would share the readable
     // stamp, so append a counter until the path is fresh.
@@ -71,7 +81,7 @@ export class LogWriter {
       file = join(dir, `${base}-${n}.log`);
     }
     // Seed the file so an empty-but-started run still has a log on disk.
-    const handle = openSync(file, 'a');
+    const handle = openSync(file, "a");
     try {
       closeSync(handle);
     } catch {
@@ -90,7 +100,7 @@ export class LogWriter {
       this.truncate(file);
       size = this.byteCounts.get(file) ?? 0;
     }
-    const handle = openSync(file, 'a');
+    const handle = openSync(file, "a");
     try {
       writeSync(handle, data);
     } finally {
@@ -109,11 +119,17 @@ export class LogWriter {
   private listLogFiles(instanceId: string): string[] | null {
     let files: string[];
     try {
-      files = readdirSync(this.instanceDir(instanceId)).filter((f) => f.endsWith('.log'));
+      files = readdirSync(this.instanceDir(instanceId)).filter((f) =>
+        f.endsWith(".log"),
+      );
     } catch {
       return null; // dir not created yet
     }
-    files.sort((a, b) => this.sortKey(a).localeCompare(this.sortKey(b), undefined, { numeric: true }));
+    files.sort((a, b) =>
+      this.sortKey(a).localeCompare(this.sortKey(b), undefined, {
+        numeric: true,
+      }),
+    );
     return files;
   }
 
@@ -133,11 +149,11 @@ export class LogWriter {
     if (!file) return [];
     let content: string;
     try {
-      content = readFileSync(file, 'utf8');
+      content = readFileSync(file, "utf8");
     } catch {
       return [];
     }
-    const all = content.split('\n').filter((l) => l.length > 0);
+    const all = content.split("\n").filter((l) => l.length > 0);
     return all.slice(-Math.max(1, Math.floor(lines)));
   }
 
@@ -147,18 +163,25 @@ export class LogWriter {
    * null when no timing line is present. Used for the TTFT / prefill-speed
    * metrics. Reads only the tail of the log (the timing line is the newest).
    */
-  readLastPromptProcessing(instanceId: string, tailLines = 500): { tokens: number; seconds: number; tps: number } | null {
+  readLastPromptProcessing(
+    instanceId: string,
+    tailLines = 500,
+  ): { tokens: number; seconds: number; tps: number } | null {
     const lines = this.readTail(instanceId, tailLines);
     for (let i = lines.length - 1; i >= 0; i--) {
       const line = lines[i];
-      if (!line.includes('prompt processing')) continue;
+      if (!line.includes("prompt processing")) continue;
       const t = line.match(/t = ([\d.]+) s \/ ([\d.]+) tokens per second/);
       if (!t) continue;
       const seconds = Number(t[1]);
       const tps = Number(t[2]);
       const tokens = Number(line.match(/n_tokens = ([\d.]+)/)?.[1] ?? 0);
       if (Number.isFinite(seconds) && seconds > 0) {
-        return { tokens: Number.isFinite(tokens) ? tokens : 0, seconds, tps: Number.isFinite(tps) ? tps : 0 };
+        return {
+          tokens: Number.isFinite(tokens) ? tokens : 0,
+          seconds,
+          tps: Number.isFinite(tps) ? tps : 0,
+        };
       }
     }
     return null;
@@ -195,8 +218,12 @@ export class LogWriter {
       try {
         const dir = join(this.logsDir, modelId);
         if (!statSync(dir).isDirectory()) continue;
-        const files = readdirSync(dir).filter((f) => f.endsWith('.log'));
-        files.sort((a, b) => this.sortKey(a).localeCompare(this.sortKey(b), undefined, { numeric: true }));
+        const files = readdirSync(dir).filter((f) => f.endsWith(".log"));
+        files.sort((a, b) =>
+          this.sortKey(a).localeCompare(this.sortKey(b), undefined, {
+            numeric: true,
+          }),
+        );
         const excess = files.length - this.retentionFiles;
         for (let i = 0; i < excess; i++) {
           unlinkSync(join(dir, files[i]));
@@ -210,13 +237,13 @@ export class LogWriter {
   /** Truncates `file` to a marker so it cannot grow past the cap. */
   private truncate(file: string): void {
     try {
-      const handle = openSync(file, 'r+');
+      const handle = openSync(file, "r+");
       try {
-        writeSync(handle, TRUNCATE_MARKER, 0, 'utf8');
+        writeSync(handle, TRUNCATE_MARKER, 0, "utf8");
       } finally {
         closeSync(handle);
       }
-      this.byteCounts.set(file, Buffer.byteLength(TRUNCATE_MARKER, 'utf8'));
+      this.byteCounts.set(file, Buffer.byteLength(TRUNCATE_MARKER, "utf8"));
     } catch {
       /* best-effort */
     }

@@ -4,12 +4,21 @@
  * - Each run: `{timestamp}.log` in `~/.ai-dashboard/logs/{modelId}/`
  * - Auto-cleanup of oldest when exceeding limit
  */
-import { join } from 'node:path';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { join } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  unlinkSync,
+  statSync,
+} from "node:fs";
+import { homedir } from "node:os";
 
-const DATA_DIR = process.env.AI_DASHBOARD_HOME ?? join(homedir(), '.ai-dashboard');
-const LOGS_DIR = join(DATA_DIR, 'logs');
+const DATA_DIR =
+  process.env.AI_DASHBOARD_HOME ?? join(homedir(), ".ai-dashboard");
+const LOGS_DIR = join(DATA_DIR, "logs");
 // Per-model cap for ALL run logs (auto + manual + engine per-start files),
 // matching the LogWriter's `retentionFiles`. The oldest is shed when the
 // total exceeds this.
@@ -30,9 +39,9 @@ export function ensureLogDir(modelId: string): string {
 /** Writes a new auto log file for a run. Returns the file path. */
 export function writeAutoLog(modelId: string, content: string): string {
   const dir = ensureLogDir(modelId);
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const filePath = join(dir, `auto-${ts}.log`);
-  writeFileSync(filePath, content, 'utf8');
+  writeFileSync(filePath, content, "utf8");
   cleanupRuns(modelId);
   return filePath;
 }
@@ -40,9 +49,9 @@ export function writeAutoLog(modelId: string, content: string): string {
 /** Writes a new manual log file for a run. Returns the file path. */
 export function writeManualLog(modelId: string, content: string): string {
   const dir = ensureLogDir(modelId);
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const filePath = join(dir, `manual-${ts}.log`);
-  writeFileSync(filePath, content, 'utf8');
+  writeFileSync(filePath, content, "utf8");
   cleanupRuns(modelId);
   return filePath;
 }
@@ -53,7 +62,7 @@ export interface RunLogInfo {
   path: string;
   ts: string;
   size: number;
-  type: 'auto' | 'manual';
+  type: "auto" | "manual";
 }
 
 /** Lists log files for a model (newest first). */
@@ -61,11 +70,13 @@ export function listRunLogs(modelId: string): RunLogInfo[] {
   const dir = logDir(modelId);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
-    .filter((f) => f.endsWith('.log'))
+    .filter((f) => f.endsWith(".log"))
     .map((f) => {
       const full = join(dir, f);
       const st = statSync(full);
-      const type = f.startsWith('auto-') ? 'auto' as const : 'manual' as const;
+      const type = f.startsWith("auto-")
+        ? ("auto" as const)
+        : ("manual" as const);
       // The filename carries a UTC stamp with NO timezone marker, and parsing
       // it as local time shifted the displayed time (e.g. 2 h in CEST). The
       // file's mtime is the trustworthy write instant — return it as a full
@@ -81,7 +92,7 @@ export function readRunLog(modelId: string, file: string): string | null {
   const dir = logDir(modelId);
   const full = join(dir, file);
   if (!existsSync(full)) return null;
-  return readFileSync(full, 'utf8');
+  return readFileSync(full, "utf8");
 }
 
 /** Deletes a specific log file. */
@@ -96,7 +107,7 @@ export function clearModelLogs(modelId: string): void {
   const dir = logDir(modelId);
   if (!existsSync(dir)) return;
   for (const f of readdirSync(dir)) {
-    if (f.endsWith('.log')) unlinkSync(join(dir, f));
+    if (f.endsWith(".log")) unlinkSync(join(dir, f));
   }
 }
 

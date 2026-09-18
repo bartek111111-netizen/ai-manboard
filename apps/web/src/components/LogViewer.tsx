@@ -109,7 +109,9 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   // The state of the LIVE instance (the one actually running for this model,
   // which may differ from the URL's instance after a dashboard restart).
   // Drives the 🟢 LIVE badge + auto-open (not the URL's instance state).
-  const [liveInstanceState, setLiveInstanceState] = useState<string | null>(null);
+  const [liveInstanceState, setLiveInstanceState] = useState<string | null>(
+    null,
+  );
   useEffect(() => {
     setLiveInstanceId(instanceId);
     setLiveInstanceState(null);
@@ -306,10 +308,7 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   // file for the running instance's preset). Shown with a 🟢 LIVE badge.
   // Uses `liveInstanceState` (the adopted instance's state), not the URL's.
   const liveFile: string | null = (() => {
-    if (
-      liveInstanceState !== "running" &&
-      liveInstanceState !== "starting"
-    )
+    if (liveInstanceState !== "running" && liveInstanceState !== "starting")
       return null;
     const preset = liveInstanceId.split("--")[1] ?? null;
     if (!preset) return null;
@@ -349,17 +348,24 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
                     title={log.path}
                   >
                     <span className="log-saved-num">{idx + 1}.</span>
-                    {log.type === "auto" ? "🤖 " : log.type === "manual" ? "📝 " : ""}
+                    {log.type === "auto"
+                      ? "🤖 "
+                      : log.type === "manual"
+                        ? "📝 "
+                        : ""}
                     <span className="log-saved-preset">{presetOf(log)}</span>
                     {/* The server sends a full ISO timestamp (with `Z`);
                         `toLocaleString` renders it in the viewer's local TZ. */}
-                    <span className="log-saved-age" title={new Date(log.ts).toLocaleString()}>
+                    <span
+                      className="log-saved-age"
+                      title={new Date(log.ts).toLocaleString()}
+                    >
                       {relativeAge(log.ts)}
                     </span>
-                    <span className="log-saved-size">{formatSize(log.size)}</span>
-                    {isLive && (
-                      <span className="log-saved-live">🟢 LIVE</span>
-                    )}
+                    <span className="log-saved-size">
+                      {formatSize(log.size)}
+                    </span>
+                    {isLive && <span className="log-saved-live">🟢 LIVE</span>}
                     {isTop && !isLive && (
                       <span className="log-saved-newest">najnowszy</span>
                     )}

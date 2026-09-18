@@ -2,25 +2,25 @@
  * Boot (Faza 1): env → home (ensure + seed) → config store (validated)
  * → fs watch on config/ (P-12) → app (API + static web).
  */
-import { createHash } from 'node:crypto';
-import type { ConfigSnapshot, ConfigWatchState } from '@ai-dashboard/shared';
-import { listEngines } from '@ai-dashboard/shared/engine';
-import { buildApp } from './app.js';
-import { loadEnv } from './env.js';
-import { ensureHome, resolveHome } from './core/config/paths.js';
-import { ConfigStore } from './core/config/store.js';
-import { ConfigWatcher } from './core/config/watcher.js';
-import { HealthProber } from './core/health/prober.js';
-import { LogWriter } from './core/logs/writer.js';
-import { LifecycleManager } from './core/process/lifecycle.js';
-import { ProcessManager } from './core/process/manager.js';
-import { PidRegistry } from './core/process/registry.js';
-import { SseHub } from './core/sse/hub.js';
-import { WEB_DIST_DIR } from './web-dist.js';
-import { validateSecurityConfig } from './security.js';
+import { createHash } from "node:crypto";
+import type { ConfigSnapshot, ConfigWatchState } from "@ai-dashboard/shared";
+import { listEngines } from "@ai-dashboard/shared/engine";
+import { buildApp } from "./app.js";
+import { loadEnv } from "./env.js";
+import { ensureHome, resolveHome } from "./core/config/paths.js";
+import { ConfigStore } from "./core/config/store.js";
+import { ConfigWatcher } from "./core/config/watcher.js";
+import { HealthProber } from "./core/health/prober.js";
+import { LogWriter } from "./core/logs/writer.js";
+import { LifecycleManager } from "./core/process/lifecycle.js";
+import { ProcessManager } from "./core/process/manager.js";
+import { PidRegistry } from "./core/process/registry.js";
+import { SseHub } from "./core/sse/hub.js";
+import { WEB_DIST_DIR } from "./web-dist.js";
+import { validateSecurityConfig } from "./security.js";
 
 function snapshotHash(snapshot: ConfigSnapshot): string {
-  return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+  return createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
 }
 
 async function main(): Promise<void> {
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   try {
     store.readGlobal(); // seeds global.json on first run
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown error';
+    const message = err instanceof Error ? err.message : "unknown error";
     console.error(`[dashboard] config error — not starting: ${message}`);
     process.exitCode = 1;
     return;
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
   try {
     validateSecurityConfig(env.host, store.readGlobal().security.token);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown error';
+    const message = err instanceof Error ? err.message : "unknown error";
     console.error(`[dashboard] security error — not starting: ${message}`);
     process.exitCode = 1;
     return;
@@ -69,10 +69,12 @@ async function main(): Promise<void> {
         configState.lastExternalChangeAt = new Date().toISOString();
         configState.reloadCount += 1;
         configState.lastReloadError = null;
-        console.log(`[dashboard] config reloaded from disk (count=${configState.reloadCount})`);
+        console.log(
+          `[dashboard] config reloaded from disk (count=${configState.reloadCount})`,
+        );
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'unknown error';
+      const message = err instanceof Error ? err.message : "unknown error";
       configState.lastReloadError = message;
       console.error(`[dashboard] config reload failed: ${message}`);
     }
@@ -97,12 +99,21 @@ async function main(): Promise<void> {
     onLogLine: (id, line) => hub.publishLog(id, line),
   });
   const prober = new HealthProber();
-  const lifecycle = new LifecycleManager({ store, engines: listEngines(), manager, registry, prober, logs });
+  const lifecycle = new LifecycleManager({
+    store,
+    engines: listEngines(),
+    manager,
+    registry,
+    prober,
+    logs,
+  });
 
   // Faza 10.1: reconcile the registry at startup (PLAN §11.3).
   const reconciled = lifecycle.reconcileAll();
   if (reconciled.length > 0) {
-    console.log(`[dashboard] reconciled ${reconciled.length} instance(s): ${reconciled.join(', ')}`);
+    console.log(
+      `[dashboard] reconciled ${reconciled.length} instance(s): ${reconciled.join(", ")}`,
+    );
   }
   // Shed log files that exceed the per-model retention cap (a dashboard
   // restart doesn't run the per-start `prune`, so old files would linger).
@@ -113,7 +124,9 @@ async function main(): Promise<void> {
   // forever. Tails the latest per-start log file — no engine restart.
   const adoptedLogs = manager.adoptLogTails(registry);
   if (adoptedLogs.length > 0) {
-    console.log(`[dashboard] re-attached live logs for: ${adoptedLogs.join(', ')}`);
+    console.log(
+      `[dashboard] re-attached live logs for: ${adoptedLogs.join(", ")}`,
+    );
   }
 
   const app = await buildApp({
@@ -138,15 +151,17 @@ async function main(): Promise<void> {
     process.exit(0);
   };
 
-  process.on('SIGINT', () => void shutdown('SIGINT'));
-  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
   await app.listen({ host: env.host, port: env.port });
-  console.log(`[dashboard] listening on http://${env.host}:${env.port} (config: ${home.root})`);
+  console.log(
+    `[dashboard] listening on http://${env.host}:${env.port} (config: ${home.root})`,
+  );
 }
 
 main().catch((err: unknown) => {
-  const message = err instanceof Error ? err.message : 'unknown error';
+  const message = err instanceof Error ? err.message : "unknown error";
   console.error(`[dashboard] boot failed: ${message}`);
   process.exit(1);
 });

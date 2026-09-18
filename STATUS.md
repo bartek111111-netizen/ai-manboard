@@ -26,12 +26,19 @@ Pełny przegląd projektu (PLAN.md + STATUS.md vs. kod) + dwie naprawy:
    i `eslint-disable-line` nie tłumiły `@typescript-eslint/no-unused-vars`
    (tylko `-next-line` działał) — po naprawie mocka żaden z tych tricków niepotrzebny.
 
+3. **`pl.ts` — 28 martwych kluczy i18n usunięte** (np. `navSystem`, `stateRunning`,
+   `comingFaza8`, `presetEditHeading` — z epoki wczesnych faz; wszystkie `t()` w
+   kodzie to literalne stringi, więc audyt „użyte vs. zdefiniowane" jest wiarygodny:
+   212/212 użyte klucze w słowniku, 28 nieużywanych usuniętych).
+
 Wynik audytu: bramki zielone (typecheck 3 workspace, lint, testy 60+173+15, build
 web), schemat llama-server = 39 parametrów (spójne z ewolucją §10.1: model/
 performance/sampling/server/chat/moe/vision/advanced/speculative + `jinja`/`mmproj`/
 `reasoning-effort` dodane w poprzeczkach), FSM 7 stanów zgodny z §11.2, routing
 §14.1 kompletny (PUT/DELETE `/instances/:id` celowo poza MVP — warstwa 6, STATUS Faza 5),
-S-1 / GPU sysfs / LIVE tok/s / reconcile / kolizje portów potwierdzone w kodzie + testach.
+S-1 / GPU sysfs / LIVE tok/s / reconcile / kolizje portów / atomowość zapisu (tmp+fsync+
+rename + `.bak`) / launch tylko z params uż. (filter `source === 'schema'`) potwierdzone
+w kodzie + testach.
 
 Gates: typecheck/lint/testy (server 173/173, web 15/15, shared 60/60) + web build + **E2E (nowy skrypt) zielone**.
 

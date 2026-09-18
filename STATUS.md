@@ -1,5 +1,40 @@
 # STATUS
 
+## Audyt zgodności ze specyfikacją + naprawa E2E (run-e2e.sh) — ✅ ZROBIONE (2026-09-18)
+
+Pełny przegląd projektu (PLAN.md + STATUS.md vs. kod) + dwie naprawy:
+
+1. **`run-e2e.sh` — naprawiony (poprzednio FAILował na kroku 1).**
+   - Poprzednia wersja: (a) świeży home ma pusty `modelDirs` → discover zwracał
+     `total:0` → FAIL „model not found"; (b) zhardkodowany `MODEL_ID=smollm2-135m-q2k`
+     nie istnieje — modelId wynika z `slug + sha1(path)[:8]` (PLAN §8.1) i dla
+     pliku `.e2e-models/SmolLM2-135M-Instruct-Q2_K.gguf` to
+     `smollm2-135m-instruct-q2-k-9636cfd8`; (c) skrypt **reuse'ował bieżący serwer**
+     na `BASE_URL` — z domyślnym portem 3100 tworzyłby preset `e2e-test` w **produkcyjnym**
+     home. Nowa wersja: zawsze izolowany home (`/tmp/e2e-test`) + port `3199`
+     (PLAN §23.4), seed `PUT /config/global` (modelDirs + binarka) przed discover,
+     dynamiczny MODEL_ID (node, sha1), pełny lifecycle w teście: discover → preset
+     (8123) → start (running 3 s) → **metryki** (4 sloty, GPU sysfs: Navi 48 / RX 9070,
+     RSS, tok/s counters) → stop → **restart** (running 3 s) → final stop + trap
+     zabijający serwer po teście. **E2E przechodzi z prawdziwą binarką**
+     (`~/llama.cpp/build/bin/llama-server` 0.4.1-dev, 54315813).
+2. **`resolve.test.ts` — lint error (`no-unused-vars` na argumencie mocka).**
+   `eslint-disable-next-line` był o wiersz za wcześnie (linia nad `const`, błąd na
+   wierszu wewnątrz obiektu) → dyrektywa nieaktywna + warning „unused directive".
+   Mock `mockRegistry` teraz ma `get` **bez parametru** (TS: fewer args assignable)
+   — błąd zniknął bez dyrektyw. Uwaga: w ESLint 10.10 `eslint-disable` (blokowy)
+   i `eslint-disable-line` nie tłumiły `@typescript-eslint/no-unused-vars`
+   (tylko `-next-line` działał) — po naprawie mocka żaden z tych tricków niepotrzebny.
+
+Wynik audytu: bramki zielone (typecheck 3 workspace, lint, testy 60+173+15, build
+web), schemat llama-server = 39 parametrów (spójne z ewolucją §10.1: model/
+performance/sampling/server/chat/moe/vision/advanced/speculative + `jinja`/`mmproj`/
+`reasoning-effort` dodane w poprzeczkach), FSM 7 stanów zgodny z §11.2, routing
+§14.1 kompletny (PUT/DELETE `/instances/:id` celowo poza MVP — warstwa 6, STATUS Faza 5),
+S-1 / GPU sysfs / LIVE tok/s / reconcile / kolizje portów potwierdzone w kodzie + testach.
+
+Gates: typecheck/lint/testy (server 173/173, web 15/15, shared 60/60) + web build + **E2E (nowy skrypt) zielone**.
+
 ## Logi: jeden folder per model + czytelne nazwy + podstrony z hardlinkami + odnośniki w Status — ✅ ZROBIONE (2026-09-17)
 
 Cztery poprawki po sprawozdaniu użytkownika:

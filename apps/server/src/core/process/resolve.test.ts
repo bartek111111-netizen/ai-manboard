@@ -61,10 +61,8 @@ describe("resolveInstanceId", () => {
 });
 
 /** A mock registry that returns null (no instance) for all `get` calls. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock signature
 const mockRegistry = {
-  get: (_instanceId: string): { port: number; state: InstanceState } | null =>
-    null,
+  get: (): { port: number; state: InstanceState } | null => null,
 };
 
 /** Deterministic port probe: nothing on the system (isolates from the real host). */

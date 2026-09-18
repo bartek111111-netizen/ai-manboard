@@ -186,13 +186,16 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   useEffect(() => {
     if (autoLoadedRef.current || viewingLog) return;
     if (savedLogs.length === 0 || liveInstanceState === null) return;
-    autoLoadedRef.current = true;
-    if (
-      (liveInstanceState === "running" || liveInstanceState === "starting") &&
-      liveFile
-    ) {
-      loadSavedLog(liveFile);
+    if (liveInstanceState === "running" || liveInstanceState === "starting") {
+      // Only open once the LIVE LogWriter file is actually resolvable. If it
+      // isn't yet (savedLogs still settling / liveInstanceId still stale),
+      // don't claim the one-shot — let the next render retry.
+      if (liveFile) {
+        autoLoadedRef.current = true;
+        loadSavedLog(liveFile);
+      }
     } else {
+      autoLoadedRef.current = true;
       loadSavedLog(savedLogs[0].file);
     }
   }, [savedLogs, liveInstanceState, viewingLog, loadSavedLog, liveFile]);

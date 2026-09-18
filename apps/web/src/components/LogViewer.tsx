@@ -105,29 +105,38 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   // instance's preset may differ from the one in the URL query, so we target
   // whichever instance is actually running for this model (falls back to the
   // prop when none is found or the model has no live instance).
-  const [instanceState, setInstanceState] = useState<string | null>(null);
   const [liveInstanceId, setLiveInstanceId] = useState<string>(instanceId);
+  // The state of the LIVE instance (the one actually running for this model,
+  // which may differ from the URL's instance after a dashboard restart).
+  // Drives the 🟢 LIVE badge + auto-open (not the URL's instance state).
+  const [liveInstanceState, setLiveInstanceState] = useState<string | null>(null);
   useEffect(() => {
-    setInstanceState(null);
     setLiveInstanceId(instanceId);
+    setLiveInstanceState(null);
     fetch("/api/v1/instances")
       .then((r) => r.json())
       .then((data) => {
-        setInstanceState(
-          data.instances.find(
-            (i: { instanceId: string }) => i.instanceId === instanceId,
-          )?.state ?? null,
-        );
         const running = data.instances.find(
           (i: { instanceId: string; modelId: string; state: string }) =>
             i.modelId === modelId &&
             (i.state === "running" || i.state === "starting"),
         );
-        if (running?.instanceId) setLiveInstanceId(running.instanceId);
+        if (running?.instanceId) {
+          setLiveInstanceId(running.instanceId);
+          setLiveInstanceState(running.state);
+        } else {
+          // No running instance for this model — fall back to the URL's state.
+          setLiveInstanceId(instanceId);
+          setLiveInstanceState(
+            data.instances.find(
+              (i: { instanceId: string }) => i.instanceId === instanceId,
+            )?.state ?? null,
+          );
+        }
       })
       .catch(() => {
-        setInstanceState(null);
         setLiveInstanceId(instanceId);
+        setLiveInstanceState(null);
       });
   }, [instanceId, modelId]);
 
@@ -150,19 +159,20 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   // When the instance is not running, the live view is empty — auto-open the
   // newest saved run (once) so the "current" log is visible without a click.
   // While the instance runs, the live stream IS the current log.
+  // Uses `liveInstanceState` (the adopted instance's state), not the URL's.
   const autoLoadedRef = useRef(false);
   useEffect(() => {
     if (autoLoadedRef.current || viewingLog) return;
-    if (savedLogs.length === 0 || instanceState === null) return;
+    if (savedLogs.length === 0 || liveInstanceState === null) return;
     if (
-      instanceState === "running" ||
-      instanceState === "starting" ||
-      instanceState === "stopping"
+      liveInstanceState === "running" ||
+      liveInstanceState === "starting" ||
+      liveInstanceState === "stopping"
     )
       return;
     autoLoadedRef.current = true;
     loadSavedLog(savedLogs[0].file);
-  }, [savedLogs, instanceState, viewingLog, loadSavedLog]);
+  }, [savedLogs, liveInstanceState, viewingLog, loadSavedLog]);
 
   // While viewing a saved log, poll for new content every 2 s. The current
   // run's log file keeps growing on disk (the engine still writes to it), so
@@ -294,8 +304,13 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
 
   // The log file the engine is CURRENTLY writing to (the newest LogWriter
   // file for the running instance's preset). Shown with a 🟢 LIVE badge.
+  // Uses `liveInstanceState` (the adopted instance's state), not the URL's.
   const liveFile: string | null = (() => {
-    if (instanceState !== "running" && instanceState !== "starting") return null;
+    if (
+      liveInstanceState !== "running" &&
+      liveInstanceState !== "starting"
+    )
+      return null;
     const preset = liveInstanceId.split("--")[1] ?? null;
     if (!preset) return null;
     // LogWriter files carry a timestamp suffix; store snapshots don't.

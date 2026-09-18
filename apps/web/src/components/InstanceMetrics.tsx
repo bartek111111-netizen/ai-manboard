@@ -60,7 +60,7 @@ export function InstanceMetrics({
               }
             >
               {mode === "background"
-                ? `🟢 ${t("launchModeBackground")}`
+                ? `🌙 ${t("launchModeBackground")}`
                 : `⚪ ${t("launchModeSession")}`}
             </span>
           ) : null}

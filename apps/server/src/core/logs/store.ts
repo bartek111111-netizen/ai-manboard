@@ -62,7 +62,13 @@ export interface RunLogInfo {
   path: string;
   ts: string;
   size: number;
-  type: "auto" | "manual";
+  /**
+   * - "auto": a store snapshot written automatically (on stop / on demand).
+   * - "manual": a store snapshot written when the user clicks "Zapisz".
+   * - "engine": the live LogWriter file (`<preset>-<stamp>.log`) the engine
+   *   appends to on each start.
+   */
+  type: "auto" | "manual" | "engine";
 }
 
 /** Lists log files for a model (newest first). */
@@ -76,7 +82,9 @@ export function listRunLogs(modelId: string): RunLogInfo[] {
       const st = statSync(full);
       const type = f.startsWith("auto-")
         ? ("auto" as const)
-        : ("manual" as const);
+        : f.startsWith("manual-")
+          ? ("manual" as const)
+          : ("engine" as const);
       // The filename carries a UTC stamp with NO timezone marker, and parsing
       // it as local time shifted the displayed time (e.g. 2 h in CEST). The
       // file's mtime is the trustworthy write instant — return it as a full

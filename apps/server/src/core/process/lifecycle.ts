@@ -227,9 +227,13 @@ export class LifecycleManager {
       configSource[key] = resolved.source;
     }
     const startedAt = entry?.startedAt ?? null;
-    const uptimeSec = startedAt
-      ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
-      : null;
+    // Uptime only ticks while the model actually runs. When the state is
+    // stopped / crashed / error the value would otherwise keep growing from a
+    // stale `startedAt` (the user saw "Czas pracy" counting on a stopped model).
+    const uptimeSec =
+      startedAt && (state === "running" || state === "starting")
+        ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+        : null;
     // Runtime / process / GPU / prefill (shared with the /metrics endpoint;
     // the generation tok/s is a LIVE rate over the poll interval).
     const m = await this.collectRuntimeMetrics(

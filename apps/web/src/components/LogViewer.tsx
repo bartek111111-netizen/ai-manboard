@@ -22,7 +22,7 @@ interface RunLog {
   path: string;
   ts: string;
   size: number;
-  type: "auto" | "manual";
+  type: "auto" | "manual" | "engine";
 }
 
 /**
@@ -158,23 +158,44 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
     [modelId],
   );
 
-  // When the instance is not running, the live view is empty — auto-open the
-  // newest saved run (once) so the "current" log is visible without a click.
-  // While the instance runs, the live stream IS the current log.
-  // Uses `liveInstanceState` (the adopted instance's state), not the URL's.
+  // The log file the engine is CURRENTLY writing to (the newest LogWriter
+  // file for the running instance's preset). Shown with a 🟢 LIVE badge and
+  // auto-opened while the instance runs. Uses `liveInstanceState` (the adopted
+  // instance's state), not the URL's.
+  const liveFile: string | null = (() => {
+    if (liveInstanceState !== "running" && liveInstanceState !== "starting")
+      return null;
+    const preset = liveInstanceId.split("--")[1] ?? null;
+    if (!preset) return null;
+    // LogWriter files carry a timestamp suffix; store snapshots don't.
+    const newest = savedLogs.find(
+      (log) =>
+        presetOf(log) === preset &&
+        log.file.match(/-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$/),
+    );
+    return newest?.file ?? null;
+  })();
+
+  // Auto-open the "current" log so it is visible without a click:
+  // - While the instance runs, the current log is the LIVE LogWriter file
+  //   (`liveFile`) — open it in the saved-log view (which polls every 2 s).
+  // - When the instance is stopped, the newest saved run is the last log.
+  // The SSE live stream is a separate, in-memory feed that goes stale after a
+  // dashboard restart, so the saved-log view is the reliable source.
   const autoLoadedRef = useRef(false);
   useEffect(() => {
     if (autoLoadedRef.current || viewingLog) return;
     if (savedLogs.length === 0 || liveInstanceState === null) return;
-    if (
-      liveInstanceState === "running" ||
-      liveInstanceState === "starting" ||
-      liveInstanceState === "stopping"
-    )
-      return;
     autoLoadedRef.current = true;
-    loadSavedLog(savedLogs[0].file);
-  }, [savedLogs, liveInstanceState, viewingLog, loadSavedLog]);
+    if (
+      (liveInstanceState === "running" || liveInstanceState === "starting") &&
+      liveFile
+    ) {
+      loadSavedLog(liveFile);
+    } else {
+      loadSavedLog(savedLogs[0].file);
+    }
+  }, [savedLogs, liveInstanceState, viewingLog, loadSavedLog, liveFile]);
 
   // While viewing a saved log, poll for new content every 2 s. The current
   // run's log file keeps growing on disk (the engine still writes to it), so
@@ -303,23 +324,6 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
 
   // When viewing a saved log, show its content instead of live
   const displayContent = viewingLog ? logContent : null;
-
-  // The log file the engine is CURRENTLY writing to (the newest LogWriter
-  // file for the running instance's preset). Shown with a 🟢 LIVE badge.
-  // Uses `liveInstanceState` (the adopted instance's state), not the URL's.
-  const liveFile: string | null = (() => {
-    if (liveInstanceState !== "running" && liveInstanceState !== "starting")
-      return null;
-    const preset = liveInstanceId.split("--")[1] ?? null;
-    if (!preset) return null;
-    // LogWriter files carry a timestamp suffix; store snapshots don't.
-    const newest = savedLogs.find(
-      (log) =>
-        presetOf(log) === preset &&
-        log.file.match(/-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$/),
-    );
-    return newest?.file ?? null;
-  })();
 
   return (
     <div className="log-viewer">

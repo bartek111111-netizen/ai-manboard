@@ -37,6 +37,18 @@ function presetOf(log: RunLog): string {
   return m ? m[1] : log.file;
 }
 
+/** Short label + tooltip for each log type, rendered as a badge in the list. */
+const TYPE_LABEL: Record<RunLog["type"], string> = {
+  engine: "silnik",
+  auto: "auto",
+  manual: "ręcznie",
+};
+const TYPE_TITLE: Record<RunLog["type"], string> = {
+  engine: "Prawdziwy log silnika (llama-server) — nowy plik na każdy start",
+  auto: "Auto-zapis dashboardu (przy stopie instancji)",
+  manual: "Zapis ręczny (przycisk „Zapisz”)",
+};
+
 /** Formats a byte count as a compact human string (B / KB / MB). */
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -376,12 +388,20 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
                     title={log.path}
                   >
                     <span className="log-saved-num">{idx + 1}.</span>
-                    {log.type === "auto"
-                      ? "🤖 "
-                      : log.type === "manual"
-                        ? "📝 "
-                        : ""}
-                    <span className="log-saved-preset">{presetOf(log)}</span>
+                    {log.type === "engine"
+                      ? "⚙️ "
+                      : log.type === "auto"
+                        ? "🤖 "
+                        : "📝 "}
+                    <span
+                      className={`log-saved-type log-saved-type-${log.type}`}
+                      title={TYPE_TITLE[log.type]}
+                    >
+                      {TYPE_LABEL[log.type]}
+                    </span>
+                    {log.type === "engine" && (
+                      <span className="log-saved-preset">{presetOf(log)}</span>
+                    )}
                     {/* The server sends a full ISO timestamp (with `Z`);
                         `toLocaleString` renders it in the viewer's local TZ. */}
                     <span

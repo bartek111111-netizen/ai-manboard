@@ -1,5 +1,20 @@
 # STATUS
 
+## Etykiety typu logów (silnik / auto / ręcznie) w liście LogViewer — ✅ ZROBIONE (2026-09-18)
+
+W liście zapisanych logów każdy plik ma teraz czytelną odznakę typu (kolorowa etykieta z
+tooltipem), bo nazwy były mylone: `<preset>-<start>.log` (prawdziwy log silnika) vs
+`auto-*.log` (snapshot przy stopie) vs `manual-*.log` (zapis „Zapisz").
+
+1. **Odznaka typu w liście** (LogViewer.tsx): `⚙️ silnik` / `🤖 auto` / `📝 ręcznie`
+   (mapy `TYPE_LABEL`/`TYPE_TITLE` per `log.type`). Nazwa presetu (`presetOf`) pokazuje
+   się teraz tylko dla logów silnika — dla snapshotów etykieta typu jest identyfikatorem
+   (snapshot zapisany na poziomie modelu nie ma presetu).
+2. **Styl** (tokens.css): `.log-saved-type` — mała kolorowa etykieta (engine=niebieski,
+   auto=bursztyn, manual=zieleń), `text-transform: uppercase`, tooltip z opisem.
+
+Bramki: typecheck 0, lint czysty, build web 90 ms.
+
 ## Przebudowa profili modeli: flaga `lastUsedPreset` zamiast checkboxa "domyślny" — ✅ ZROBIONE (2026-09-18)
 
 Przebudowa funkcjonalności profili: usuwany jest checkbox "Przypisz jako domyślny"

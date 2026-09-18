@@ -6,19 +6,14 @@ export const pl = {
   appTitle: "AI Model Dashboard",
   navDashboard: "Pulpit",
   navStatus: "Status",
-  navSystem: "System",
   navSettings: "Ustawienia",
-  dashboardTitle: "Pulpit",
   statusHeading: "Status API",
   statusLoading: "Ładowanie statusu…",
-  statusOk: "API działa",
   statusError: "Nie można połączyć z API dashboardu",
-  statusErrorHint: "Sprawdź, czy serwer działa (npm run dev:server)",
   fieldAppName: "Aplikacja",
   fieldVersion: "Wersja",
   fieldState: "Stan",
   fieldUptime: "Czas pracy",
-  fieldEngines: "Engine (backendy)",
   enginesEmpty: "brak — moduły engine pojawią się w kolejnych fazach",
   statusAutoRefresh:
     "Odświeżanie: co 5 s (zmiany configu w plikach są wykrywane automatycznie)",
@@ -47,7 +42,6 @@ export const pl = {
   colActions: "Akcje",
   presetNone: "brak presetu",
   capabilitiesEmpty: "brak oznaczonych możliwości",
-  capabilitiesManual: "ustawione ręcznie",
   scanResult: "Znaleziono:",
   actionScan: "Nowy skan",
   actionAddModel: "Dodaj model",
@@ -79,18 +73,14 @@ export const pl = {
   actionDuplicate: "Duplikuj",
   actionDelete: "Usuń",
   actionNewPreset: "Nowy",
-  actionNewDefaultPreset: "Nowy (domyślny)",
   dupPrompt: "Nazwa kopii presetu:",
   delConfirm: "Usunąć ten preset?",
   newPresetPlaceholder: "nazwa presetu",
-  newPresetPortPlaceholder: "port (opcjonalnie)",
   autoAssign: "Przypisz automatycznie jako domyślny",
   defaultTag: "domyślny",
 
   // Status page (running models)
   noRunningModels: "Brak uruchomionych modeli.",
-  stateRunning: "działa",
-  stateStarting: "startuje",
   stateWorking: "generuje",
   stateIdle: "wolny",
   stateReady: "gotowy",
@@ -113,7 +103,6 @@ export const pl = {
   tabLogs: "Logi",
   tabMetrics: "Metryki",
   modelNotFound: "Nie znaleziono modelu",
-  comingFaza8: "To widok pojawi się w Fazie 8 (logi / metryki).",
 
   // Onboarding (Faza 7.5)
   onbTitle: "Szybka konfiguracja",
@@ -147,11 +136,9 @@ export const pl = {
 
   // MetricsPanel (Faza 8.2)
   metricsHeading: "Metryki",
-  metricsModelLoaded: "Załadowany model",
   metricsContextSize: "Rozmiar kontekstu",
   metricsSlots: "Sloty (używane/total)",
   metricsTokensPerSec: "Szybkość generowania (tokens/s)",
-  metricsGpuMemory: "Pamięć GPU",
   metricsCpu: "CPU procesu",
   metricsRss: "Pamięć RAM procesu",
   metricsWorkTime: "Czas pracy (generowanie)",
@@ -173,9 +160,7 @@ export const pl = {
   fieldQuantization: "Kwantyzacja",
   fieldHost: "Host",
   metricsPrefill: "Prefill — śr. tok/s",
-  metricsPrefillDetail: "średnia prędkość przetwarzania promptu od startu",
   metricsTtft: "Czas do 1. tokena (TTFT)",
-  metricsTtftDetail: "prefill ostatniego zlecenia",
   metricsGpuUtilization: "Wykorzystanie GPU",
   metricsGpuName: "Karta",
   metricsGpuMemoryVram: "Pamięć (VRAM)",
@@ -192,16 +177,12 @@ export const pl = {
   actionResolve: "Rozstrzygnij",
 
   // Header status
-  modelRunning: "Aktywny",
-  modelStopped: "Zatrzymany",
-  noModelLoaded: "Brak załadowanego modelu",
 
   // Add model modal
   addModelTitle: "Dodaj model",
   modelPathLabel: "Ścieżka do pliku modelu",
   displayNameLabel: "Nazwa wyświetlana",
   browseBtn: "Przeglądaj",
-  filePathPrompt: "Wpisz ścieżkę do pliku modelu (.gguf):",
   addModelBtn: "Dodaj",
   addingBtn: "Dodawanie...",
   cancelBtn: "Anuluj",
@@ -236,7 +217,6 @@ export const pl = {
   hiddenModelsHeading: "Ukryte modele",
   noHiddenModels: "Brak ukrytych modeli",
   unhideModel: "Pokaż",
-  hideModel: "Ukryj",
 
   // Engine auto-detect
   autoDetectBtn: "Wykryj",
@@ -246,17 +226,13 @@ export const pl = {
   engineConfigured: "Skonfigurowany",
   engineNotConfigured: "Brak binarki",
   engineBinary: "Binarka",
-  engineSourceEngine: "engine",
-  engineSourceGlobal: "global",
   testEngineBtn: "Testuj",
   testingEngine: "Testowanie...",
 
   // System status
   systemStatusHeading: "Status systemu",
-  systemStatsHeading: "System",
   gpuUtilization: "GPU",
   gpuMemory: "VRAM",
-  gpuMemoryDetail: "Pamięć",
   gpuHeading: "GPU",
   gpuNotAvailable: "GPU nie wykryte",
   cpuHeading: "CPU",
@@ -270,17 +246,13 @@ export const pl = {
   ramNotAvailable: "RAM metrics niedostępne",
 
   // Preset editor (Faza 9.2)
-  presetEditHeading: "Edycja presetu",
   presetSave: "Zapisz",
   presetCancel: "Anuluj",
-  presetPortLabel: "Port",
   presetParamsHeading: "Parametry",
-  presetResetToDefault: "Przywróć domyślne",
 
   // Settings (Faza 9.3)
   settingsHeading: "Ustawienia globalne",
   settingsModelDirs: "Katalogi modeli",
-  settingsModelDirsPlaceholder: "jeden na wiersz",
   settingsEngines: "Binarki engine",
   settingsEngineBinary: "Ścieżka binarki",
   settingsPortRange: "Zakres portów",

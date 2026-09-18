@@ -2057,16 +2057,15 @@ section {
    A max-height keeps a very long arg list from blowing out the popup. */
 .cmd-block {
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   font-family: ui-monospace, "SF Mono", "Consolas", monospace;
   font-size: 12px;
   line-height: 1.7;
   color: var(--color-text);
-  /* Soft accent tint (not the heavy --color-bg box) so the block reads as a
-     distinct "code" area against the plain .info-popup-label above it. */
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
-  border-radius: 8px;
+  /* Border only (no fill) — isolating the border as the distinguishing mark,
+     to check whether the background tint was what caused the earlier overlap. */
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: break-word;

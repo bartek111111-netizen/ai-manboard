@@ -2050,21 +2050,21 @@ section {
   color: var(--color-muted);
 }
 
-/* The launch command, monospace + wrap, directly copyable. A soft filled panel
-   (no border — the border + wrap made the top/bottom lines crowd it) with
-   generous line-height keeps wrapped lines breathing; a max-height keeps a long
-   arg list from blowing out the popup (it scrolls instead). */
+/* The launch command, monospace + wrap, directly copyable. Plain text on the
+   popup surface (no filled card — a dark box + break-all crowded the wrapped
+   lines and made them look overlapped). Wraps at the arg spaces (break-word)
+   so each flag sits on its own line; generous line-height keeps them breathing.
+   A max-height keeps a very long arg list from blowing out the popup. */
 .cmd-block {
   margin: 0;
-  padding: 14px 16px;
+  padding: 2px 0;
   font-family: ui-monospace, "SF Mono", "Consolas", monospace;
   font-size: 12px;
   line-height: 1.7;
   color: var(--color-text);
-  background: var(--color-bg);
-  border-radius: 8px;
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: break-word;
+  overflow-wrap: break-word;
   max-height: 42vh;
   overflow-y: auto;
 }

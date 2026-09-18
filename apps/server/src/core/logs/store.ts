@@ -31,7 +31,7 @@ export function writeAutoLog(modelId: string, content: string): string {
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const filePath = join(dir, `auto-${ts}.log`);
   writeFileSync(filePath, content, 'utf8');
-  cleanupAutoRuns(modelId);
+  cleanupRuns(modelId, 'auto', MAX_AUTO_RUNS);
   return filePath;
 }
 
@@ -41,7 +41,7 @@ export function writeManualLog(modelId: string, content: string): string {
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const filePath = join(dir, `manual-${ts}.log`);
   writeFileSync(filePath, content, 'utf8');
-  cleanupManualRuns(modelId);
+  cleanupRuns(modelId, 'manual', MAX_MANUAL_RUNS);
   return filePath;
 }
 
@@ -89,20 +89,10 @@ export function clearModelLogs(modelId: string): void {
   }
 }
 
-/** Removes the oldest auto runs when exceeding MAX_AUTO_RUNS. */
-function cleanupAutoRuns(modelId: string): void {
-  const logs = listRunLogs(modelId).filter((l) => l.type === 'auto');
-  while (logs.length > MAX_AUTO_RUNS) {
-    const oldest = logs[logs.length - 1];
-    deleteRunLog(modelId, oldest.file);
-    logs.pop();
-  }
-}
-
-/** Removes the oldest manual runs when exceeding MAX_MANUAL_RUNS. */
-function cleanupManualRuns(modelId: string): void {
-  const logs = listRunLogs(modelId).filter((l) => l.type === 'manual');
-  while (logs.length > MAX_MANUAL_RUNS) {
+/** Removes the oldest runs of `type` when exceeding `max`. */
+function cleanupRuns(modelId: string, type: 'auto' | 'manual', max: number): void {
+  const logs = listRunLogs(modelId).filter((l) => l.type === type);
+  while (logs.length > max) {
     const oldest = logs[logs.length - 1];
     deleteRunLog(modelId, oldest.file);
     logs.pop();

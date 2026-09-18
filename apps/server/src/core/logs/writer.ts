@@ -87,7 +87,7 @@ export class LogWriter {
     let size = this.byteCounts.get(file) ?? this.currentSize(file);
     const data = `${line}\n`;
     if (size + data.length > this.maxFileBytes) {
-      this.truncate(file, size);
+      this.truncate(file);
       size = this.byteCounts.get(file) ?? 0;
     }
     const handle = openSync(file, 'a');
@@ -105,18 +105,23 @@ export class LogWriter {
     return m ? m[1] : file;
   }
 
-  /** The newest `logs/<modelId>/*.log` file path, or null when none. */
-  latestFile(instanceId: string): string | null {
-    const dir = this.instanceDir(instanceId);
+  /** All `logs/<modelId>/*.log` names, sorted oldest→newest (null when the dir is missing). */
+  private listLogFiles(instanceId: string): string[] | null {
     let files: string[];
     try {
-      files = readdirSync(dir).filter((f) => f.endsWith('.log'));
+      files = readdirSync(this.instanceDir(instanceId)).filter((f) => f.endsWith('.log'));
     } catch {
       return null; // dir not created yet
     }
-    if (files.length === 0) return null;
     files.sort((a, b) => this.sortKey(a).localeCompare(this.sortKey(b), undefined, { numeric: true }));
-    return join(dir, files[files.length - 1]);
+    return files;
+  }
+
+  /** The newest `logs/<modelId>/*.log` file path, or null when none. */
+  latestFile(instanceId: string): string | null {
+    const files = this.listLogFiles(instanceId);
+    if (!files || files.length === 0) return null;
+    return join(this.instanceDir(instanceId), files[files.length - 1]);
   }
 
   /**
@@ -161,20 +166,13 @@ export class LogWriter {
 
   /** Keeps the newest `retentionFiles` files in `logs/<modelId>/`. */
   prune(instanceId: string): void {
+    const files = this.listLogFiles(instanceId);
+    if (!files) return; // dir not created yet
     const dir = this.instanceDir(instanceId);
-    let files: string[];
-    try {
-      files = readdirSync(dir).filter((f) => f.endsWith('.log'));
-    } catch {
-      return; // dir not created yet
-    }
-    // Sort by the start stamp so the newest run (latest date) is kept.
-    files.sort((a, b) => this.sortKey(a).localeCompare(this.sortKey(b), undefined, { numeric: true }));
     const excess = files.length - this.retentionFiles;
     for (let i = 0; i < excess; i++) {
-      const file = join(dir, files[i]);
       try {
-        unlinkSync(file);
+        unlinkSync(join(dir, files[i]));
       } catch {
         /* best-effort */
       }
@@ -182,7 +180,7 @@ export class LogWriter {
   }
 
   /** Truncates `file` to a marker so it cannot grow past the cap. */
-  private truncate(file: string, size: number): void {
+  private truncate(file: string): void {
     try {
       const handle = openSync(file, 'r+');
       try {
@@ -191,7 +189,6 @@ export class LogWriter {
         closeSync(handle);
       }
       this.byteCounts.set(file, Buffer.byteLength(TRUNCATE_MARKER, 'utf8'));
-      void size;
     } catch {
       /* best-effort */
     }

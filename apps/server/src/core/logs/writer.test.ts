@@ -27,16 +27,24 @@ describe('LogWriter (PLAN §13, FMK-3)', () => {
     expect(content).toContain('loaded model in 120 ms');
   });
 
-  it('prune() keeps only the newest retentionFiles files', () => {
+  it('prune() keeps only the newest retentionFiles files (readable per-start names)', () => {
     const writer = tempLogs({ retentionFiles: 3 });
-    // Simulate several past starts (zero-padded, so lexicographic = time order).
-    for (const ts of ['1720000001', '1720000002', '1720000003', '1720000004', '1720000005']) {
-      writer.start('m--szybka', ts);
+    // Five starts in DISTINCT minutes → each file gets its own readable
+    // `<preset>-<YYYY-MM-DD_HH-mm-ss>.log` stamp (no collision counter).
+    const created: string[] = [];
+    for (const ts of [1720000000000, 1720000060000, 1720000120000, 1720000180000, 1720000240000]) {
+      created.push(writer.start('m--szybka', String(ts)));
     }
+    // The new naming is human-readable: preset + a sortable date stamp.
+    const name = (p: string): string => p.split('/').pop()!;
+    expect(name(created[0])).toMatch(/^szybka-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$/);
     const files = readdirSync(writer.instanceDir('m--szybka')).filter((f) => f.endsWith('.log'));
     // 5 files created → keep the newest 3.
     expect(files).toHaveLength(3);
-    expect(files).toEqual(['1720000003.log', '1720000004.log', '1720000005.log']);
+    // The three newest (last created) survive; the two oldest are pruned.
+    expect(files.sort()).toEqual(created.slice(2).map(name).sort());
+    expect(files).not.toContain(name(created[0]));
+    expect(files).not.toContain(name(created[1]));
   });
 
   it('append() truncates a file that would exceed maxFileBytes', () => {

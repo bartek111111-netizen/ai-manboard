@@ -19,9 +19,42 @@ const MAX_LINES = 10000;
 
 interface RunLog {
   file: string;
+  path: string;
   ts: string;
   size: number;
   type: "auto" | "manual";
+}
+
+/**
+ * The preset name for a log file. LogWriter files are
+ * `<preset>-<YYYY-MM-DD_HH-MM-SS>.log` (the preset is the part before the
+ * timestamp); store snapshots are `auto-*.log` / `manual-*.log` (the "preset"
+ * is the snapshot type).
+ */
+function presetOf(log: RunLog): string {
+  if (log.type === "auto" || log.type === "manual") return log.type;
+  const m = log.file.match(/^(.*?)-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$/);
+  return m ? m[1] : log.file;
+}
+
+/** Formats a byte count as a compact human string (B / KB / MB). */
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** A short relative age ("just now", "5 min ago", "3 d ago") from a timestamp. */
+function relativeAge(ts: string): string {
+  const ms = Date.now() - new Date(ts).getTime();
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "teraz";
+  if (min < 60) return `${min} min temu`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} godz. temu`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d} dni temu`;
+  return new Date(ts).toLocaleDateString();
 }
 
 interface LogViewerProps {
@@ -45,30 +78,58 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   const [logContent, setLogContent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Load saved logs list
+  // Load saved logs list (refreshed periodically so the LIVE badge, sizes,
+  // and relative ages stay current as the engine writes to the current log).
   useEffect(() => {
-    fetch(`/api/v1/models/${modelId}/logs`)
-      .then((r) => r.json())
-      .then((data) => setSavedLogs(data.logs))
-      .catch(() => setSavedLogs([]));
+    let cancelled = false;
+    const load = () =>
+      fetch(`/api/v1/models/${modelId}/logs`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!cancelled) setSavedLogs(data.logs);
+        })
+        .catch(() => {
+          if (!cancelled) setSavedLogs([]);
+        });
+    load();
+    const interval = setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [modelId]);
 
   // Instance state — decides whether the live view IS the current log
   // (the instance runs) or the newest saved run should auto-open instead.
+  // Also derives the live instanceId: after a dashboard restart the adopted
+  // instance's preset may differ from the one in the URL query, so we target
+  // whichever instance is actually running for this model (falls back to the
+  // prop when none is found or the model has no live instance).
   const [instanceState, setInstanceState] = useState<string | null>(null);
+  const [liveInstanceId, setLiveInstanceId] = useState<string>(instanceId);
   useEffect(() => {
     setInstanceState(null);
+    setLiveInstanceId(instanceId);
     fetch("/api/v1/instances")
       .then((r) => r.json())
-      .then((data) =>
+      .then((data) => {
         setInstanceState(
           data.instances.find(
             (i: { instanceId: string }) => i.instanceId === instanceId,
           )?.state ?? null,
-        ),
-      )
-      .catch(() => setInstanceState(null));
-  }, [instanceId]);
+        );
+        const running = data.instances.find(
+          (i: { instanceId: string; modelId: string; state: string }) =>
+            i.modelId === modelId &&
+            (i.state === "running" || i.state === "starting"),
+        );
+        if (running?.instanceId) setLiveInstanceId(running.instanceId);
+      })
+      .catch(() => {
+        setInstanceState(null);
+        setLiveInstanceId(instanceId);
+      });
+  }, [instanceId, modelId]);
 
   // Load a specific saved log
   const loadSavedLog = useCallback(
@@ -102,6 +163,20 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
     autoLoadedRef.current = true;
     loadSavedLog(savedLogs[0].file);
   }, [savedLogs, instanceState, viewingLog, loadSavedLog]);
+
+  // While viewing a saved log, poll for new content every 2 s. The current
+  // run's log file keeps growing on disk (the engine still writes to it), so
+  // a one-shot fetch goes stale immediately; polling keeps the box in sync.
+  useEffect(() => {
+    if (!viewingLog) return;
+    const interval = setInterval(() => {
+      fetch(`/api/v1/models/${modelId}/logs/${viewingLog}`)
+        .then((r) => r.json())
+        .then((data) => setLogContent(data.content))
+        .catch(() => {});
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [viewingLog, modelId]);
 
   // Save current log
   const saveCurrentLog = useCallback(() => {
@@ -175,7 +250,7 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
     setError(null);
     setLines([]);
     let buffer: LogLine[] = [];
-    const close = openLogStream(instanceId, (line) => {
+    const close = openLogStream(liveInstanceId, (line) => {
       buffer = [...buffer, line];
     });
     const interval = setInterval(() => {
@@ -190,7 +265,7 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
       clearInterval(interval);
       close();
     };
-  }, [instanceId]);
+  }, [liveInstanceId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -217,6 +292,21 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   // When viewing a saved log, show its content instead of live
   const displayContent = viewingLog ? logContent : null;
 
+  // The log file the engine is CURRENTLY writing to (the newest LogWriter
+  // file for the running instance's preset). Shown with a 🟢 LIVE badge.
+  const liveFile: string | null = (() => {
+    if (instanceState !== "running" && instanceState !== "starting") return null;
+    const preset = liveInstanceId.split("--")[1] ?? null;
+    if (!preset) return null;
+    // LogWriter files carry a timestamp suffix; store snapshots don't.
+    const newest = savedLogs.find(
+      (log) =>
+        presetOf(log) === preset &&
+        log.file.match(/-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$/),
+    );
+    return newest?.file ?? null;
+  })();
+
   return (
     <div className="log-viewer">
       {/* Saved logs panel */}
@@ -229,30 +319,73 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
             </button>
           </div>
           <div className="log-saved-list">
-            {savedLogs.map((log) => (
-              <div
-                key={log.file}
-                className={`log-saved-item ${viewingLog === log.file ? "active" : ""}`}
-              >
-                <button
-                  type="button"
-                  className="log-saved-btn"
-                  onClick={() => loadSavedLog(log.file)}
+            {savedLogs.map((log, idx) => {
+              const isLive = log.file === liveFile;
+              const isTop = idx === 0;
+              return (
+                <div
+                  key={log.file}
+                  className={`log-saved-item ${viewingLog === log.file ? "active" : ""}`}
                 >
-                  {log.type === "auto" ? "🤖 " : "📝 "}
-                  {/* The server sends a full ISO timestamp (with `Z`);
-                      `toLocaleString` renders it in the viewer's local TZ. */}
-                  {new Date(log.ts).toLocaleString()}
-                </button>
-                <button
-                  type="button"
-                  className="btn small"
-                  onClick={() => deleteSavedLog(log.file)}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    className="log-saved-btn"
+                    onClick={() => loadSavedLog(log.file)}
+                    title={log.path}
+                  >
+                    <span className="log-saved-num">{idx + 1}.</span>
+                    {log.type === "auto" ? "🤖 " : log.type === "manual" ? "📝 " : ""}
+                    <span className="log-saved-preset">{presetOf(log)}</span>
+                    {/* The server sends a full ISO timestamp (with `Z`);
+                        `toLocaleString` renders it in the viewer's local TZ. */}
+                    <span className="log-saved-age" title={new Date(log.ts).toLocaleString()}>
+                      {relativeAge(log.ts)}
+                    </span>
+                    <span className="log-saved-size">{formatSize(log.size)}</span>
+                    {isLive && (
+                      <span className="log-saved-live">🟢 LIVE</span>
+                    )}
+                    {isTop && !isLive && (
+                      <span className="log-saved-newest">najnowszy</span>
+                    )}
+                  </button>
+                  <span className="log-saved-actions">
+                    <button
+                      type="button"
+                      className="btn small"
+                      title="Kopiuj ścieżkę"
+                      onClick={() => {
+                        navigator.clipboard.writeText(log.path).catch(() => {});
+                      }}
+                    >
+                      📋
+                    </button>
+                    <button
+                      type="button"
+                      className="btn small"
+                      title="Otwórz w edytorze"
+                      onClick={() =>
+                        fetch(
+                          `/api/v1/models/${modelId}/logs/${encodeURIComponent(log.file)}/open`,
+                          { method: "POST" },
+                        )
+                          .then((r) => r.json())
+                          .catch(() => {})
+                      }
+                    >
+                      📂
+                    </button>
+                    <button
+                      type="button"
+                      className="btn small"
+                      onClick={() => deleteSavedLog(log.file)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

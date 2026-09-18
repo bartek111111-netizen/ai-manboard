@@ -179,6 +179,34 @@ export class LogWriter {
     }
   }
 
+  /**
+   * Applies retention to every model folder under `logs/` (at startup, so a
+   * dashboard restart sheds files that exceed `retentionFiles`). Best-effort:
+   * a missing or unreadable root is a no-op.
+   */
+  pruneAll(): void {
+    let models: string[];
+    try {
+      models = readdirSync(this.logsDir);
+    } catch {
+      return; // logs root missing — nothing to prune
+    }
+    for (const modelId of models) {
+      try {
+        const dir = join(this.logsDir, modelId);
+        if (!statSync(dir).isDirectory()) continue;
+        const files = readdirSync(dir).filter((f) => f.endsWith('.log'));
+        files.sort((a, b) => this.sortKey(a).localeCompare(this.sortKey(b), undefined, { numeric: true }));
+        const excess = files.length - this.retentionFiles;
+        for (let i = 0; i < excess; i++) {
+          unlinkSync(join(dir, files[i]));
+        }
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
   /** Truncates `file` to a marker so it cannot grow past the cap. */
   private truncate(file: string): void {
     try {

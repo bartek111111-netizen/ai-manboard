@@ -10,8 +10,10 @@ import { homedir } from 'node:os';
 
 const DATA_DIR = process.env.AI_DASHBOARD_HOME ?? join(homedir(), '.ai-dashboard');
 const LOGS_DIR = join(DATA_DIR, 'logs');
-const MAX_AUTO_RUNS = 3; // auto-logs keep last 3 starts
-const MAX_MANUAL_RUNS = 10; // manual saves keep up to 10
+// Per-model cap for ALL run logs (auto + manual + engine per-start files),
+// matching the LogWriter's `retentionFiles`. The oldest is shed when the
+// total exceeds this.
+const MAX_TOTAL_RUNS = 30;
 
 /** Returns the log directory for a model. */
 export function logDir(modelId: string): string {
@@ -25,28 +27,37 @@ export function ensureLogDir(modelId: string): string {
   return dir;
 }
 
-/** Writes a new auto log file for a run. Keeps last 3. Returns the file path. */
+/** Writes a new auto log file for a run. Returns the file path. */
 export function writeAutoLog(modelId: string, content: string): string {
   const dir = ensureLogDir(modelId);
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const filePath = join(dir, `auto-${ts}.log`);
   writeFileSync(filePath, content, 'utf8');
-  cleanupRuns(modelId, 'auto', MAX_AUTO_RUNS);
+  cleanupRuns(modelId);
   return filePath;
 }
 
-/** Writes a new manual log file for a run. Keeps up to 10. Returns the file path. */
+/** Writes a new manual log file for a run. Returns the file path. */
 export function writeManualLog(modelId: string, content: string): string {
   const dir = ensureLogDir(modelId);
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const filePath = join(dir, `manual-${ts}.log`);
   writeFileSync(filePath, content, 'utf8');
-  cleanupRuns(modelId, 'manual', MAX_MANUAL_RUNS);
+  cleanupRuns(modelId);
   return filePath;
 }
 
+export interface RunLogInfo {
+  file: string;
+  /** Absolute path on the dashboard host (shown on hover, copied, or opened). */
+  path: string;
+  ts: string;
+  size: number;
+  type: 'auto' | 'manual';
+}
+
 /** Lists log files for a model (newest first). */
-export function listRunLogs(modelId: string): { file: string; ts: string; size: number; type: 'auto' | 'manual' }[] {
+export function listRunLogs(modelId: string): RunLogInfo[] {
   const dir = logDir(modelId);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
@@ -60,7 +71,7 @@ export function listRunLogs(modelId: string): { file: string; ts: string; size: 
       // file's mtime is the trustworthy write instant — return it as a full
       // ISO string (with `Z`) so clients render it in the viewer's local TZ.
       const ts = new Date(st.mtimeMs).toISOString();
-      return { file: f, ts, size: st.size, type };
+      return { file: f, path: full, ts, size: st.size, type };
     })
     .sort((a, b) => (a.ts < b.ts ? 1 : -1));
 }
@@ -89,10 +100,10 @@ export function clearModelLogs(modelId: string): void {
   }
 }
 
-/** Removes the oldest runs of `type` when exceeding `max`. */
-function cleanupRuns(modelId: string, type: 'auto' | 'manual', max: number): void {
-  const logs = listRunLogs(modelId).filter((l) => l.type === type);
-  while (logs.length > max) {
+/** Sheds the oldest run logs (all types) when the model total exceeds `MAX_TOTAL_RUNS`. */
+function cleanupRuns(modelId: string): void {
+  const logs = listRunLogs(modelId);
+  while (logs.length > MAX_TOTAL_RUNS) {
     const oldest = logs[logs.length - 1];
     deleteRunLog(modelId, oldest.file);
     logs.pop();

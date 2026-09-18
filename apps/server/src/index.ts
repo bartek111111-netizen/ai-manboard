@@ -83,7 +83,7 @@ async function main(): Promise<void> {
   const registry = new PidRegistry(home);
   const logs = new LogWriter({
     logsDir: home.logsDir,
-    retentionFiles: 10,
+    retentionFiles: 30,
     maxFileBytes: 10_000_000,
   });
   // Faza 6.2: SSE hub — the manager publishes state changes + log lines to it.
@@ -104,6 +104,9 @@ async function main(): Promise<void> {
   if (reconciled.length > 0) {
     console.log(`[dashboard] reconciled ${reconciled.length} instance(s): ${reconciled.join(', ')}`);
   }
+  // Shed log files that exceed the per-model retention cap (a dashboard
+  // restart doesn't run the per-start `prune`, so old files would linger).
+  logs.pruneAll();
   // Re-attach live-log capture to `background` engines that survived a
   // dashboard restart (reconcile settled them to `running`): the ring +
   // file-tail are in-memory, so without this the Logi tab would stay empty

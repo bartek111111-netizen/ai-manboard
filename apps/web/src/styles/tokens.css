@@ -1713,6 +1713,61 @@ section {
   background: var(--color-accent-bg);
 }
 
+.log-saved-num {
+  color: var(--color-text-dim);
+  margin-right: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-saved-preset {
+  font-weight: 500;
+}
+
+.log-saved-age {
+  color: var(--color-text-dim);
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.log-saved-size {
+  color: var(--color-text-dim);
+  margin-left: 6px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-saved-live {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.log-saved-newest {
+  margin-left: 8px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-dim);
+}
+
+.log-saved-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.log-saved-item:hover .log-saved-actions {
+  opacity: 1;
+}
+
+.log-saved-actions .btn {
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
 .log-saved-content {
   font-family: monospace;
   font-size: 13px;

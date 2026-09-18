@@ -82,6 +82,16 @@ export function makeModelHandlers(store: ConfigStore) {
       reply.send(registry.setHidden(id, body.hidden));
     },
 
+    /** PATCH /api/v1/models/:modelId/last-used — record the last used preset. */
+    setLastUsed: async (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<void> => {
+      const id = String((request.params as Record<string, string>).modelId);
+      const body = request.body as { preset: string };
+      reply.send(registry.setLastUsedPreset(id, body.preset));
+    },
+
     /** GET /api/v1/models/hidden — list hidden models. */
     listHidden: async (
       _request: FastifyRequest,

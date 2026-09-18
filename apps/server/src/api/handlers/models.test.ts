@@ -109,4 +109,37 @@ describe("models endpoints (PLAN §14.1)", () => {
     expect(body).toHaveProperty("total");
     await app.close();
   });
+
+  it("PATCH /api/v1/models/:id/last-used records the last used preset", async () => {
+    const { app, dir } = await tempApp();
+    const file = join(dir, "my-model.gguf");
+    writeFileSync(file, "gguf-bytes");
+
+    const add = await app.inject({
+      method: "POST",
+      url: "/api/v1/models",
+      payload: { path: file, engineId: "llama-server" },
+    });
+    const id = add.json().id as string;
+
+    const setLast = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/models/${id}/last-used`,
+      payload: { preset: "gpu" },
+    });
+    expect(setLast.statusCode).toBe(200);
+    expect(setLast.json().lastUsedPreset).toBe("gpu");
+
+    // The value is persisted to the model config and returned by GET.
+    const get = await app.inject({ method: "GET", url: `/api/v1/models/${id}` });
+    expect(get.statusCode).toBe(200);
+    expect(get.json().lastUsedPreset).toBe("gpu");
+
+    // GET /models surfaces it in the list view too.
+    const list = await app.inject({ method: "GET", url: "/api/v1/models" });
+    const [row] = list.json().models as Array<{ lastUsedPreset?: string }>;
+    expect(row.lastUsedPreset).toBe("gpu");
+
+    await app.close();
+  });
 });

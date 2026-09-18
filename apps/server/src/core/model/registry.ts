@@ -117,6 +117,17 @@ export class ModelRegistry {
     return this.viewFor(modelId);
   }
 
+  /**
+   * Records the last preset the user used for the model. This drives the default
+   * selection in every preset box (the "last used" profile).
+   */
+  setLastUsedPreset(modelId: string, preset: string): ModelView {
+    const current = this.requireConfig(modelId);
+    const next: ModelConfig = { ...current, lastUsedPreset: preset };
+    this.store.writeModel(modelId, next);
+    return this.viewFor(modelId);
+  }
+
   /** Lists hidden models (for the Settings UI). */
   listHidden(): ModelView[] {
     return this.store
@@ -209,6 +220,7 @@ export class ModelRegistry {
       fileExists,
       origin: config.origin ?? "manual",
       hidden: config.hidden ?? false,
+      lastUsedPreset: config.lastUsedPreset,
     };
   }
 }

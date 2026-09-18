@@ -101,6 +101,11 @@ export interface ModelConfig {
   params: Record<string, unknown>;
   /** True when the model is hidden from the list (user chose to hide it). */
   hidden?: boolean;
+  /**
+   * The last preset the user used for this model (persisted; drives the default
+   * selection in every preset box). Not a launch param — never sent to the engine.
+   */
+  lastUsedPreset?: string;
 }
 
 /**

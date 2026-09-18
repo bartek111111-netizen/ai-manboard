@@ -14,6 +14,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import {
   discoverModels,
   restartInstance,
+  setLastUsedPreset,
   startInstance,
   stopInstance,
 } from "../api/client";
@@ -81,8 +82,25 @@ export function ModelList() {
     }
   };
 
-  const selectedPreset = (model: ModelView): string | undefined =>
-    selected[model.id] ?? presets[model.id]?.[0]?.name ?? undefined;
+  const selectedPreset = (model: ModelView): string | undefined => {
+    // 1. The preset the user picked this session wins.
+    const chosen = selected[model.id];
+    if (chosen) return chosen;
+    // 2. A live instance's preset wins — the running model shows immediately
+    //    (fixes: launching a non-first preset showed "not loaded" first).
+    const running = instances.find(
+      (i) => i.modelId === model.id && isLiveState(i.state),
+    );
+    if (running) return running.preset;
+    // 3. The last used preset (persisted) — if it still exists.
+    const lastUsed = model.lastUsedPreset;
+    if (lastUsed) {
+      const list = presets[model.id] ?? [];
+      if (list.some((p) => p.name === lastUsed)) return lastUsed;
+    }
+    // 4. Fallback: the first preset.
+    return presets[model.id]?.[0]?.name ?? undefined;
+  };
 
   const [scanResult, setScanResult] = useState<{
     added: number;
@@ -217,12 +235,17 @@ export function ModelList() {
                     <select
                       className="preset-select"
                       value={presetName ?? ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const name = e.target.value;
                         setSelected((prev) => ({
                           ...prev,
-                          [model.id]: e.target.value,
-                        }))
-                      }
+                          [model.id]: name,
+                        }));
+                        // Persist the last used preset (best effort).
+                        if (name) {
+                          void setLastUsedPreset(model.id, name).catch(() => {});
+                        }
+                      }}
                       disabled={presetList.length === 0}
                     >
                       {presetList.length === 0 && (

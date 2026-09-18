@@ -99,6 +99,7 @@ export async function buildApp(
   app.patch("/api/v1/models/:modelId", modelHandlers.updateModel);
   app.delete("/api/v1/models/:modelId", modelHandlers.removeModel);
   app.patch("/api/v1/models/:modelId/hide", modelHandlers.setHidden);
+  app.patch("/api/v1/models/:modelId/last-used", modelHandlers.setLastUsed);
   app.get("/api/v1/models/hidden", modelHandlers.listHidden);
   // Presets CRUD (Faza 6.1).
   app.get("/api/v1/models/:modelId/presets", presetHandlers.list);

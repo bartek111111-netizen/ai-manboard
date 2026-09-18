@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import type { ModelView } from "@ai-dashboard/shared";
-import { ApiError, getModels, getPresets } from "../api/client";
+import {
+  ApiError,
+  getModels,
+  getPresets,
+  setLastUsedPreset,
+} from "../api/client";
 import type { Preset } from "../api/client";
 import { CapabilityIcons } from "../components/CapabilityIcons";
 import { InstancePanel } from "../components/InstancePanel";
@@ -77,7 +82,7 @@ export function ModelDetail() {
   // back-to-back setSearchParams calls in the same tick both read the same
   // stale base and the last one wins, clobbering the preset we just set —
   // this was the "old profile still in the URL" bug.
-  const selectPreset = (name: string | null): void =>
+  const selectPreset = (name: string | null): void => {
     setSearchParams(
       (prev) => {
         const p = new URLSearchParams(prev.toString());
@@ -91,6 +96,12 @@ export function ModelDetail() {
       },
       { replace: true },
     );
+    // Persist the last-used preset (drives the default selection in all boxes).
+    // Best effort — a failed write never blocks navigation.
+    if (name && model) {
+      void setLastUsedPreset(model.id, name).catch(() => {});
+    }
+  };
 
   // Load the model + its presets (on model change).
   useEffect(() => {
@@ -118,13 +129,18 @@ export function ModelDetail() {
       });
   }, [modelId]);
 
-  // Default to the first preset (fast path: list → model → preset) when the
-  // URL carries none — a fresh navigation lands ready to run.
+  // Default to the last-used preset (or the first) when the URL carries none —
+  // a fresh navigation lands ready to run. Waits for both the model (which
+  // carries lastUsedPreset) and the presets to load before choosing.
   useEffect(() => {
-    if (!preset && presets.length > 0) {
-      updatePreset(presets[0].name);
-    }
-  }, [preset, presets]);
+    if (!model || preset || presets.length === 0) return;
+    const lastUsed = model.lastUsedPreset;
+    const defaultPreset =
+      lastUsed && presets.some((p) => p.name === lastUsed)
+        ? lastUsed
+        : presets[0].name;
+    updatePreset(defaultPreset);
+  }, [model, preset, presets]);
 
   const saveName = async (): Promise<void> => {
     if (!model) return;

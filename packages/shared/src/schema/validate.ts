@@ -246,6 +246,12 @@ export function validateModelConfig(
       `origin: expected 'discover' or 'manual' (got ${String(data.origin)})`,
     );
   }
+  if (
+    data.lastUsedPreset !== undefined &&
+    typeof data.lastUsedPreset !== "string"
+  ) {
+    problems.push("lastUsedPreset: not a string");
+  }
   if (!isRecord(data.params)) problems.push("params: expected an object");
 
   if (problems.length > 0) {

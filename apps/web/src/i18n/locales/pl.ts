@@ -76,8 +76,7 @@ export const pl = {
   dupPrompt: "Nazwa kopii presetu:",
   delConfirm: "Usunąć ten preset?",
   newPresetPlaceholder: "nazwa presetu",
-  autoAssign: "Przypisz automatycznie jako domyślny",
-  defaultTag: "domyślny",
+  lastUsedTag: "· ostatnio używany",
 
   // Status page (running models)
   noRunningModels: "Brak uruchomionych modeli.",
@@ -133,6 +132,8 @@ export const pl = {
   logSearchPlaceholder: "szukaj w logach…",
   logAutoScroll: "auto-scroll",
   logEmpty: "Brak linii logów (instancja nie działa albo filtr pusty).",
+  logCopy30: "Kopiuj ostatnie 30",
+  logCopy50: "Kopiuj ostatnie 50",
 
   // MetricsPanel (Faza 8.2)
   metricsHeading: "Metryki",

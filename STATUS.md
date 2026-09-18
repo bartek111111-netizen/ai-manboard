@@ -1,5 +1,47 @@
 # STATUS
 
+## Przebudowa profili modeli: flaga `lastUsedPreset` zamiast checkboxa "domyślny" — ✅ ZROBIONE (2026-09-18)
+
+Przebudowa funkcjonalności profili: usuwany jest checkbox "Przypisz jako domyślny"
+(pierwotna funkcja nie zdała egzaminu) i wprowadzana jest trwała flaga `lastUsedPreset`
+na poziomie modelu. Każdy box wybierania presetu domyślnie pokazuje ostatnio używany profil.
+
+1. **Warstwa danych — `lastUsedPreset` (poziom modelu, nie presetu).**
+   - `ModelConfig.lastUsedPreset?: string` (shared/config/types.ts) — zapis w
+     `config/models/<id>.json`; `ModelView.lastUsedPreset` (shared/api/dto.ts) —
+     eksponowane w `GET /models` dla weba. Walidacja: `validateModelConfig` odrzuca
+     nie-`string`. Nie jest paramem startowym — nigdy nie trafia do llama-server
+     (args-core iteruje tylko klucze schematu), więc starą `params.default` można
+     bezpiecznie wycisnąć.
+   - Endpoint `PATCH /api/v1/models/:modelId/last-used` (handler `setLastUsed` →
+     `registry.setLastUsedPreset` → `store.writeModel`, atomowo).
+2. **Zapis flagi — dwa źródła (selekcja w UI + start procesu):**
+   - Web: zmiana presetu (dropdown Pulpitu `onChange`, `selectPreset` w ModelDetail)
+     → `client.setLastUsedPreset` (best effort).
+   - Serwer: `lifecycle.start()` → `rememberLastUsed(instanceId)` tuż po `spawn`
+     (best effort, try/catch) — łapie także restarty (`restart` → `start`) i starty
+     bez wcześniejszej selekcji w UI.
+3. **Pulpit — błąd "model nie załadowany" po starcie z nie-domyślnego profilu.**
+   - `selectedPreset` ma teraz priorytet: `selected[model.id]` (sesja) → **preset
+     żywej instancji** (`isLiveState`) → `lastUsedPreset` (jeśli istnieje) → pierwszy
+     preset. Żywy model widać natychmiast, bez ręcznego wybierania profilu.
+4. **ModelDetail — auto-default = `lastUsedPreset` → pierwszy.**
+   - Efekt czeka na załadowanie **i modelu** (nosi `lastUsedPreset`), **i presetów**;
+     `selectPreset` persistuje flagę (guard: `name` non-null).
+5. **PresetSelect — checkboxa "domyślny" nie ma.**
+   - Usunięte: `isDefault`/`toggleDefault`/`defaultTag`/`autoAssign`; `params.default`
+     wyciskane z edycji (legacy data). Dodany tag `· ostatnio używany` przy
+     `lastUsedPreset` w liście opcji.
+6. **LogViewer — kopiowanie logu LIVE (otwartego pliku).**
+   - Dwa przyciski nad otwartym plikiem (zwykle log LIVE, poll 2 s): `Kopiuj ostatnie
+     30` i `Kopiuj ostatnie 50` (`copyFileLines(n)` — z `logContent`, łączy najnowszą
+     N linii; potwierdzenie przez state `copiedLines`). Istniejący `Kopiuj ostatnie
+     40` (SSE) zostaje w widoku na żywo; nowy hack `document.querySelector`
+     pozostaje tylko dla SSE — nowe przyciski są czyste.
+
+Bramki: typecheck 0, lint czysty, testy 60+175+15 = 250 (dwa nowe: endpoint
+`setLastUsed` + lifecycle `rememberLastUsed`), build web 72 ms, E2E przechodzi.
+
 ## Audyt zgodności ze specyfikacją + naprawa E2E (run-e2e.sh) — ✅ ZROBIONE (2026-09-18)
 
 Pełny przegląd projektu (PLAN.md + STATUS.md vs. kod) + dwie naprawy:

@@ -201,6 +201,17 @@ export function getModels(): Promise<ModelView[]> {
   );
 }
 
+/** PATCH /api/v1/models/:modelId/last-used — record the last used preset. */
+export function setLastUsedPreset(
+  modelId: string,
+  preset: string,
+): Promise<void> {
+  return request<void>(
+    `/api/v1/models/${encodeURIComponent(modelId)}/last-used`,
+    jsonInit("PATCH", { preset }),
+  );
+}
+
 /** POST /api/v1/models/discover — rescan modelDirs. */
 export function discoverModels(): Promise<DiscoverResult> {
   return request<DiscoverResult>(

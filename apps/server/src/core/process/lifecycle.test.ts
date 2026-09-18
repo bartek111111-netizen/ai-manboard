@@ -139,6 +139,24 @@ describe("LifecycleManager", () => {
     }
   });
 
+  it("records the last used preset in the model config on start", async () => {
+    const home = tempHome("lc-lastused");
+    const store = seed(home, 8086);
+    const lifecycle = stack(store, home);
+    try {
+      await lifecycle.start(INSTANCE);
+      // `rememberLastUsed` runs right after the spawn, so the preset is
+      // recorded as soon as the launch begins (not only on readiness).
+      expect(store.readModel(MODEL_ID)?.lastUsedPreset).toBe("fast");
+      await vi.waitFor(() =>
+        expect(lifecycle.getState(INSTANCE)).toBe("running"),
+      );
+      await lifecycle.stop(INSTANCE);
+    } finally {
+      lifecycle.shutdown();
+    }
+  });
+
   it("rejects a second start while the instance is live", async () => {
     const home = tempHome("lc-busy");
     const lifecycle = stack(seed(home, 8082), home);

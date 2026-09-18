@@ -38,7 +38,7 @@ export function PresetSelect({
   const [newName, setNewName] = useState("");
   const [editParams, setEditParams] = useState<Record<string, unknown>>({});
   const [savingParams, setSavingParams] = useState(false);
-  const [isDefault, setIsDefault] = useState(false);
+  const [lastUsedPreset, setLastUsedPreset] = useState<string | null>(null);
 
   const refresh = useCallback((): void => {
     getPresets(modelId)
@@ -64,6 +64,7 @@ export function PresetSelect({
         const model = models.find((m) => m.id === modelId);
         if (model) {
           setModelPath(model.path);
+          setLastUsedPreset(model.lastUsedPreset ?? null);
           return getEngines().then((engines) => {
             setBinary(
               engines.find((e) => e.id === model.engineId)?.binary ?? null,
@@ -86,11 +87,12 @@ export function PresetSelect({
   // the launcher/preview only send what's in the preset.
   useEffect(() => {
     if (current) {
-      setEditParams({ ...current.params });
-      setIsDefault(current.params?.default === true);
+      // Strip the legacy `default` flag (replaced by the model-level lastUsedPreset).
+      const params = { ...current.params };
+      delete params.default;
+      setEditParams(params);
     } else {
       setEditParams({});
-      setIsDefault(false);
     }
   }, [selected, current]);
 
@@ -146,22 +148,6 @@ export function PresetSelect({
     ).finally(() => setSavingParams(false));
   };
 
-  const toggleDefault = (checked: boolean): void => {
-    if (!current) return;
-    // Set default: true/false in the preset's params
-    const newParams = { ...editParams, default: checked };
-    setEditParams(newParams);
-    setIsDefault(checked);
-    void run(() =>
-      putPreset(modelId, current.name, {
-        version: current.version,
-        name: current.name,
-        port: current.port,
-        params: newParams,
-      }),
-    );
-  };
-
   const handleParamChange = (key: string, value: unknown): void => {
     setEditParams((prev) => ({ ...prev, [key]: value }));
   };
@@ -207,8 +193,8 @@ export function PresetSelect({
                 {presets.map((preset) => (
                   <option key={preset.name} value={preset.name}>
                     {preset.name}
-                    {preset.params?.default === true
-                      ? ` (${t("defaultTag")})`
+                    {preset.name === lastUsedPreset
+                      ? ` ${t("lastUsedTag")}`
                       : ""}
                   </option>
                 ))}
@@ -265,18 +251,6 @@ export function PresetSelect({
               {t("actionNewPreset")}
             </button>
           </div>
-
-          {/* Auto-assign checkbox */}
-          {current && (
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={isDefault}
-                onChange={(e) => toggleDefault(e.target.checked)}
-              />
-              {t("autoAssign")}
-            </label>
-          )}
 
           {current && (
             <>

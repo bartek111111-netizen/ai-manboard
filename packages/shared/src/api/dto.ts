@@ -95,6 +95,8 @@ export interface ModelView {
   origin: "discover" | "manual";
   /** Whether the model is hidden from the list. */
   hidden?: boolean;
+  /** The last preset the user used (default for the preset selection box). */
+  lastUsedPreset?: string;
 }
 
 /** Manual add (FM-3): the only path input to the API (S-4, file picker). */

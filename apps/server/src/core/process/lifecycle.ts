@@ -547,8 +547,24 @@ export class LifecycleManager {
 
     // Spawn (state → starting). The readiness probe runs in the background.
     await this.deps.manager.spawn(instanceId, inst.launch, inst.port, mode);
+    this.rememberLastUsed(instanceId);
     void this.driveStartup(instanceId, inst);
     return this.getState(instanceId);
+  }
+
+  /**
+   * Records the last used preset for the model (drives the default preset
+   * selection in the UI). Best effort — a persistence failure never blocks the launch.
+   */
+  private rememberLastUsed(instanceId: string): void {
+    try {
+      const { modelId, presetName } = resolveInstanceId(instanceId);
+      const config = this.deps.store.readModel(modelId);
+      if (!config || config.lastUsedPreset === presetName) return;
+      this.deps.store.writeModel(modelId, { ...config, lastUsedPreset: presetName });
+    } catch {
+      // Best effort — don't fail the launch on a persistence error
+    }
   }
 
   /**

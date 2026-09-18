@@ -77,6 +77,8 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
   const [viewingLog, setViewingLog] = useState<string | null>(null);
   const [logContent, setLogContent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Which copy-button (30/50) just copied — shows a brief confirmation. */
+  const [copiedLines, setCopiedLines] = useState<number | null>(null);
 
   // Load saved logs list (refreshed periodically so the LIVE badge, sizes,
   // and relative ages stay current as the engine writes to the current log).
@@ -254,6 +256,25 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
       }
     });
   }, [lines]);
+
+  // Copy the last N lines of the OPEN log file (usually the LIVE log) to the
+  // clipboard. Copies straight from `logContent` (the 2 s-poll of the file),
+  // which stays current even after a dashboard restart — unlike the SSE feed.
+  const copyFileLines = useCallback(
+    (n: number) => {
+      const lines = (logContent ?? "").split("\n");
+      // A trailing newline yields a final empty line — drop trailing empties.
+      while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
+        lines.pop();
+      }
+      const text = lines.slice(-n).join("\n");
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedLines(n);
+        setTimeout(() => setCopiedLines(null), 2000);
+      });
+    },
+    [logContent],
+  );
 
   // Delete a saved log
   const deleteSavedLog = useCallback(
@@ -473,11 +494,33 @@ export function LogViewer({ instanceId, modelId }: LogViewerProps) {
         </div>
       )}
 
-      {/* Viewing saved log */}
+      {/* Viewing saved log (usually the LIVE log) — with copy-latest actions */}
       {viewingLog && displayContent !== null && (
-        <div className="log-viewer-container">
-          <pre className="log-saved-content">{displayContent}</pre>
-        </div>
+        <>
+          <div className="log-actions">
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => copyFileLines(30)}
+            >
+              {copiedLines === 30
+                ? "✅ Skopiowano"
+                : `📋 ${t("logCopy30")}`}
+            </button>
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => copyFileLines(50)}
+            >
+              {copiedLines === 50
+                ? "✅ Skopiowano"
+                : `📋 ${t("logCopy50")}`}
+            </button>
+          </div>
+          <div className="log-viewer-container">
+            <pre className="log-saved-content">{displayContent}</pre>
+          </div>
+        </>
       )}
 
       {/* Error notice */}

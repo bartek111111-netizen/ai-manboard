@@ -34,7 +34,8 @@ export function allocatePort(range: PortRange, taken: Iterable<number>): number 
  */
 export function assertPortFree(port: number, range: PortRange, taken: Iterable<number>): void {
   if (new Set(taken).has(port)) {
-    let suggestion: number | null = null;
+    // Best-effort free-port suggestion; `null` when the range is fully occupied.
+    let suggestion: number | null;
     try {
       suggestion = allocatePort(range, taken);
     } catch {

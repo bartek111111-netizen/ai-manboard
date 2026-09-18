@@ -2055,15 +2055,18 @@ section {
    lines and made them look overlapped). Wraps at the arg spaces (break-word)
    so each flag sits on its own line; generous line-height keeps them breathing.
    A max-height keeps a very long arg list from blowing out the popup. */
+/* display:block is the crux: <code> is inline by default, so a border/fill on
+   it is painted PER LINE (the inline box fragments as the text wraps) — that's
+   what made the "borders break up across lines" and the lines look stacked.
+   As a block box the border wraps the whole block as a single box. */
 .cmd-block {
+  display: block;
   margin: 0;
   padding: 8px 10px;
   font-family: ui-monospace, "SF Mono", "Consolas", monospace;
   font-size: 12px;
   line-height: 1.7;
   color: var(--color-text);
-  /* Border only (no fill) — isolating the border as the distinguishing mark,
-     to check whether the background tint was what caused the earlier overlap. */
   border: 1px solid var(--color-border);
   border-radius: 6px;
   white-space: pre-wrap;

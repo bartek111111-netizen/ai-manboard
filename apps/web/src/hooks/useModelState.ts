@@ -2,10 +2,10 @@
  * Hook to detect model state (ready, idle, working) from slots endpoint.
  * Polls every 3s for live instances.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { getInstances, getInstance, getModels } from '../api/client';
+import { useCallback, useEffect, useState } from "react";
+import { getInstances, getInstance, getModels } from "../api/client";
 
-export type ModelState = 'ready' | 'idle' | 'working' | 'unknown';
+export type ModelState = "ready" | "idle" | "working" | "unknown";
 
 export interface ModelStateInfo {
   instanceId: string;
@@ -21,15 +21,17 @@ export function useModelState(): ModelStateInfo[] {
   const [states, setStates] = useState<ModelStateInfo[]>([]);
 
   const detectState = useCallback((slotsUsed: number): ModelState => {
-    if (slotsUsed === 0) return 'idle';
-    if (slotsUsed > 0) return 'working';
-    return 'unknown';
+    if (slotsUsed === 0) return "idle";
+    if (slotsUsed > 0) return "working";
+    return "unknown";
   }, []);
 
   const refresh = useCallback(() => {
     Promise.all([getInstances(), getModels()])
       .then(([list, models]) => {
-        const running = list.filter((i) => i.state === 'running' || i.state === 'starting');
+        const running = list.filter(
+          (i) => i.state === "running" || i.state === "starting",
+        );
         const modelMap = new Map(models.map((m) => [m.id, m.displayName]));
 
         // For each running instance, fetch its runtime info
@@ -42,9 +44,13 @@ export function useModelState(): ModelStateInfo[] {
 
               setStates((prev) => {
                 // Remove instances that are no longer running
-                const filtered = prev.filter((s) => running.some((i) => i.instanceId === s.instanceId));
+                const filtered = prev.filter((s) =>
+                  running.some((i) => i.instanceId === s.instanceId),
+                );
                 // Update or add the current instance
-                const existing = filtered.find((s) => s.instanceId === inst.instanceId);
+                const existing = filtered.find(
+                  (s) => s.instanceId === inst.instanceId,
+                );
                 const displayName = modelMap.get(inst.modelId) ?? inst.modelId;
                 const item = {
                   instanceId: inst.instanceId,
@@ -56,21 +62,27 @@ export function useModelState(): ModelStateInfo[] {
                   slotsTotal,
                 };
                 if (existing) {
-                  return filtered.map((s) => s.instanceId === inst.instanceId ? item : s);
+                  return filtered.map((s) =>
+                    s.instanceId === inst.instanceId ? item : s,
+                  );
                 }
                 return [...filtered, item];
               });
             })
             .catch((err) => {
-              console.error('Failed to get instance state', err);
+              console.error("Failed to get instance state", err);
             });
         });
 
         // Remove instances that are no longer in the list
-        setStates((prev) => prev.filter((s) => running.some((i) => i.instanceId === s.instanceId)));
+        setStates((prev) =>
+          prev.filter((s) =>
+            running.some((i) => i.instanceId === s.instanceId),
+          ),
+        );
       })
       .catch((err) => {
-        console.error('Failed to get instances', err);
+        console.error("Failed to get instances", err);
       });
   }, [detectState]);
 

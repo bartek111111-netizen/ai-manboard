@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { getConfig, getEngines } from '../api/client';
+import { useCallback, useEffect, useState } from "react";
+import { getConfig, getEngines } from "../api/client";
 
 export interface OnboardingState {
   /** True when the onboarding wizard should be shown. */
@@ -20,7 +20,7 @@ export function useOnboarding(): OnboardingState {
   const refresh = useCallback((): void => {
     Promise.all([getEngines(), getConfig()])
       .then(([engines, config]) => {
-        const llama = engines.find((e) => e.id === 'llama-server');
+        const llama = engines.find((e) => e.id === "llama-server");
         const noBinary = !llama?.configured;
         const noDirs = config.global.modelDirs.length === 0;
         setNeeded(noBinary || noDirs);

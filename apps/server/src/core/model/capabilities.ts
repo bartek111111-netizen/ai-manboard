@@ -5,13 +5,13 @@
  * - source 2 (authority): manual edit from the UI (`PATCH /models/:id`).
  *   A manual value always wins (`capabilitiesManual = true`).
  */
-import type { Capability, ModelConfig } from '@ai-dashboard/shared';
+import type { Capability, ModelConfig } from "@ai-dashboard/shared";
 
 export interface ResolvedCapabilities {
   /** Effective capability flags, e.g. `{ text: true, vision: false }`. */
   flags: Record<string, boolean>;
   /** Where the flags came from. */
-  source: 'manual' | 'heuristic';
+  source: "manual" | "heuristic";
 }
 
 /**
@@ -24,9 +24,9 @@ export function resolveCapabilities(
 ): ResolvedCapabilities {
   const manual = config.capabilities;
   if (config.capabilitiesManual && Object.keys(manual ?? {}).length > 0) {
-    return { flags: manual, source: 'manual' };
+    return { flags: manual, source: "manual" };
   }
   const flags: Record<string, boolean> = {};
   for (const cap of heuristics) flags[cap] = true;
-  return { flags, source: 'heuristic' };
+  return { flags, source: "heuristic" };
 }

@@ -1,8 +1,8 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { readGgufMetadata } from './gguf.js';
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { readGgufMetadata } from "./gguf.js";
 
 /** A 4-byte little-endian u32 buffer. */
 function u32(value: number): Buffer {
@@ -41,25 +41,33 @@ function buildGgufBuffer(): Buffer {
   const metadataCount = u64(3n);
 
   // KV1: general.architecture = "llama"  (type 8 = STRING)
-  const kv1 = kv('general.architecture', 8, strValue('llama'));
+  const kv1 = kv("general.architecture", 8, strValue("llama"));
   // KV2: llama.context_length = 4096      (type 10 = UINT64)
-  const kv2 = kv('llama.context_length', 10, u64(4096n));
+  const kv2 = kv("llama.context_length", 10, u64(4096n));
   // KV3: llama.attention.head_count = 32  (type 10 = UINT64)
-  const kv3 = kv('llama.attention.head_count', 10, u64(32n));
+  const kv3 = kv("llama.attention.head_count", 10, u64(32n));
 
-  return Buffer.concat([magic, version, tensorCount, metadataCount, kv1, kv2, kv3]);
+  return Buffer.concat([
+    magic,
+    version,
+    tensorCount,
+    metadataCount,
+    kv1,
+    kv2,
+    kv3,
+  ]);
 }
 
-describe('readGgufMetadata (FM-5, header + metadata only)', () => {
-  it('reads version, architecture, context_length and head_count from a GGUF header', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ai-dashboard-gguf-'));
-    const file = join(dir, 'model.gguf');
+describe("readGgufMetadata (FM-5, header + metadata only)", () => {
+  it("reads version, architecture, context_length and head_count from a GGUF header", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ai-dashboard-gguf-"));
+    const file = join(dir, "model.gguf");
     writeFileSync(file, buildGgufBuffer());
     try {
       const meta = readGgufMetadata(file);
       expect(meta).not.toBeNull();
       expect(meta?.version).toBe(3);
-      expect(meta?.architecture).toBe('llama');
+      expect(meta?.architecture).toBe("llama");
       expect(meta?.contextLength).toBe(4096);
       expect(meta?.headCount).toBe(32);
     } finally {
@@ -67,19 +75,26 @@ describe('readGgufMetadata (FM-5, header + metadata only)', () => {
     }
   });
 
-  it('reads ARRAY values (type 9: elem_type + count + items)', () => {
+  it("reads ARRAY values (type 9: elem_type + count + items)", () => {
     const magic = Buffer.from([0x47, 0x47, 0x55, 0x46]);
     const version = u32(3);
     const tensorCount = u64(0n);
     // KV1: general.architecture = "llama" (type 8 = STRING)
-    const kv1 = kv('general.architecture', 8, strValue('llama'));
+    const kv1 = kv("general.architecture", 8, strValue("llama"));
     // KV2: llama.context_length = [4096] (type 9 = ARRAY of type 10 = UINT64)
     const arrValue = Buffer.concat([u32(10), u64(1n), u64(4096n)]);
-    const kv2 = kv('llama.context_length', 9, arrValue);
-    const buffer = Buffer.concat([magic, version, tensorCount, u64(2n), kv1, kv2]);
+    const kv2 = kv("llama.context_length", 9, arrValue);
+    const buffer = Buffer.concat([
+      magic,
+      version,
+      tensorCount,
+      u64(2n),
+      kv1,
+      kv2,
+    ]);
 
-    const dir = mkdtempSync(join(tmpdir(), 'ai-dashboard-gguf-arr-'));
-    const file = join(dir, 'model-arr.gguf');
+    const dir = mkdtempSync(join(tmpdir(), "ai-dashboard-gguf-arr-"));
+    const file = join(dir, "model-arr.gguf");
     writeFileSync(file, buffer);
     try {
       const meta = readGgufMetadata(file);
@@ -89,31 +104,37 @@ describe('readGgufMetadata (FM-5, header + metadata only)', () => {
     }
   });
 
-  it('still reads metadata when tensors are present (metadata precedes the tensor table)', () => {
+  it("still reads metadata when tensors are present (metadata precedes the tensor table)", () => {
     const magic = Buffer.from([0x47, 0x47, 0x55, 0x46]);
     const version = u32(3);
     // tensorCount = 2, but the reader stops after the metadata (which comes first).
     const tensorCount = u64(2n);
     const metadataCount = u64(1n);
-    const kv1 = kv('general.architecture', 8, strValue('qwen3'));
-    const buffer = Buffer.concat([magic, version, tensorCount, metadataCount, kv1]);
+    const kv1 = kv("general.architecture", 8, strValue("qwen3"));
+    const buffer = Buffer.concat([
+      magic,
+      version,
+      tensorCount,
+      metadataCount,
+      kv1,
+    ]);
 
-    const dir = mkdtempSync(join(tmpdir(), 'ai-dashboard-gguf-tens-'));
-    const file = join(dir, 'model-tens.gguf');
+    const dir = mkdtempSync(join(tmpdir(), "ai-dashboard-gguf-tens-"));
+    const file = join(dir, "model-tens.gguf");
     writeFileSync(file, buffer);
     try {
       const meta = readGgufMetadata(file);
       expect(meta?.tensorCount).toBe(2);
-      expect(meta?.architecture).toBe('qwen3');
+      expect(meta?.architecture).toBe("qwen3");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('returns null for non-GGUF files (magic check)', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ai-dashboard-gguf2-'));
-    const file = join(dir, 'not-gguf.bin');
-    writeFileSync(file, Buffer.from('this is not a gguf file at all, padding'));
+  it("returns null for non-GGUF files (magic check)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ai-dashboard-gguf2-"));
+    const file = join(dir, "not-gguf.bin");
+    writeFileSync(file, Buffer.from("this is not a gguf file at all, padding"));
     try {
       expect(readGgufMetadata(file)).toBeNull();
     } finally {
@@ -121,7 +142,7 @@ describe('readGgufMetadata (FM-5, header + metadata only)', () => {
     }
   });
 
-  it('returns null for a path that does not exist', () => {
-    expect(readGgufMetadata('/nonexistent/path.gguf')).toBeNull();
+  it("returns null for a path that does not exist", () => {
+    expect(readGgufMetadata("/nonexistent/path.gguf")).toBeNull();
   });
 });

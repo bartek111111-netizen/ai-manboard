@@ -3,12 +3,12 @@
  * `EventSource` auto-reconnects. For SSE, the bearer token is passed as
  * `?token=` (S-7, the browser EventSource cannot set headers).
  */
-import type { InstanceState } from '@ai-dashboard/shared';
+import type { InstanceState } from "@ai-dashboard/shared";
 
 /** One log line (mirrors the server's `LogLine`). */
 export interface LogLine {
   ts: string;
-  level: 'info' | 'warn' | 'error';
+  level: "info" | "warn" | "error";
   line: string;
 }
 
@@ -27,14 +27,17 @@ export function setAuthToken(token: string | null): void {
 let authToken: string | null = null;
 
 function tokenQuery(): string {
-  return authToken ? `?token=${encodeURIComponent(authToken)}` : '';
+  return authToken ? `?token=${encodeURIComponent(authToken)}` : "";
 }
 
 /**
  * Subscribe to live log lines for an instance. Returns a cleanup function.
  * The handler is also used to replay the recent ring on connect.
  */
-export function openLogStream(instanceId: string, onLine: (line: LogLine) => void): () => void {
+export function openLogStream(
+  instanceId: string,
+  onLine: (line: LogLine) => void,
+): () => void {
   const url = `/api/v1/stream/${encodeURIComponent(instanceId)}/logs${tokenQuery()}`;
   const source = new EventSource(url);
   const handler = (event: MessageEvent): void => {
@@ -45,9 +48,9 @@ export function openLogStream(instanceId: string, onLine: (line: LogLine) => voi
       // malformed frame — ignore
     }
   };
-  source.addEventListener('log', handler as EventListener);
+  source.addEventListener("log", handler as EventListener);
   return () => {
-    source.removeEventListener('log', handler as EventListener);
+    source.removeEventListener("log", handler as EventListener);
     source.close();
   };
 }
@@ -55,7 +58,9 @@ export function openLogStream(instanceId: string, onLine: (line: LogLine) => voi
 /**
  * Subscribe to global FSM state-change events. Returns a cleanup function.
  */
-export function openEventStream(onState: (event: StateEvent) => void): () => void {
+export function openEventStream(
+  onState: (event: StateEvent) => void,
+): () => void {
   const url = `/api/v1/stream/events${tokenQuery()}`;
   const source = new EventSource(url);
   const handler = (event: MessageEvent): void => {
@@ -66,9 +71,9 @@ export function openEventStream(onState: (event: StateEvent) => void): () => voi
       // malformed frame — ignore
     }
   };
-  source.addEventListener('state', handler as EventListener);
+  source.addEventListener("state", handler as EventListener);
   return () => {
-    source.removeEventListener('state', handler as EventListener);
+    source.removeEventListener("state", handler as EventListener);
     source.close();
   };
 }

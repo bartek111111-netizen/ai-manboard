@@ -3,8 +3,8 @@
  * the engine's `ParamSchema[]`. Groups, types, validation, source layer.
  * Includes a command preview and proper advanced section formatting.
  */
-import { buildLlamaServerArgs, type ParamSchema } from '@ai-dashboard/shared';
-import { t } from '../i18n/index.js';
+import { buildLlamaServerArgs, type ParamSchema } from "@ai-dashboard/shared";
+import { t } from "../i18n/index.js";
 
 interface SchemaFormProps {
   schema: ParamSchema[];
@@ -24,15 +24,15 @@ interface SchemaFormProps {
 
 /** Group label (PL). */
 const GROUP_LABELS: Record<string, string> = {
-  model: 'Model',
-  performance: 'Wydajność',
-  sampling: 'Sampling',
-  speculative: 'Spekulacja (MTP)',
-  vision: 'Wizja (mmproj)',
-  moe: 'MoE',
-  server: 'Serwer',
-  chat: 'Czat (template)',
-  advanced: 'Zaawansowane',
+  model: "Model",
+  performance: "Wydajność",
+  sampling: "Sampling",
+  speculative: "Spekulacja (MTP)",
+  vision: "Wizja (mmproj)",
+  moe: "MoE",
+  server: "Serwer",
+  chat: "Czat (template)",
+  advanced: "Zaawansowane",
 };
 
 /**
@@ -47,12 +47,12 @@ function buildCommandPreview(
   binary: string | undefined,
   modelPath: string | undefined,
 ): string {
-  if (!binary || !modelPath) return '…';
+  if (!binary || !modelPath) return "…";
   // Only the preset's params (what the user set). Schema defaults and host/port
   // are NOT merged — the server runs on its own defaults for unset params.
   const params: Record<string, unknown> = { ...values };
   const args = buildLlamaServerArgs({ modelPath, params });
-  return `${binary} ${args.join(' ')}`;
+  return `${binary} ${args.join(" ")}`;
 }
 
 /** A single field rendered per type. */
@@ -83,42 +83,46 @@ function Field({
       {error && <p className="field-error">{error}</p>}
 
       {/* int */}
-      {param.type === 'int' && (
+      {param.type === "int" && (
         <input
           id={fieldId}
           type="number"
-          value={value !== null && value !== undefined ? String(value) : ''}
+          value={value !== null && value !== undefined ? String(value) : ""}
           min={param.min}
           max={param.max}
-          onChange={(e) => set(e.target.value === '' ? null : Number(e.target.value))}
+          onChange={(e) =>
+            set(e.target.value === "" ? null : Number(e.target.value))
+          }
         />
       )}
 
       {/* float */}
-      {param.type === 'float' && (
+      {param.type === "float" && (
         <input
           id={fieldId}
           type="number"
           step="0.01"
-          value={value !== null && value !== undefined ? String(value) : ''}
+          value={value !== null && value !== undefined ? String(value) : ""}
           min={param.min}
           max={param.max}
-          onChange={(e) => set(e.target.value === '' ? null : Number(e.target.value))}
+          onChange={(e) =>
+            set(e.target.value === "" ? null : Number(e.target.value))
+          }
         />
       )}
 
       {/* string */}
-      {param.type === 'string' && (
+      {param.type === "string" && (
         <input
           id={fieldId}
           type="text"
-          value={value !== null && value !== undefined ? String(value) : ''}
+          value={value !== null && value !== undefined ? String(value) : ""}
           onChange={(e) => set(e.target.value)}
         />
       )}
 
       {/* bool */}
-      {param.type === 'bool' && (
+      {param.type === "bool" && (
         <input
           id={fieldId}
           type="checkbox"
@@ -128,14 +132,14 @@ function Field({
       )}
 
       {/* enum (with optional number input) */}
-      {param.type === 'enum' && (
+      {param.type === "enum" && (
         <>
           <select
             id={fieldId}
-            value={value !== null && value !== undefined ? String(value) : ''}
+            value={value !== null && value !== undefined ? String(value) : ""}
             onChange={(e) => {
               const v = e.target.value;
-              if (v === '__number__' && param.allowNumber) {
+              if (v === "__number__" && param.allowNumber) {
                 // Don't set yet — the number input below handles it
                 return;
               }
@@ -143,47 +147,52 @@ function Field({
               set(Number.isNaN(num) ? v : num);
             }}
           >
-            <option value="">{t('enumSelect')}</option>
+            <option value="">{t("enumSelect")}</option>
             {(param.choices ?? []).map((choice) => (
               <option key={String(choice.value)} value={String(choice.value)}>
                 {choice.label ?? String(choice.value)}
               </option>
             ))}
             {param.allowNumber && (
-              <option value="__number__">{t('enumCustomNumber')}</option>
+              <option value="__number__">{t("enumCustomNumber")}</option>
             )}
           </select>
           {/* Number input for custom value */}
-          {param.allowNumber && value !== null && value !== undefined && typeof value === 'number' && (
-            <input
-              type="number"
-              className="enum-number-input"
-              value={value}
-              min={param.min}
-              max={param.max}
-              onChange={(e) => set(e.target.value === '' ? null : Number(e.target.value))}
-            />
-          )}
+          {param.allowNumber &&
+            value !== null &&
+            value !== undefined &&
+            typeof value === "number" && (
+              <input
+                type="number"
+                className="enum-number-input"
+                value={value}
+                min={param.min}
+                max={param.max}
+                onChange={(e) =>
+                  set(e.target.value === "" ? null : Number(e.target.value))
+                }
+              />
+            )}
         </>
       )}
 
       {/* path-model */}
-      {param.type === 'path-model' && (
+      {param.type === "path-model" && (
         <input
           id={fieldId}
           type="text"
-          value={value !== null && value !== undefined ? String(value) : ''}
-          placeholder={t('pathModelPlaceholder')}
+          value={value !== null && value !== undefined ? String(value) : ""}
+          placeholder={t("pathModelPlaceholder")}
           onChange={(e) => set(e.target.value)}
         />
       )}
 
       {/* path-file */}
-      {param.type === 'path-file' && (
+      {param.type === "path-file" && (
         <input
           id={fieldId}
           type="text"
-          value={value !== null && value !== undefined ? String(value) : ''}
+          value={value !== null && value !== undefined ? String(value) : ""}
           onChange={(e) => set(e.target.value)}
         />
       )}
@@ -215,7 +224,11 @@ function ParamGroup({
       {params.map((param) => {
         // Pre-fill the model path
         let val = values[param.key];
-        if (param.key === 'model' && (val === undefined || val === null || val === '') && modelPath) {
+        if (
+          param.key === "model" &&
+          (val === undefined || val === null || val === "") &&
+          modelPath
+        ) {
           val = modelPath;
         }
         return (
@@ -269,7 +282,7 @@ export function SchemaForm({
     <div className="schema-form">
       {/* Command preview */}
       <div className="command-preview">
-        <h3>{t('commandPreview')}</h3>
+        <h3>{t("commandPreview")}</h3>
         <pre className="command-preview-code">{command}</pre>
       </div>
 
@@ -290,7 +303,7 @@ export function SchemaForm({
       {/* Advanced section (collapsed by default) */}
       {advancedParams.length > 0 && (
         <details className="schema-advanced">
-          <summary>{t('advancedSection')}</summary>
+          <summary>{t("advancedSection")}</summary>
           <div className="schema-advanced-content">
             {[...advancedGroups.entries()].map(([group, params]) => (
               <ParamGroup

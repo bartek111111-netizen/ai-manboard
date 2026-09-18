@@ -10,12 +10,23 @@
  * never touched (S-5: the dashboard never deletes model files); it is already
  * gone by hand, we just stop tracking it.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { CURRENT_CONFIG_VERSION, type InferenceEngine } from '@ai-dashboard/shared';
-import type { ConfigStore } from '../config/store.js';
-import type { DashboardHome } from '../config/paths.js';
-import { modelIdFor } from './ids.js';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
+import {
+  CURRENT_CONFIG_VERSION,
+  type InferenceEngine,
+} from "@ai-dashboard/shared";
+import type { ConfigStore } from "../config/store.js";
+import type { DashboardHome } from "../config/paths.js";
+import { modelIdFor } from "./ids.js";
 
 /** Max scan depth below a model dir (PLAN §8.1: głebokość ≤ 4). */
 export const DEFAULT_MAX_DEPTH = 4;
@@ -43,14 +54,14 @@ export interface DiscoverResult {
 
 /** Path of the scan cache file. */
 export function cacheFile(home: DashboardHome): string {
-  return join(home.stateDir, 'models-cache.json');
+  return join(home.stateDir, "models-cache.json");
 }
 
 /** Reads the scan cache; empty when absent or unreadable. */
 export function readCache(home: DashboardHome): ModelCache {
   try {
     if (!existsSync(cacheFile(home))) return {};
-    return JSON.parse(readFileSync(cacheFile(home), 'utf-8')) as ModelCache;
+    return JSON.parse(readFileSync(cacheFile(home), "utf-8")) as ModelCache;
   } catch {
     return {};
   }
@@ -67,8 +78,10 @@ export function writeCache(home: DashboardHome, cache: ModelCache): void {
 
 /** Matches a file name against an engine glob pattern (supports `*` and `?`). */
 export function matchesPattern(fileName: string, pattern: string): boolean {
-  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`^${escaped.replace(/\\\*/g, '.*').replace(/\\\?/g, '.')}$`);
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(
+    `^${escaped.replace(/\\\*/g, ".*").replace(/\\\?/g, ".")}$`,
+  );
   return regex.test(fileName);
 }
 
@@ -93,7 +106,8 @@ export function scanDir(
     if (entry.isSymbolicLink()) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (depth < maxDepth) found.push(...scanDir(full, patterns, maxDepth, depth + 1));
+      if (depth < maxDepth)
+        found.push(...scanDir(full, patterns, maxDepth, depth + 1));
     } else if (entry.isFile()) {
       if (patterns.some((p) => matchesPattern(entry.name, p))) found.push(full);
     }
@@ -109,15 +123,25 @@ export function scanDir(
  * - refreshes `state/models-cache.json`.
  * Existing model configs are never overwritten (manual fields stay intact).
  */
-export function discoverModels(store: ConfigStore, engines: InferenceEngine[]): DiscoverResult {
+export function discoverModels(
+  store: ConfigStore,
+  engines: InferenceEngine[],
+): DiscoverResult {
   const home = store.home;
   const global = store.readGlobal();
   const patterns = [...new Set(engines.flatMap((e) => e.filePatterns))];
 
-  const found = new Map<string, { mtimeMs: number; sizeBytes: number; modelId: string; engineId: string }>();
+  const found = new Map<
+    string,
+    { mtimeMs: number; sizeBytes: number; modelId: string; engineId: string }
+  >();
   for (const dir of global.modelDirs) {
     for (const file of scanDir(dir, patterns, DEFAULT_MAX_DEPTH)) {
-      const engine = engines.find((e) => e.filePatterns.some((p) => matchesPattern(file.split('/').pop() ?? '', p)));
+      const engine = engines.find((e) =>
+        e.filePatterns.some((p) =>
+          matchesPattern(file.split("/").pop() ?? "", p),
+        ),
+      );
       const modelId = modelIdFor(file);
       let st;
       try {
@@ -129,7 +153,7 @@ export function discoverModels(store: ConfigStore, engines: InferenceEngine[]): 
         mtimeMs: st.mtimeMs,
         sizeBytes: st.size,
         modelId,
-        engineId: engine?.id ?? 'llama-server',
+        engineId: engine?.id ?? "llama-server",
       });
     }
   }
@@ -141,10 +165,10 @@ export function discoverModels(store: ConfigStore, engines: InferenceEngine[]): 
       store.writeModel(info.modelId, {
         version: CURRENT_CONFIG_VERSION,
         engineId: info.engineId,
-        displayName: path.split('/').pop() ?? info.modelId,
+        displayName: path.split("/").pop() ?? info.modelId,
         tags: [],
         capabilities: {},
-        origin: 'discover',
+        origin: "discover",
         params: { model: path },
       });
       added.push(info.modelId);
@@ -159,7 +183,7 @@ export function discoverModels(store: ConfigStore, engines: InferenceEngine[]): 
   for (const id of store.listModelIds()) {
     const cfg = store.readModel(id);
     const p = cfg?.params?.model;
-    if (typeof p === 'string' && p.length > 0 && !existsSync(p)) {
+    if (typeof p === "string" && p.length > 0 && !existsSync(p)) {
       store.deleteModel(id);
       removed.push(id);
     }

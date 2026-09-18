@@ -5,12 +5,15 @@
  * `@ai-dashboard/shared/engine` on the server side; the web reads engine
  * data (schemas) from the API, not from this module.
  */
-import type { InferenceEngine } from './types.js';
-import { LlamaServerEngine } from './llama-server/index.js';
+import type { InferenceEngine } from "./types.js";
+import { LlamaServerEngine } from "./llama-server/index.js";
 
-export * from './types.js';
-export { LlamaServerEngine } from './llama-server/index.js';
-export { LLAMA_SERVER_SCHEMA, buildLlamaServerLaunch } from './llama-server/index.js';
+export * from "./types.js";
+export { LlamaServerEngine } from "./llama-server/index.js";
+export {
+  LLAMA_SERVER_SCHEMA,
+  buildLlamaServerLaunch,
+} from "./llama-server/index.js";
 
 const engines = new Map<string, InferenceEngine>();
 

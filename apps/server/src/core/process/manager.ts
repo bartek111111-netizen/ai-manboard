@@ -169,8 +169,7 @@ export class ProcessManager {
     }
 
     this.rings.set(instanceId, new RingBuffer<LogLine>(this.ringLines));
-    const logFile =
-      this.opts.logs?.start(instanceId, this.stamp()) ?? "";
+    const logFile = this.opts.logs?.start(instanceId, this.stamp()) ?? "";
 
     // `background`: open the log file and point the child's stdout/stderr at it
     // (so the engine writes to disk, not to our pipes). `session`: plain pipes.

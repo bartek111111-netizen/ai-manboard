@@ -4,8 +4,8 @@
  * (never silent). Own writes through the API also fire fs events; the
  * consumer compares a snapshot hash and ignores no-op events.
  */
-import { watch, type FSWatcher } from 'node:fs';
-import type { ConfigStore } from './store.js';
+import { watch, type FSWatcher } from "node:fs";
+import type { ConfigStore } from "./store.js";
 
 export interface ConfigChangeEvent {
   /** ISO timestamp of the dispatched (debounced) event. */
@@ -41,8 +41,10 @@ export class ConfigWatcher {
     for (const dir of dirs) {
       // Node 26 fs.watch: listener is (eventType: 'change' | 'rename', filename).
       const watcher = watch(dir, () => this.schedule());
-      watcher.on('error', (err: Error) => {
-        console.error(`[dashboard] config watch error on ${dir}: ${err.message}`);
+      watcher.on("error", (err: Error) => {
+        console.error(
+          `[dashboard] config watch error on ${dir}: ${err.message}`,
+        );
       });
       this.watchers.push(watcher);
     }

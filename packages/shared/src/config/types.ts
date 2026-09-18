@@ -11,12 +11,12 @@ export const CURRENT_CONFIG_VERSION = 1;
 
 /** Layer origin labels, in ascending priority order (for docs/debugging). */
 export const CONFIG_SOURCES = [
-  'schema',
-  'global',
-  'engine',
-  'model',
-  'preset',
-  'instance',
+  "schema",
+  "global",
+  "engine",
+  "model",
+  "preset",
+  "instance",
 ] as const;
 
 export type ConfigSource = (typeof CONFIG_SOURCES)[number];
@@ -96,7 +96,7 @@ export interface ModelConfig {
   /** True when the user set capabilities manually (they win over heuristics). */
   capabilitiesManual?: boolean;
   /** Where the model came from: `discover` (scan of modelDirs) or `manual` (POST /models). */
-  origin?: 'discover' | 'manual';
+  origin?: "discover" | "manual";
   /** Model-level parameter defaults (layer 4 of the merge). `model` = file path. */
   params: Record<string, unknown>;
   /** True when the model is hidden from the list (user chose to hide it). */

@@ -128,9 +128,15 @@ export class LifecycleManager {
    * CURRENT generation speed during a long task, not a lifetime average that
    * lags behind a new task. Cleared on stop.
    */
-  private readonly lastCounters = new Map<string, { tokens: number; ts: number }>();
+  private readonly lastCounters = new Map<
+    string,
+    { tokens: number; ts: number }
+  >();
   /** Per-instance previous CPU jiffies (for a LIVE cpu% from /proc deltas). */
-  private readonly lastJiffies = new Map<string, { jiffies: number; ts: number }>();
+  private readonly lastJiffies = new Map<
+    string,
+    { jiffies: number; ts: number }
+  >();
 
   constructor(deps: LifecycleDeps) {
     this.deps = deps;
@@ -376,9 +382,9 @@ export class LifecycleManager {
     runtime: RuntimeInfo | null,
   ): RuntimeInfo | null {
     if (!runtime) return runtime;
-    const counters = (runtime.extras.counters ?? null) as
-      | { tokensPredictedTotal?: number }
-      | null;
+    const counters = (runtime.extras.counters ?? null) as {
+      tokensPredictedTotal?: number;
+    } | null;
     const total = counters?.tokensPredictedTotal;
     if (typeof total !== "number" || !Number.isFinite(total)) {
       return runtime; // no usable counter — keep the cumulative value as-is
@@ -735,7 +741,10 @@ function readProcCpuJiffies(pid: number): number | null {
   try {
     const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
     const close = stat.lastIndexOf(")");
-    const fields = stat.slice(close + 1).trim().split(/\s+/);
+    const fields = stat
+      .slice(close + 1)
+      .trim()
+      .split(/\s+/);
     const utime = Number(fields[11]);
     const stime = Number(fields[12]);
     if (!Number.isFinite(utime) || !Number.isFinite(stime)) return null;

@@ -14,7 +14,7 @@
  * - bools: if present, sent per their flag semantics (plain bool → flag when
  *   `true`; offFlag → offFlag when `false`; offValue → flag + offValue when `false`).
  */
-import { LLAMA_SERVER_SCHEMA } from './schema.js';
+import { LLAMA_SERVER_SCHEMA } from "./schema.js";
 
 export interface ArgsContext {
   /** The resolved model file path (always sent as `--model`). */
@@ -30,27 +30,27 @@ export function buildLlamaServerArgs(ctx: ArgsContext): string[] {
 
   // `--model` is always sent (required). Everything else — including host/port —
   // is sent only when it differs from the schema default (see the loop below).
-  args.push('--model', ctx.modelPath);
+  args.push("--model", ctx.modelPath);
 
   for (const p of LLAMA_SERVER_SCHEMA) {
-    if (p.key === 'model') continue;
+    if (p.key === "model") continue;
     const value = params[p.key];
     if (value === undefined || value === null) continue;
 
-    if (p.type === 'bool') {
+    if (p.type === "bool") {
       if (value === true) {
         // Plain bool (flag-only): `true` → send the flag.
         // offFlag/offValue params: `true` is the default state → nothing.
         if (p.offFlag || p.offValue) continue;
-        args.push(p.flag ?? '');
+        args.push(p.flag ?? "");
       } else if (value === false) {
         if (p.offFlag) args.push(p.offFlag);
-        else if (p.offValue) args.push(p.flag ?? '', p.offValue);
+        else if (p.offValue) args.push(p.flag ?? "", p.offValue);
       }
     } else {
       // Empty strings (device, api-key, ...) are "unset", not values.
-      if (typeof value === 'string' && value.trim() === '') continue;
-      args.push(p.flag ?? '', String(value));
+      if (typeof value === "string" && value.trim() === "") continue;
+      args.push(p.flag ?? "", String(value));
     }
   }
 

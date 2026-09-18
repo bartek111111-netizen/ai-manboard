@@ -4,7 +4,7 @@
  * checked FIRST and never count as errors; then error patterns; then
  * warnings; ready markers are informational.
  */
-import type { LogClassification } from '../types.js';
+import type { LogClassification } from "../types.js";
 
 /** Known non-error warnings: level = info, flagged as knownWarning. */
 const KNOWN_WARNINGS: RegExp[] = [
@@ -24,11 +24,7 @@ const ERROR_PATTERNS: RegExp[] = [
   /corrupt\b.*\.(gguf|bin)/i,
 ];
 
-const WARN_PATTERNS: RegExp[] = [
-  /\bwarning\b/i,
-  /\bslow\b/i,
-  /fallback/i,
-];
+const WARN_PATTERNS: RegExp[] = [/\bwarning\b/i, /\bslow\b/i, /fallback/i];
 
 /** Informational ready markers (§10.2). */
 const READY_MARKERS: RegExp[] = [
@@ -39,16 +35,16 @@ const READY_MARKERS: RegExp[] = [
 
 export function classifyLlamaServerLog(line: string): LogClassification {
   if (KNOWN_WARNINGS.some((p) => p.test(line))) {
-    return { level: 'info', knownWarning: true };
+    return { level: "info", knownWarning: true };
   }
   if (ERROR_PATTERNS.some((p) => p.test(line))) {
-    return { level: 'error' };
+    return { level: "error" };
   }
   if (WARN_PATTERNS.some((p) => p.test(line))) {
-    return { level: 'warn' };
+    return { level: "warn" };
   }
   if (READY_MARKERS.some((p) => p.test(line))) {
-    return { level: 'info', readyMarker: true };
+    return { level: "info", readyMarker: true };
   }
-  return { level: 'info' };
+  return { level: "info" };
 }

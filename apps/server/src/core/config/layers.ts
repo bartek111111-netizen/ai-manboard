@@ -10,7 +10,11 @@
  *
  * Result: per-parameter `{ value, source }` so the UI can show "skąd" (FC-5).
  */
-import type { ConfigSnapshot, ResolvedConfig, ConfigSource } from '@ai-dashboard/shared';
+import type {
+  ConfigSnapshot,
+  ResolvedConfig,
+  ConfigSource,
+} from "@ai-dashboard/shared";
 
 /** One layer of the merge: label + its (partial) parameters. */
 export interface ConfigLayer {
@@ -60,19 +64,30 @@ export function buildEffective(
   const result: Record<string, Record<string, ResolvedConfig>> = {};
 
   for (const [modelId, model] of Object.entries(snapshot.models)) {
-    const engine = model.engineId ? snapshot.engines[model.engineId] : undefined;
-    const schemaParams = model.engineId ? schemaDefaults?.[model.engineId] : undefined;
+    const engine = model.engineId
+      ? snapshot.engines[model.engineId]
+      : undefined;
+    const schemaParams = model.engineId
+      ? schemaDefaults?.[model.engineId]
+      : undefined;
     const baseLayers: ConfigLayer[] = [
-      ...(schemaParams ? [{ source: 'schema' as ConfigSource, params: schemaParams }] : []),
-      { source: 'global', params: snapshot.global.defaults },
-      ...(engine ? [{ source: 'engine' as ConfigSource, params: engine.params }] : []),
-      { source: 'model', params: model.params },
+      ...(schemaParams
+        ? [{ source: "schema" as ConfigSource, params: schemaParams }]
+        : []),
+      { source: "global", params: snapshot.global.defaults },
+      ...(engine
+        ? [{ source: "engine" as ConfigSource, params: engine.params }]
+        : []),
+      { source: "model", params: model.params },
     ];
 
     const presets = snapshot.presets[modelId] ?? {};
     const forModel: Record<string, ResolvedConfig> = {};
     for (const [presetName, preset] of Object.entries(presets)) {
-      forModel[presetName] = resolveParams([...baseLayers, { source: 'preset', params: preset.params }]);
+      forModel[presetName] = resolveParams([
+        ...baseLayers,
+        { source: "preset", params: preset.params },
+      ]);
     }
     if (Object.keys(forModel).length > 0) result[modelId] = forModel;
   }

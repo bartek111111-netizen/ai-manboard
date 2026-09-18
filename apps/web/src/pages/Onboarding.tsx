@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   discoverModels,
   getConfig,
@@ -6,10 +6,10 @@ import {
   putGlobalConfig,
   type EngineCheck,
   type PutEngineResult,
-} from '../api/client';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { t } from '../i18n';
-import { errInfo } from '../ui/errors';
+} from "../api/client";
+import { ErrorNotice } from "../components/ErrorNotice";
+import { t } from "../i18n";
+import { errInfo } from "../ui/errors";
 
 /**
  * Onboarding wizard (Faza 7.5, ONB-1/ONB-2): step 1 = the `llama-server`
@@ -17,12 +17,21 @@ import { errInfo } from '../ui/errors';
  * (file pickers + [Zapisz]). [Nowy skan] triggers discovery; [Pomiń] skips.
  */
 export function Onboarding({ onDone }: { onDone: () => void }) {
-  const [binary, setBinary] = useState('');
+  const [binary, setBinary] = useState("");
   const [check, setCheck] = useState<EngineCheck | null>(null);
-  const [checkError, setCheckError] = useState<{ message: string; code?: string } | null>(null);
-  const [dirs, setDirs] = useState('');
-  const [saveError, setSaveError] = useState<{ message: string; code?: string } | null>(null);
-  const [scanResult, setScanResult] = useState<{ added: number; total: number } | null>(null);
+  const [checkError, setCheckError] = useState<{
+    message: string;
+    code?: string;
+  } | null>(null);
+  const [dirs, setDirs] = useState("");
+  const [saveError, setSaveError] = useState<{
+    message: string;
+    code?: string;
+  } | null>(null);
+  const [scanResult, setScanResult] = useState<{
+    added: number;
+    total: number;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
@@ -39,7 +48,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const doCheck = (): void => {
     setCheck(null);
     setCheckError(null);
-    putEngine('llama-server', { binary })
+    putEngine("llama-server", { binary })
       .then((result: PutEngineResult) => {
         setCheck(result.check);
       })
@@ -71,56 +80,72 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
   return (
     <section className="onboarding">
-      <h1>{t('onbTitle')}</h1>
-      <p className="muted">{t('onbIntro')}</p>
+      <h1>{t("onbTitle")}</h1>
+      <p className="muted">{t("onbIntro")}</p>
 
-      <h2>{t('onbBinaryStep')}</h2>
+      <h2>{t("onbBinaryStep")}</h2>
       <input
         type="text"
         className="input"
-        placeholder={t('onbBinaryPlaceholder')}
+        placeholder={t("onbBinaryPlaceholder")}
         value={binary}
         onChange={(e) => setBinary(e.target.value)}
       />
       <div className="instance-actions">
-        <button type="button" className="btn" disabled={busy || binary.trim() === ''} onClick={doCheck}>
-          {t('onbCheck')}
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || binary.trim() === ""}
+          onClick={doCheck}
+        >
+          {t("onbCheck")}
         </button>
       </div>
       {check && (
         <p className="status-ok">
-          {t('onbCheckOk')} — {check.versionLine}
-          {check.vulkan ? ' · libvulkan OK' : ' · libvulkan BRAK'}
+          {t("onbCheckOk")} — {check.versionLine}
+          {check.vulkan ? " · libvulkan OK" : " · libvulkan BRAK"}
         </p>
       )}
-      <ErrorNotice message={checkError?.message ?? null} code={checkError?.code} />
+      <ErrorNotice
+        message={checkError?.message ?? null}
+        code={checkError?.code}
+      />
 
-      <h2>{t('onbDirsStep')}</h2>
+      <h2>{t("onbDirsStep")}</h2>
       <textarea
         className="input"
         rows={3}
-        placeholder={t('onbDirsPlaceholder')}
+        placeholder={t("onbDirsPlaceholder")}
         value={dirs}
         onChange={(e) => setDirs(e.target.value)}
       />
       <div className="instance-actions">
-        <button type="button" className="btn" disabled={busy || dirs.trim() === ''} onClick={saveDirs}>
-          {t('actionSave')}
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || dirs.trim() === ""}
+          onClick={saveDirs}
+        >
+          {t("actionSave")}
         </button>
         <button type="button" className="btn" disabled={busy} onClick={doScan}>
-          {t('actionScan')}
+          {t("actionScan")}
         </button>
       </div>
       {scanResult && (
         <p className="status-ok">
-          {t('onbScanResult')} +{scanResult.added}, łącznie {scanResult.total}
+          {t("onbScanResult")} +{scanResult.added}, łącznie {scanResult.total}
         </p>
       )}
-      <ErrorNotice message={saveError?.message ?? null} code={saveError?.code} />
+      <ErrorNotice
+        message={saveError?.message ?? null}
+        code={saveError?.code}
+      />
 
       <div className="instance-actions">
         <button type="button" className="btn" onClick={onDone}>
-          {t('onbSkip')}
+          {t("onbSkip")}
         </button>
       </div>
     </section>

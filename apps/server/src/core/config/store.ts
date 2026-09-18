@@ -19,8 +19,8 @@ import {
   rmSync,
   unlinkSync,
   writeSync,
-} from 'node:fs';
-import { dirname, relative } from 'node:path';
+} from "node:fs";
+import { dirname, relative } from "node:path";
 import {
   AppError,
   defaultGlobalConfig,
@@ -33,9 +33,9 @@ import {
   type GlobalConfig,
   type ModelConfig,
   type Preset,
-} from '@ai-dashboard/shared';
-import { migrateConfigFile } from './migrate.js';
-import type { DashboardHome } from './paths.js';
+} from "@ai-dashboard/shared";
+import { migrateConfigFile } from "./migrate.js";
+import type { DashboardHome } from "./paths.js";
 
 /** Ids used as file names (engineId, modelId, presetName) — no path traversal. */
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -43,7 +43,7 @@ const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 export function assertSafeId(id: string, what: string): void {
   if (!SAFE_ID.test(id)) {
     throw new AppError(
-      'CONFIG_INVALID',
+      "CONFIG_INVALID",
       `${what}: invalid id "${id}" (allowed: letters, digits, ".", "-", "_")`,
     );
   }
@@ -51,10 +51,14 @@ export function assertSafeId(id: string, what: string): void {
 
 function parseJson(file: string, label: string): unknown {
   try {
-    return JSON.parse(readFileSync(file, 'utf-8'));
+    return JSON.parse(readFileSync(file, "utf-8"));
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown error';
-    throw new AppError('CONFIG_INVALID', `${label}: invalid JSON (${message})`, { file });
+    const message = err instanceof Error ? err.message : "unknown error";
+    throw new AppError(
+      "CONFIG_INVALID",
+      `${label}: invalid JSON (${message})`,
+      { file },
+    );
   }
 }
 
@@ -62,7 +66,7 @@ function listIds(dir: string): string[] {
   const files = readdirSync(dir);
   const ids: string[] = [];
   for (const file of files) {
-    if (file.endsWith('.json')) ids.push(file.slice(0, -'.json'.length));
+    if (file.endsWith(".json")) ids.push(file.slice(0, -".json".length));
   }
   ids.sort();
   // Ignore any entry that is not a safe id (foreign file on disk).
@@ -86,28 +90,35 @@ export class ConfigStore {
       this.writeGlobal(config);
       return config;
     }
-    const raw = parseJson(file, 'global.json');
-    return validateGlobalConfig(migrateConfigFile(raw, 'global'), 'global.json');
+    const raw = parseJson(file, "global.json");
+    return validateGlobalConfig(
+      migrateConfigFile(raw, "global"),
+      "global.json",
+    );
   }
 
   writeGlobal(config: GlobalConfig): void {
-    this.writeConfigFile(this.home.globalFile, 'global.json', config);
+    this.writeConfigFile(this.home.globalFile, "global.json", config);
   }
 
   // -------------------------------------------------------------- engines
 
   /** Reads `config/engines/<engineId>.json`; null when absent. */
   readEngine(engineId: string): EngineConfig | null {
-    assertSafeId(engineId, 'engineId');
+    assertSafeId(engineId, "engineId");
     const file = `${this.home.enginesDir}/${engineId}.json`;
     if (!existsSync(file)) return null;
     const raw = parseJson(file, `engines/${engineId}.json`);
-    return validateEngineConfig(migrateConfigFile(raw, 'engine'), engineId);
+    return validateEngineConfig(migrateConfigFile(raw, "engine"), engineId);
   }
 
   writeEngine(engineId: string, config: EngineConfig): void {
-    assertSafeId(engineId, 'engineId');
-    this.writeConfigFile(`${this.home.enginesDir}/${engineId}.json`, `engines/${engineId}.json`, config);
+    assertSafeId(engineId, "engineId");
+    this.writeConfigFile(
+      `${this.home.enginesDir}/${engineId}.json`,
+      `engines/${engineId}.json`,
+      config,
+    );
   }
 
   listEngineIds(): string[] {
@@ -118,16 +129,20 @@ export class ConfigStore {
 
   /** Reads `config/models/<modelId>.json`; null when absent. */
   readModel(modelId: string): ModelConfig | null {
-    assertSafeId(modelId, 'modelId');
+    assertSafeId(modelId, "modelId");
     const file = `${this.home.modelsDir}/${modelId}.json`;
     if (!existsSync(file)) return null;
     const raw = parseJson(file, `models/${modelId}.json`);
-    return validateModelConfig(migrateConfigFile(raw, 'model'), modelId);
+    return validateModelConfig(migrateConfigFile(raw, "model"), modelId);
   }
 
   writeModel(modelId: string, config: ModelConfig): void {
-    assertSafeId(modelId, 'modelId');
-    this.writeConfigFile(`${this.home.modelsDir}/${modelId}.json`, `models/${modelId}.json`, config);
+    assertSafeId(modelId, "modelId");
+    this.writeConfigFile(
+      `${this.home.modelsDir}/${modelId}.json`,
+      `models/${modelId}.json`,
+      config,
+    );
   }
 
   listModelIds(): string[] {
@@ -139,28 +154,29 @@ export class ConfigStore {
    * dir. The model **file** is never touched (S-5, read-only).
    */
   deleteModel(modelId: string): void {
-    assertSafeId(modelId, 'modelId');
+    assertSafeId(modelId, "modelId");
     const file = `${this.home.modelsDir}/${modelId}.json`;
     if (existsSync(file)) unlinkSync(file);
     const presetDir = `${this.home.presetsDir}/${modelId}`;
-    if (existsSync(presetDir)) rmSync(presetDir, { recursive: true, force: true });
+    if (existsSync(presetDir))
+      rmSync(presetDir, { recursive: true, force: true });
   }
 
   // -------------------------------------------------------------- presets
 
   /** Reads `config/presets/<modelId>/<presetName>.json`; null when absent. */
   readPreset(modelId: string, presetName: string): Preset | null {
-    assertSafeId(modelId, 'modelId');
-    assertSafeId(presetName, 'presetName');
+    assertSafeId(modelId, "modelId");
+    assertSafeId(presetName, "presetName");
     const file = `${this.home.presetsDir}/${modelId}/${presetName}.json`;
     if (!existsSync(file)) return null;
     const raw = parseJson(file, `presets/${modelId}/${presetName}.json`);
-    return validatePreset(migrateConfigFile(raw, 'preset'), presetName);
+    return validatePreset(migrateConfigFile(raw, "preset"), presetName);
   }
 
   writePreset(modelId: string, presetName: string, preset: Preset): void {
-    assertSafeId(modelId, 'modelId');
-    assertSafeId(presetName, 'presetName');
+    assertSafeId(modelId, "modelId");
+    assertSafeId(presetName, "presetName");
     this.writeConfigFile(
       `${this.home.presetsDir}/${modelId}/${presetName}.json`,
       `presets/${modelId}/${presetName}.json`,
@@ -169,7 +185,7 @@ export class ConfigStore {
   }
 
   listPresets(modelId: string): string[] {
-    assertSafeId(modelId, 'modelId');
+    assertSafeId(modelId, "modelId");
     const dir = `${this.home.presetsDir}/${modelId}`;
     if (!existsSync(dir)) return [];
     return listIds(dir);
@@ -177,8 +193,8 @@ export class ConfigStore {
 
   /** Deletes a preset (Faza 6.1). No-op when absent. */
   deletePreset(modelId: string, presetName: string): void {
-    assertSafeId(modelId, 'modelId');
-    assertSafeId(presetName, 'presetName');
+    assertSafeId(modelId, "modelId");
+    assertSafeId(presetName, "presetName");
     const file = `${this.home.presetsDir}/${modelId}/${presetName}.json`;
     if (existsSync(file)) unlinkSync(file);
   }
@@ -221,8 +237,8 @@ export class ConfigStore {
       this.atomicWrite(file, content);
     } catch (err) {
       if (err instanceof AppError) throw err;
-      const message = err instanceof Error ? err.message : 'unknown error';
-      throw new AppError('CONFIG_WRITE_FAILED', `could not write ${label}`, {
+      const message = err instanceof Error ? err.message : "unknown error";
+      throw new AppError("CONFIG_WRITE_FAILED", `could not write ${label}`, {
         file,
         cause: message,
       });
@@ -240,7 +256,7 @@ export class ConfigStore {
       copyFileSync(file, backupPath);
     }
     const tmp = `${file}.tmp.${process.pid}.${Date.now()}`;
-    const handle = openSync(tmp, 'w');
+    const handle = openSync(tmp, "w");
     try {
       writeSync(handle, content);
       fsyncSync(handle);

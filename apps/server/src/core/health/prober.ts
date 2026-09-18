@@ -11,7 +11,7 @@
  * `isReady`/`runtime` source is injected (a `ProbeSource`), so this module has
  * no engine or Node-specific dependency and is unit-testable with a dummy.
  */
-import type { RuntimeInfo } from '@ai-dashboard/shared';
+import type { RuntimeInfo } from "@ai-dashboard/shared";
 
 /** A backend that can answer readiness + runtime probes. */
 export interface ProbeSource {
@@ -36,7 +36,7 @@ export interface ProberOptions {
 export interface StartupOutcome {
   ok: boolean;
   /** `'timeout'` when the budget was exhausted without a ready response. */
-  reason?: 'timeout';
+  reason?: "timeout";
   /** Number of probes issued. */
   attempts: number;
   /** Wall-clock milliseconds spent. */
@@ -73,10 +73,14 @@ export class HealthProber {
 
   constructor(options?: ProberOptions) {
     this.opts = {
-      startupIntervalMs: options?.startupIntervalMs ?? PROBER_DEFAULTS.startupIntervalMs,
-      startupTimeoutMs: options?.startupTimeoutMs ?? PROBER_DEFAULTS.startupTimeoutMs,
-      runtimeIntervalMs: options?.runtimeIntervalMs ?? PROBER_DEFAULTS.runtimeIntervalMs,
-      runtimeFailThreshold: options?.runtimeFailThreshold ?? PROBER_DEFAULTS.runtimeFailThreshold,
+      startupIntervalMs:
+        options?.startupIntervalMs ?? PROBER_DEFAULTS.startupIntervalMs,
+      startupTimeoutMs:
+        options?.startupTimeoutMs ?? PROBER_DEFAULTS.startupTimeoutMs,
+      runtimeIntervalMs:
+        options?.runtimeIntervalMs ?? PROBER_DEFAULTS.runtimeIntervalMs,
+      runtimeFailThreshold:
+        options?.runtimeFailThreshold ?? PROBER_DEFAULTS.runtimeFailThreshold,
     };
   }
 
@@ -98,8 +102,16 @@ export class HealthProber {
       const ready = await source.isReady(base);
       const now = Date.now();
       if (ready) return { ok: true, attempts, elapsedMs: now - startedAt };
-      if (now >= deadline) return { ok: false, reason: 'timeout', attempts, elapsedMs: now - startedAt };
-      await sleep(Math.min(this.opts.startupIntervalMs, Math.max(0, deadline - now)));
+      if (now >= deadline)
+        return {
+          ok: false,
+          reason: "timeout",
+          attempts,
+          elapsedMs: now - startedAt,
+        };
+      await sleep(
+        Math.min(this.opts.startupIntervalMs, Math.max(0, deadline - now)),
+      );
     }
   }
 
@@ -109,7 +121,11 @@ export class HealthProber {
    * consecutive failures fire `onHang` and stop the loop. Returns a handle used
    * to stop the loop (e.g. on instance stop / dashboard shutdown).
    */
-  startRuntime(source: ProbeSource, base: string, hooks: RuntimeHooks): RuntimeHandle {
+  startRuntime(
+    source: ProbeSource,
+    base: string,
+    hooks: RuntimeHooks,
+  ): RuntimeHandle {
     let stopped = false;
     let failures = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;

@@ -11,10 +11,10 @@ Cztery poprawki po sprawozdaniu użytkownika:
    teraz zwraca `logs/<modelId>/` (parsuje `modelId` z `instanceId` przez
    pierwszy `--`), a `start()` nazywa plik `<preset>-<YYYY-MM-DD_HH-mm-ss>.log`
    (np. `112k_Context-2026-09-17_22-04-14.log`) — czytelna nazwa (widać preset
-   + czas startu). Kolizje (dwa starty w tej samej sekundzie) dostają dopisek
-   `-2`, `-3` itd. `latestFile`/`prune` sortują po stemplu (regex z pliku).
-   `manager.stamp()` uprościł się do `Date.now()` (kolizje w `LogWriter.start`).
-   Obie ścieżki (LIVE + ZAPISANE) teraz dzielą ten sam katalog `logs/<modelId>/`.
+   - czas startu). Kolizje (dwa starty w tej samej sekundzie) dostają dopisek
+     `-2`, `-3` itd. `latestFile`/`prune` sortują po stemplu (regex z pliku).
+     `manager.stamp()` uprościł się do `Date.now()` (kolizje w `LogWriter.start`).
+     Obie ścieżki (LIVE + ZAPISANE) teraz dzielą ten sam katalog `logs/<modelId>/`.
 2. **Podstrony modelu: trwale linki (`?tab=` + `?preset=`).** `ModelDetail`
    przepisany — `tab` + `preset` pochodzą z `useSearchParams` (parametry URL),
    a nie ze stanu lokalnego. Dzięki temu odświeżenie strony **nie** resetuje
@@ -72,6 +72,7 @@ Dwie ścieżki polegały na `child`:
    globalny z GPU, więc „zgadzał się").
 
 Fix:
+
 1. **`manager.stop()` / `terminate()`** — gdy brak `active`, ale w rejestrze jest
    **żywy PID** (running/starting/stopping), **sygnalizuje ten PID**: SIGTERM →
    grace → SIGKILL. `background` działa detached (własna grupa, pid = pgid) →
@@ -191,6 +192,7 @@ nie odczytywało. Ścieżka `session` działała bez zmian (zweryfikowane na ży
 end-to-end: ring, SSE bezpośredni i przez proxy Vite, bundle świeży).
 
 **Zmiany (`apps/server/src/core/process/manager.ts` + `index.ts`):**
+
 - Ringi przeniesione z `ActiveInstance` do wspólnego `rings: Map` — istnieją
   także dla instancji zadoptowanych (bez własnego child process).
 - `tails` — jeden rekord per tailowany plik (`timer` + `logFile` + `offset`);
@@ -220,6 +222,7 @@ defaulty **nie** są merge'owane do obiektu params. To **nie** jest reguła „�
 to **„czy param jest w pliku presetu"**.
 
 **Zmiany:**
+
 - `PresetSelect.tsx`: **revert** — `editParams` = `{...current.params}` (bez
   `schemaDefaults`). Plik presetu jest źródłem prawdy: parametry nieustawione
   są nieobecne, a launcher/podgląd wysyłają tylko to, co jest w pliku.
@@ -243,6 +246,7 @@ odpalaniu; te **niezaznaczone** nie pojawiają się nigdzie i nie odpalają —
 dotyczy to **wszystkiego**, w tym `--host`/`--port`.
 
 **Zmiany:**
+
 - `schema.ts`: `offline` default → `false` (domyślny stan serwera = online,
   flaga `--offline` nieobecna).
 - `args-core.ts`: usunięto „zawsze `--host`/`--port`" — teraz idą przez pętlę
@@ -277,8 +281,9 @@ zawsze identyczny z odpalaną komendą (w tym `--offline`/`--metrics` i `--jinja
 boxa, „1–2 linie"):** `LogViewer` co 500 ms **zamieniał** `lines` na ostatnią
 partię (`.slice(-500)` + `setLines(buffer)`) → box „resetował się" i pokazywał
 tylko ostatnie linie. Poprawka: **append** (`setLines(prev => [...prev, ...buffer])`)
-+ cap 10000 (był 500) → pełna historia na raz, bez przycinania, scroll (CSS
-`overflow-y`). SSE i tak replayuje ring (1000 linii) na połączeniu.
+
+- cap 10000 (był 500) → pełna historia na raz, bez przycinania, scroll (CSS
+  `overflow-y`). SSE i tak replayuje ring (1000 linii) na połączeniu.
 
 **Bramki (2026-09-16):** typecheck + lint + testy zielone — **60 (shared) +
 151 (server) + 15 (web) = 226/226**; web build OK (FE importuje czysty builder,
@@ -344,7 +349,8 @@ presetów (9.2):** `PresetSelect` — pełny formularz parametrów (SchemaForm) 
 `pages/Settings.tsx` — globalne: katalogi modeli (textarea), binarki engine
 (per-engine), zakres portów (start/end), security (token); [Zapisz] → `putGlobalConfig`.
 `getEngineSchema` w `api/client.ts` (GET `/engines/:id/schema`). Bramka: **typecheck
-+ lint + testy zielone — 129 (server) + 15 (web) = 144/144**; web build OK.
+
+- lint + testy zielone — 129 (server) + 15 (web) = 144/144**; web build OK.
 
 **Dalej:** Faza 10 — reconciler + S-1 + GPU monitor + E2E pełny + docs.
 
@@ -439,8 +445,7 @@ albo `allocatePort`, `host` z paramów, `engine.buildLaunch`); `resolveInstanceI
 dzieli po **pierwszym** `--`. Lifecycle (5.2): `core/process/lifecycle.ts` —
 `LifecycleManager` (`listInstances`/`getState`/`start`/`stop`/`restart`/`shutdown`)
 łączy resolver + `ProcessManager` + prober i **steruje FSM**: `start` = walidacja
-(`engine.validate` → `VALIDATION_FAILED` 400, `engine.preflight` → `PREFLIGHT_FAILED`
-400) → `manager.spawn` (stan `starting`) → tło `driveStartup`: probe OK →
+(`engine.validate` → `VALIDATION_FAILED` 400, `engine.preflight` → `PREFLIGHT_FAILED` 400) → `manager.spawn` (stan `starting`) → tło `driveStartup`: probe OK →
 `starting`→`running` (event `probe-ok`) + start pętli runtime (hang → `running`→`error`),
 timeout → `starting`→`error` + `terminate` (SIGTERM→grace→SIGKILL, watchdog z
 `forcedState` — celowe SIGKILL ≠ crash); `stop` = grace `manager.stop` (live) albo
@@ -557,8 +562,9 @@ API (3.5, §14.1): `GET /api/v1/models`, `POST /api/v1/models/discover`,
 configu: `validateModelConfig` odrzuca nie-boolean `capabilitiesManual` i
 `origin` spoza `'discover'|'manual'`. Testy (3.6): **58/58 (server) + 37/37
 (shared) zielone**; discovery na tmp foldery, gguf reader na buforach wg specyfikacji
-+ realne pliki, registry (add/get/update/remove), API (pełny lifecycle 201→GET→
-PATCH→DELETE, discover added/removed/total).
+
+- realne pliki, registry (add/get/update/remove), API (pełny lifecycle 201→GET→
+  PATCH→DELETE, discover added/removed/total).
 
 **Dalej:** Faza 4 — Process Manager + FSM (§22 4.1–4.5): `states.ts` (FSM §11.2) +
 `manager.ts` (spawn/kill grace), PID registry + watchdog, `ports.ts` (alokacja +
@@ -588,16 +594,17 @@ Vulkan, brak `radv` w `--version` = ostrzeżenie GPU_MARKER, nie blokuje).
 Warstwa 1 (schema-defaults) dołączyła do `buildEffective` (`source: 'schema'`).
 API: `GET /api/v1/engines` (lista + `binary`/`binarySource`: engine → global),
 `GET /engines/:id/schema`, `PUT /engines/:id` (walidacja binarki `ENGINE_BINARY_INVALID`
-+ parametrów `VALIDATION_FAILED`, zapis `config/engines/<id>.json`). Testy:
-snapshot komendy presetu „szybka" = komenda z §10.1 **do znaku** (`--model
+
+- parametrów `VALIDATION_FAILED`, zapis `config/engines/<id>.json`). Testy:
+  snapshot komendy presetu „szybka" = komenda z §10.1 **do znaku** (`--model
 /mnt/dane/Modele/llama-3-8b-instruct.Q8_0.gguf --host 127.0.0.1 --port 8081
 --ctx-size 4096 --n-gpu-layers 32 --threads 8 --temp 0.7 --top-p 0.8 --top-k
 20 --n-predict 512 --metrics --offline`); weryfikacja z realną binarką
-(67672dc5): wszystkie emitowane flagi w `--help`, pełna grupa argumentów
-parsuje się bez „unknown argument" (osiąga załadowanie modelu), `PUT` z
-`~/llama.cpp/build/bin/llama-server` → `versionLine: version: 0.4.0-dev
+  (67672dc5): wszystkie emitowane flagi w `--help`, pełna grupa argumentów
+  parsuje się bez „unknown argument" (osiąga załadowanie modelu), `PUT` z
+  `~/llama.cpp/build/bin/llama-server` → `versionLine: version: 0.4.0-dev
 (build 1316, commit 67672dc5)` + `vulkan: true`. 36/36 (shared) + 32/32
-(server) zielone.
+  (server) zielone.
 
 **Dalej:** Faza 3 — Model Management (discovery, metadane GGUF,
 capabilities, ręczne dodawanie). Warstwy 1–5 działają w `buildEffective`;

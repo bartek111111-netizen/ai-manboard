@@ -12,8 +12,8 @@ export interface ServerEnv {
 
 export function loadEnv(): ServerEnv {
   return {
-    host: process.env.AI_DASHBOARD_HOST ?? '127.0.0.1',
-    port: Number.parseInt(process.env.AI_DASHBOARD_PORT ?? '3100', 10),
+    host: process.env.AI_DASHBOARD_HOST ?? "127.0.0.1",
+    port: Number.parseInt(process.env.AI_DASHBOARD_PORT ?? "3100", 10),
     home: process.env.AI_DASHBOARD_HOME,
   };
 }

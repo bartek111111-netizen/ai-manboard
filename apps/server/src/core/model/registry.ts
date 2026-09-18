@@ -4,7 +4,7 @@
  * Handles manual add/remove (FM-3/FM-8), manual edits (FM-5/6) and discovery
  * (FM-2). The model file itself is never touched (S-5, read-only).
  */
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, statSync } from "node:fs";
 import {
   AppError,
   CURRENT_CONFIG_VERSION,
@@ -15,12 +15,16 @@ import {
   type ModelInfo,
   type ModelView,
   type UpdateModelRequest,
-} from '@ai-dashboard/shared';
-import { assertSafeId, type ConfigStore } from '../config/store.js';
-import { discoverModels, matchesPattern, type DiscoverResult } from './discover.js';
-import { readGgufMetadata } from './gguf.js';
-import { modelIdFor } from './ids.js';
-import { resolveCapabilities } from './capabilities.js';
+} from "@ai-dashboard/shared";
+import { assertSafeId, type ConfigStore } from "../config/store.js";
+import {
+  discoverModels,
+  matchesPattern,
+  type DiscoverResult,
+} from "./discover.js";
+import { readGgufMetadata } from "./gguf.js";
+import { modelIdFor } from "./ids.js";
+import { resolveCapabilities } from "./capabilities.js";
 
 export class ModelRegistry {
   constructor(
@@ -33,7 +37,11 @@ export class ModelRegistry {
     const models = this.store
       .listModelIds()
       .map((id) => this.viewFor(id))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id));
+      .sort(
+        (a, b) =>
+          a.displayName.localeCompare(b.displayName) ||
+          a.id.localeCompare(b.id),
+      );
     return includeHidden ? models : models.filter((m) => !m.hidden);
   }
 
@@ -49,18 +57,30 @@ export class ModelRegistry {
    */
   add(req: AddModelRequest): ModelView {
     const engine = this.engines.find((e) => e.id === req.engineId);
-    if (!engine) throw new AppError('ENGINE_NOT_FOUND', `unknown engine: ${req.engineId}`, undefined, 404);
-    if (typeof req.path !== 'string' || req.path.length === 0) {
-      throw new AppError('VALIDATION_FAILED', 'path: expected a non-empty file path');
+    if (!engine)
+      throw new AppError(
+        "ENGINE_NOT_FOUND",
+        `unknown engine: ${req.engineId}`,
+        undefined,
+        404,
+      );
+    if (typeof req.path !== "string" || req.path.length === 0) {
+      throw new AppError(
+        "VALIDATION_FAILED",
+        "path: expected a non-empty file path",
+      );
     }
-    const name = req.path.split('/').pop() ?? '';
+    const name = req.path.split("/").pop() ?? "";
     if (!existsSync(req.path)) {
-      throw new AppError('MODEL_NOT_FOUND', `the model file does not exist: ${req.path}`);
+      throw new AppError(
+        "MODEL_NOT_FOUND",
+        `the model file does not exist: ${req.path}`,
+      );
     }
     if (!engine.filePatterns.some((p) => matchesPattern(name, p))) {
       throw new AppError(
-        'VALIDATION_FAILED',
-        `the file does not match engine ${engine.id} patterns: ${engine.filePatterns.join(', ')}`,
+        "VALIDATION_FAILED",
+        `the file does not match engine ${engine.id} patterns: ${engine.filePatterns.join(", ")}`,
       );
     }
     const modelId = modelIdFor(req.path);
@@ -73,7 +93,7 @@ export class ModelRegistry {
       tags: [],
       capabilities: req.capabilities ?? {},
       capabilitiesManual: req.capabilities ? true : undefined,
-      origin: 'manual',
+      origin: "manual",
       params: { model: req.path },
     };
     this.store.writeModel(modelId, config);
@@ -130,15 +150,22 @@ export class ModelRegistry {
   }
 
   private requireConfig(modelId: string): ModelConfig {
-    assertSafeId(modelId, 'modelId');
+    assertSafeId(modelId, "modelId");
     const config = this.store.readModel(modelId);
-    if (!config) throw new AppError('MODEL_NOT_FOUND', `model not found: ${modelId}`, undefined, 404);
+    if (!config)
+      throw new AppError(
+        "MODEL_NOT_FOUND",
+        `model not found: ${modelId}`,
+        undefined,
+        404,
+      );
     return config;
   }
 
   private viewFor(modelId: string): ModelView {
     const config = this.requireConfig(modelId);
-    const path = typeof config.params?.model === 'string' ? config.params.model : '';
+    const path =
+      typeof config.params?.model === "string" ? config.params.model : "";
     const engine = this.engines.find((e) => e.id === config.engineId);
     const gguf = path ? readGgufMetadata(path) : null;
     const ggufView: GgufMetadataView | null = gguf
@@ -153,10 +180,10 @@ export class ModelRegistry {
     const info: ModelInfo = {
       id: modelId,
       path,
-      engineId: config.engineId ?? '',
+      engineId: config.engineId ?? "",
       architecture: gguf?.architecture,
     };
-    const heuristics = engine ? engine.detectCapabilities(info) : ['text'];
+    const heuristics = engine ? engine.detectCapabilities(info) : ["text"];
 
     let sizeBytes: number | null = null;
     let fileExists = false;
@@ -172,15 +199,15 @@ export class ModelRegistry {
     return {
       id: modelId,
       path,
-      engineId: config.engineId ?? '',
-      displayName: config.displayName ?? path.split('/').pop() ?? modelId,
+      engineId: config.engineId ?? "",
+      displayName: config.displayName ?? path.split("/").pop() ?? modelId,
       description: config.description,
       tags: config.tags ?? [],
       capabilities: resolveCapabilities(config, heuristics),
       gguf: ggufView,
       sizeBytes,
       fileExists,
-      origin: config.origin ?? 'manual',
+      origin: config.origin ?? "manual",
       hidden: config.hidden ?? false,
     };
   }

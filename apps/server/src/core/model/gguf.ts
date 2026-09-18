@@ -15,7 +15,7 @@
  *   7 BOOL · 8 STRING (u64 len + bytes) · 9 ARRAY (u32 elem_type + u64 len + items)
  *   10 UINT64 · 11 INT64 · 12 FLOAT64
  */
-import { closeSync, openSync, readSync, statSync } from 'node:fs';
+import { closeSync, openSync, readSync, statSync } from "node:fs";
 
 /** `GGUF` magic bytes: the ASCII string "GGUF" (0x47 0x47 0x55 0x46). */
 const GGUF_MAGIC = Buffer.from([0x47, 0x47, 0x55, 0x46]);
@@ -79,8 +79,8 @@ class Cursor {
   /** Reads a GGUF string: u64 length + UTF-8 bytes. */
   str(): string {
     const len = this.u64();
-    if (!this.has(len)) throw new Error('GGUF string overruns buffer');
-    const s = this.buf.toString('utf-8', this.off, this.off + len);
+    if (!this.has(len)) throw new Error("GGUF string overruns buffer");
+    const s = this.buf.toString("utf-8", this.off, this.off + len);
     this.off += len;
     return s;
   }
@@ -139,7 +139,7 @@ export function readGgufMetadata(filePath: string): GgufMetadata | null {
   }
   const toRead = Math.min(stat.size, HEADER_MAX_BYTES);
   if (toRead < 24) return null; // too small to be a GGUF header
-  const fh = openSync(filePath, 'r');
+  const fh = openSync(filePath, "r");
   try {
     const buf = Buffer.alloc(toRead);
     let fileOff = 0;
@@ -169,7 +169,8 @@ export function readGgufMetadata(filePath: string): GgufMetadata | null {
         const type = c.u32();
         const value = readValue(c, type);
         meta[key] = value;
-        if (key === 'general.architecture' && typeof value === 'string') arch = value;
+        if (key === "general.architecture" && typeof value === "string")
+          arch = value;
       } catch {
         break; // ran past the buffer or hit an unparseable value — stop
       }
@@ -180,9 +181,13 @@ export function readGgufMetadata(filePath: string): GgufMetadata | null {
       tensorCount,
       metadataCount,
       architecture: arch,
-      contextLength: arch ? asNumber(meta[`${arch}.context_length`]) : asNumber(meta['llama.context_length']),
+      contextLength: arch
+        ? asNumber(meta[`${arch}.context_length`])
+        : asNumber(meta["llama.context_length"]),
       blockSize: arch ? asNumber(meta[`${arch}.block_size`]) : undefined,
-      headCount: arch ? asNumber(meta[`${arch}.attention.head_count`]) : undefined,
+      headCount: arch
+        ? asNumber(meta[`${arch}.attention.head_count`])
+        : undefined,
     };
   } finally {
     closeSync(fh);
@@ -191,7 +196,7 @@ export function readGgufMetadata(filePath: string): GgufMetadata | null {
 
 /** Normalizes a metadata value (possibly a 1-element array) to a number. */
 function asNumber(v: unknown): number | undefined {
-  if (typeof v === 'number') return v;
-  if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'number') return v[0];
+  if (typeof v === "number") return v;
+  if (Array.isArray(v) && v.length > 0 && typeof v[0] === "number") return v[0];
   return undefined;
 }

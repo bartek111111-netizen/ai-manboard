@@ -4,12 +4,12 @@
  * component (engine + process + GPU, incl. prefill speed and TTFT). Polls the
  * instance DTO every 3 s.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { getInstance } from '../api/client.js';
-import type { InstanceDto } from '../api/client.js';
-import { t } from '../i18n/index.js';
-import { ErrorNotice } from './ErrorNotice.js';
-import { InstanceMetrics } from './InstanceMetrics.js';
+import { useCallback, useEffect, useState } from "react";
+import { getInstance } from "../api/client.js";
+import type { InstanceDto } from "../api/client.js";
+import { t } from "../i18n/index.js";
+import { ErrorNotice } from "./ErrorNotice.js";
+import { InstanceMetrics } from "./InstanceMetrics.js";
 
 interface MetricsPanelProps {
   instanceId: string;
@@ -37,17 +37,15 @@ export function MetricsPanel({ instanceId }: MetricsPanelProps) {
     return () => clearInterval(interval);
   }, [load]);
 
-  const isLive = dto?.state === 'running' || dto?.state === 'starting';
+  const isLive = dto?.state === "running" || dto?.state === "starting";
 
   return (
     <section className="metrics-panel">
-      <h3>{t('metricsHeading')}</h3>
+      <h3>{t("metricsHeading")}</h3>
 
       {error && <ErrorNotice message={error} />}
 
-      {!isLive && !error && (
-        <p className="muted">{t('metricsNotLive')}</p>
-      )}
+      {!isLive && !error && <p className="muted">{t("metricsNotLive")}</p>}
 
       {isLive && dto && (
         <InstanceMetrics

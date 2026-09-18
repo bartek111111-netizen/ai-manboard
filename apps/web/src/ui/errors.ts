@@ -1,5 +1,5 @@
-import { ApiError } from '../api/client';
-import { t } from '../i18n';
+import { ApiError } from "../api/client";
+import { t } from "../i18n";
 
 /** Extracts `{ message, code }` from an unknown error (for ErrorNotice). */
 export function errInfo(err: unknown): { message: string; code?: string } {
@@ -15,14 +15,14 @@ export function errInfo(err: unknown): { message: string; code?: string } {
  */
 export function errorAction(code?: string | null): string | null {
   switch (code) {
-    case 'MODEL_NOT_FOUND':
-      return t('errActionModelNotFound');
-    case 'INSTANCE_LIVE':
-      return t('errActionInstanceLive');
-    case 'ENGINE_BINARY_INVALID':
-      return t('errActionEngineBinary');
-    case 'UNAUTHORIZED':
-      return t('errActionUnauthorized');
+    case "MODEL_NOT_FOUND":
+      return t("errActionModelNotFound");
+    case "INSTANCE_LIVE":
+      return t("errActionInstanceLive");
+    case "ENGINE_BINARY_INVALID":
+      return t("errActionEngineBinary");
+    case "UNAUTHORIZED":
+      return t("errActionUnauthorized");
     default:
       return null;
   }

@@ -3,7 +3,7 @@
  * Values the onboarding wizard (ONB-1/ONB-2, Faza 7) will fill in:
  * empty `modelDirs`, placeholder engine binary from the plan example.
  */
-import { CURRENT_CONFIG_VERSION, type GlobalConfig } from './types.js';
+import { CURRENT_CONFIG_VERSION, type GlobalConfig } from "./types.js";
 
 export function defaultGlobalConfig(): GlobalConfig {
   return {
@@ -12,9 +12,9 @@ export function defaultGlobalConfig(): GlobalConfig {
     defaults: {},
     portRange: { start: 8080, end: 8099 },
     engines: {
-      'llama-server': { binary: '~/llama.cpp/build/bin/llama-server' },
+      "llama-server": { binary: "~/llama.cpp/build/bin/llama-server" },
     },
-    server: { host: '127.0.0.1', port: 3100 },
+    server: { host: "127.0.0.1", port: 3100 },
     security: { token: null },
     monitoring: { probeIntervalSec: 5, startupTimeoutSec: 120 },
     logs: { ringLines: 1000, retentionFiles: 10 },

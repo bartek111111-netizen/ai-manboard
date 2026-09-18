@@ -6,16 +6,16 @@
  * classifier and validation. Node-only parts (fs/child_process) live in the
  * engine modules, never here.
  */
-import type { ResolvedConfig } from '../config/types.js';
+import type { ResolvedConfig } from "../config/types.js";
 
 /** Model capabilities (FM-6) — extensible list; manual override wins. */
 export type Capability =
-  | 'text'
-  | 'vision'
-  | 'audio'
-  | 'tool-calling'
-  | 'thinking'
-  | 'image-generation'
+  | "text"
+  | "vision"
+  | "audio"
+  | "tool-calling"
+  | "thinking"
+  | "image-generation"
   | (string & {});
 
 /**
@@ -28,7 +28,8 @@ export interface ParamSchema {
   key: string;
   /** Human-readable label for the UI (app language: Polish). */
   label: string;
-  type: 'int' | 'float' | 'string' | 'bool' | 'enum' | 'path-model' | 'path-file';
+  type:
+    "int" | "float" | "string" | "bool" | "enum" | "path-model" | "path-file";
   /** Mapping to the binary flag (e.g. `--ctx-size`). */
   flag?: string;
   /** Schema default — layer 1 of the merge (§9.1). */
@@ -39,7 +40,16 @@ export interface ParamSchema {
   choices?: { value: unknown; label?: string }[];
   /** Also accept arbitrary integers in addition to the enum choices (e.g. gpu-layers). */
   allowNumber?: boolean;
-  group: 'model' | 'performance' | 'sampling' | 'speculative' | 'vision' | 'moe' | 'server' | 'chat' | 'advanced';
+  group:
+    | "model"
+    | "performance"
+    | "sampling"
+    | "speculative"
+    | "vision"
+    | "moe"
+    | "server"
+    | "chat"
+    | "advanced";
   description?: string;
   /** Hidden in the "Zaawansowane" (collapsed) UI section. */
   advanced?: boolean;
@@ -98,7 +108,7 @@ export interface InstanceView {
 
 /** Classification of one log line (§10.4). */
 export interface LogClassification {
-  level: 'info' | 'warn' | 'error';
+  level: "info" | "warn" | "error";
   /** Informational ready marker (e.g. `server is listening`). */
   readyMarker?: boolean;
   /** A known, non-error warning (e.g. the RADV conformance notice). */

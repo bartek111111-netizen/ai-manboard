@@ -3,7 +3,7 @@
  * Polls every 3s for real-time updates. Uses the shared `InstanceMetrics`
  * component (same grouped data as the model-preview "Metryki" tab).
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 import {
   getInstances,
   getInstance,
@@ -13,10 +13,10 @@ import {
   type InstanceDto,
   type ModelView,
   type ExternalInstanceView,
-} from '../api/client';
-import { t } from '../i18n';
-import { InstanceMetrics } from '../components/InstanceMetrics.js';
-import { ExternalInstanceCard } from '../components/ExternalInstanceCard.js';
+} from "../api/client";
+import { t } from "../i18n";
+import { InstanceMetrics } from "../components/InstanceMetrics.js";
+import { ExternalInstanceCard } from "../components/ExternalInstanceCard.js";
 
 const REFRESH_INTERVAL_MS = 3000;
 
@@ -29,11 +29,11 @@ interface ModelMetrics {
   command: string;
   endpoint: string;
   uptimeSec: number | null;
-  mode: InstanceDto['mode'];
-  runtime: InstanceDto['runtime'];
-  process: InstanceDto['process'];
-  gpu?: InstanceDto['gpu'];
-  ttft?: InstanceDto['ttft'];
+  mode: InstanceDto["mode"];
+  runtime: InstanceDto["runtime"];
+  process: InstanceDto["process"];
+  gpu?: InstanceDto["gpu"];
+  ttft?: InstanceDto["ttft"];
 }
 
 export function StatusPage() {
@@ -46,7 +46,11 @@ export function StatusPage() {
 
   const refresh = useCallback((): void => {
     // External detection is best-effort: a failure there must not blank the whole page.
-    Promise.all([getInstances(), getModels(), getExternalInstances().catch(() => [] as ExternalInstanceView[])])
+    Promise.all([
+      getInstances(),
+      getModels(),
+      getExternalInstances().catch(() => [] as ExternalInstanceView[]),
+    ])
       .then(([instanceList, modelList, extList]) => {
         setInstances(instanceList);
         setModels(modelList);
@@ -54,7 +58,9 @@ export function StatusPage() {
         setError(null);
 
         // Fetch metrics for each running instance
-        const running = instanceList.filter((i) => i.state === 'running' || i.state === 'starting');
+        const running = instanceList.filter(
+          (i) => i.state === "running" || i.state === "starting",
+        );
         running.forEach((inst) => {
           getInstance(inst.instanceId)
             .then((dto: InstanceDto) => {
@@ -93,25 +99,27 @@ export function StatusPage() {
   }, [refresh]);
 
   if (loading) {
-    return <p className="muted">{t('statusLoading')}</p>;
+    return <p className="muted">{t("statusLoading")}</p>;
   }
 
   if (error) {
     return (
       <section>
-        <h2>{t('statusHeading')}</h2>
+        <h2>{t("statusHeading")}</h2>
         <p className="status-error">{error}</p>
       </section>
     );
   }
 
-  const running = instances.filter((i) => i.state === 'running' || i.state === 'starting');
+  const running = instances.filter(
+    (i) => i.state === "running" || i.state === "starting",
+  );
 
   if (running.length === 0 && external.length === 0) {
     return (
       <section>
-        <h2>{t('statusHeading')}</h2>
-        <p className="muted">{t('noRunningModels')}</p>
+        <h2>{t("statusHeading")}</h2>
+        <p className="muted">{t("noRunningModels")}</p>
       </section>
     );
   }
@@ -120,7 +128,9 @@ export function StatusPage() {
 
   return (
     <section>
-      <h2>{t('statusHeading')} ({total})</h2>
+      <h2>
+        {t("statusHeading")} ({total})
+      </h2>
       <div className="status-grid">
         {running.map((inst) => {
           const m = metrics[inst.instanceId];
@@ -128,15 +138,15 @@ export function StatusPage() {
           const modelName = model?.displayName ?? inst.modelId;
           const slotsUsed = m?.runtime?.slots?.used ?? 0;
           const slotsTotal = m?.runtime?.slots?.total ?? 0;
-          const activityState: 'working' | 'idle' = slotsUsed > 0 ? 'working' : 'idle';
-          const activityLabel = activityState === 'working' ? t('stateWorking') : t('stateIdle');
+          const activityState: "working" | "idle" =
+            slotsUsed > 0 ? "working" : "idle";
+          const activityLabel =
+            activityState === "working" ? t("stateWorking") : t("stateIdle");
           return (
             <div key={inst.instanceId} className="status-card">
               <div className="status-card-header">
                 <div className="status-card-names">
-                  <span className="status-card-title">
-                    {modelName}
-                  </span>
+                  <span className="status-card-title">{modelName}</span>
                   <span className="status-card-preset">{inst.preset}</span>
                 </div>
                 <span
@@ -144,7 +154,7 @@ export function StatusPage() {
                   title={`${activityLabel} (${slotsUsed}/${slotsTotal})`}
                 >
                   <span className="status-activity-icon">
-                    {activityState === 'working' ? '⚡' : '●'}
+                    {activityState === "working" ? "⚡" : "●"}
                   </span>
                   <span className="status-activity-label">{activityLabel}</span>
                 </span>
@@ -153,11 +163,11 @@ export function StatusPage() {
               {m?.endpoint && (
                 <a
                   className="status-card-chat"
-                  href={new URL(m.endpoint).origin + '/'}
+                  href={new URL(m.endpoint).origin + "/"}
                   target="_blank"
                   rel="noreferrer noopener"
                 >
-                  {t('openChatInBrowser')}
+                  {t("openChatInBrowser")}
                 </a>
               )}
 
@@ -169,13 +179,13 @@ export function StatusPage() {
                   className="status-nav-link"
                   href={`#/models/${inst.modelId}?tab=config&preset=${encodeURIComponent(inst.preset)}`}
                 >
-                  ⚙️ {t('tabConfig')}
+                  ⚙️ {t("tabConfig")}
                 </a>
                 <a
                   className="status-nav-link"
                   href={`#/models/${inst.modelId}?tab=logs&preset=${encodeURIComponent(inst.preset)}`}
                 >
-                  📜 {t('tabLogs')}
+                  📜 {t("tabLogs")}
                 </a>
               </div>
 
@@ -194,8 +204,8 @@ export function StatusPage() {
                 </div>
               ) : (
                 <dl className="kv status-kv">
-                  <dt>{t('fieldPort')}</dt>
-                  <dd>{'—'}</dd>
+                  <dt>{t("fieldPort")}</dt>
+                  <dd>{"—"}</dd>
                 </dl>
               )}
             </div>

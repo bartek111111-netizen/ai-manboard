@@ -1,12 +1,12 @@
-import { HashRouter, Route, Routes } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { HomeView } from './pages/HomeView';
-import { ModelDetail } from './pages/ModelDetail';
-import { PlaceholderPage } from './pages/PlaceholderPage';
-import { Settings } from './pages/Settings';
-import { InfoPage } from './pages/InfoPage';
-import { StatusPage } from './pages/StatusPage';
-import { SystemStatus } from './pages/SystemStatus';
+import { HashRouter, Route, Routes } from "react-router-dom";
+import { Layout } from "./components/Layout";
+import { HomeView } from "./pages/HomeView";
+import { ModelDetail } from "./pages/ModelDetail";
+import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { Settings } from "./pages/Settings";
+import { InfoPage } from "./pages/InfoPage";
+import { StatusPage } from "./pages/StatusPage";
+import { SystemStatus } from "./pages/SystemStatus";
 
 /**
  * Routes (hash routing — works from the static build, no server config).

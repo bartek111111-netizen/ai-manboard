@@ -6,8 +6,8 @@
  * Kept separate from the lifecycle so the config merge is unit-testable on a
  * temp `~/.ai-dashboard` without spawning anything.
  */
-import { dirname } from 'node:path';
-import { homedir } from 'node:os';
+import { dirname } from "node:path";
+import { homedir } from "node:os";
 import {
   AppError,
   type InferenceEngine,
@@ -15,23 +15,29 @@ import {
   type LaunchCommand,
   type LaunchContext,
   type ResolvedConfig,
-} from '@ai-dashboard/shared';
-import type { ConfigStore } from '../config/store.js';
-import { buildEffective } from '../config/layers.js';
-import { assertValidPort, isPortInUse } from './ports.js';
+} from "@ai-dashboard/shared";
+import type { ConfigStore } from "../config/store.js";
+import { buildEffective } from "../config/layers.js";
+import { assertValidPort, isPortInUse } from "./ports.js";
 
 /** An instance id is `<modelId>--<presetName>` (the model id never contains `--`). */
-export function resolveInstanceId(instanceId: string): { modelId: string; presetName: string } {
-  const idx = instanceId.indexOf('--');
+export function resolveInstanceId(instanceId: string): {
+  modelId: string;
+  presetName: string;
+} {
+  const idx = instanceId.indexOf("--");
   if (idx <= 0 || idx === instanceId.length - 2) {
     throw new AppError(
-      'INSTANCE_NOT_FOUND',
+      "INSTANCE_NOT_FOUND",
       `invalid instance id "${instanceId}" (expected <modelId>--<presetName>)`,
       undefined,
       404,
     );
   }
-  return { modelId: instanceId.slice(0, idx), presetName: instanceId.slice(idx + 2) };
+  return {
+    modelId: instanceId.slice(0, idx),
+    presetName: instanceId.slice(idx + 2),
+  };
 }
 
 export interface ResolvedInstance {
@@ -59,13 +65,17 @@ export interface InstanceResolverDeps {
   /** Ports already claimed by other instances (`registry.takenPorts()`). */
   takenPorts: () => number[];
   /** The instance registry (to exclude the current instance's own port). */
-  registry: { get(instanceId: string): { port: number; state: InstanceState } | null };
+  registry: {
+    get(instanceId: string): { port: number; state: InstanceState } | null;
+  };
   /** System port probe (injectable for deterministic tests). */
   portInUse?: (port: number) => Promise<boolean>;
 }
 
 /** Schema defaults (layer 1) per engine, built from `ParamSchema[].default`. */
-function schemaDefaults(engines: InferenceEngine[]): Record<string, Record<string, unknown>> {
+function schemaDefaults(
+  engines: InferenceEngine[],
+): Record<string, Record<string, unknown>> {
   const out: Record<string, Record<string, unknown>> = {};
   for (const engine of engines) {
     const params: Record<string, unknown> = {};
@@ -78,8 +88,8 @@ function schemaDefaults(engines: InferenceEngine[]): Record<string, Record<strin
 /** Expands a leading `~`/`~/` to the user's home (Node spawn does not). */
 function expandHome(path: string | undefined): string | undefined {
   if (path === undefined) return undefined;
-  if (path === '~') return homedir();
-  if (path.startsWith('~/')) return `${homedir()}${path.slice(1)}`;
+  if (path === "~") return homedir();
+  if (path.startsWith("~/")) return `${homedir()}${path.slice(1)}`;
   return path;
 }
 
@@ -107,27 +117,58 @@ export class InstanceResolver {
     const store = this.deps.store;
 
     const model = store.readModel(modelId);
-    if (!model) throw new AppError('MODEL_NOT_FOUND', `model not found: ${modelId}`, undefined, 404);
+    if (!model)
+      throw new AppError(
+        "MODEL_NOT_FOUND",
+        `model not found: ${modelId}`,
+        undefined,
+        404,
+      );
     const preset = store.readPreset(modelId, presetName);
     if (!preset) {
-      throw new AppError('PRESET_NOT_FOUND', `preset not found: ${presetName} (model ${modelId})`, undefined, 404);
+      throw new AppError(
+        "PRESET_NOT_FOUND",
+        `preset not found: ${presetName} (model ${modelId})`,
+        undefined,
+        404,
+      );
     }
     const engine = this.deps.engines.find((e) => e.id === model.engineId);
-    if (!engine) throw new AppError('ENGINE_NOT_FOUND', `engine not found: ${model.engineId}`, undefined, 404);
+    if (!engine)
+      throw new AppError(
+        "ENGINE_NOT_FOUND",
+        `engine not found: ${model.engineId}`,
+        undefined,
+        404,
+      );
 
     const snapshot = store.snapshot();
-    const resolved = buildEffective(snapshot, schemaDefaults(this.deps.engines))[modelId]?.[presetName];
+    const resolved = buildEffective(
+      snapshot,
+      schemaDefaults(this.deps.engines),
+    )[modelId]?.[presetName];
     if (!resolved) {
-      throw new AppError('CONFIG_INVALID', `could not resolve the config for instance ${instanceId}`);
+      throw new AppError(
+        "CONFIG_INVALID",
+        `could not resolve the config for instance ${instanceId}`,
+      );
     }
 
     const global = store.readGlobal();
     const binary = expandHome(global.engines[engine.id]?.binary);
     if (!binary) {
-      throw new AppError('ENGINE_NOT_FOUND', `no binary configured for engine ${engine.id} (Settings)`);
+      throw new AppError(
+        "ENGINE_NOT_FOUND",
+        `no binary configured for engine ${engine.id} (Settings)`,
+      );
     }
-    const modelPath = typeof model.params?.model === 'string' ? model.params.model : '';
-    if (!modelPath) throw new AppError('VALIDATION_FAILED', `model file path is missing for ${modelId}`);
+    const modelPath =
+      typeof model.params?.model === "string" ? model.params.model : "";
+    if (!modelPath)
+      throw new AppError(
+        "VALIDATION_FAILED",
+        `model file path is missing for ${modelId}`,
+      );
 
     // Exclude the current instance's own port (it may already be running on it
     // — `getFullDto` calls `resolve` to read config, not to spawn).
@@ -138,7 +179,7 @@ export class InstanceResolver {
 
     // If the instance is already live, use its current port (no re-allocation)
     const currentState = this.deps.registry.get(instanceId)?.state;
-    const isLive = currentState === 'running' || currentState === 'starting';
+    const isLive = currentState === "running" || currentState === "starting";
     if (isLive && currentPort !== null) {
       port = currentPort;
     } else if (preset.port !== undefined) {
@@ -150,23 +191,39 @@ export class InstanceResolver {
         port = preset.port;
       } else {
         // Auto-allocate: find the first port that's free in both registry and system
-        for (let candidate = global.portRange.start; candidate <= global.portRange.end; candidate++) {
-          if (!new Set(taken).has(candidate) && !await probe(candidate)) {
+        for (
+          let candidate = global.portRange.start;
+          candidate <= global.portRange.end;
+          candidate++
+        ) {
+          if (!new Set(taken).has(candidate) && !(await probe(candidate))) {
             port = candidate;
             break;
           }
         }
-        if (port === undefined) throw new AppError('PORT_IN_USE', `no free port in range ${global.portRange.start}–${global.portRange.end}`);
+        if (port === undefined)
+          throw new AppError(
+            "PORT_IN_USE",
+            `no free port in range ${global.portRange.start}–${global.portRange.end}`,
+          );
       }
     } else {
       // Auto-allocate: find the first port that's free in both registry and system
-      for (let candidate = global.portRange.start; candidate <= global.portRange.end; candidate++) {
-        if (!new Set(taken).has(candidate) && !await probe(candidate)) {
+      for (
+        let candidate = global.portRange.start;
+        candidate <= global.portRange.end;
+        candidate++
+      ) {
+        if (!new Set(taken).has(candidate) && !(await probe(candidate))) {
           port = candidate;
           break;
         }
       }
-      if (port === undefined) throw new AppError('PORT_IN_USE', `no free port in range ${global.portRange.start}–${global.portRange.end}`);
+      if (port === undefined)
+        throw new AppError(
+          "PORT_IN_USE",
+          `no free port in range ${global.portRange.start}–${global.portRange.end}`,
+        );
     }
 
     // Send only the params the user actually set (any layer above the schema
@@ -178,22 +235,41 @@ export class InstanceResolver {
     // user set go to llama-server" (STATUS.md, 2026-09-16).
     const params: Record<string, unknown> = {};
     for (const [key, entry] of Object.entries(resolved)) {
-      if (entry.source === 'schema') continue;
+      if (entry.source === "schema") continue;
       params[key] = entry.value;
     }
     params.port = port;
     // `--metrics` is always enabled: the dashboard reads `/metrics` (tokens/s,
     // work time). Restore the schema default when the user didn't set it.
-    if (!('metrics-enabled' in params)) params['metrics-enabled'] = true;
-    const host = typeof params.host === 'string' && params.host.trim() !== '' ? params.host : '127.0.0.1';
+    if (!("metrics-enabled" in params)) params["metrics-enabled"] = true;
+    const host =
+      typeof params.host === "string" && params.host.trim() !== ""
+        ? params.host
+        : "127.0.0.1";
     // Always send `--host` (the loopback bind address, PLAN S-1); the binary's
     // own default may differ.
     params.host = host;
 
-    const ctx: LaunchContext = { binary, modelPath, params, cwd: dirname(modelPath), env: {} };
+    const ctx: LaunchContext = {
+      binary,
+      modelPath,
+      params,
+      cwd: dirname(modelPath),
+      env: {},
+    };
     const launch = await engine.buildLaunch(ctx);
 
-    return { instanceId, modelId, presetName, engine, resolved, params, launch, port, host, base: `http://${host}:${port}` };
+    return {
+      instanceId,
+      modelId,
+      presetName,
+      engine,
+      resolved,
+      params,
+      launch,
+      port,
+      host,
+      base: `http://${host}:${port}`,
+    };
   }
 }
-

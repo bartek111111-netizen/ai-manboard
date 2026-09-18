@@ -40,14 +40,12 @@ export function registerLogsHandler(app: FastifyInstance): void {
     (req, reply) => {
       const content = readRunLog(req.params.id, req.params.file);
       if (content === null) {
-        return reply
-          .status(404)
-          .send({
-            error: {
-              code: "LOG_NOT_FOUND",
-              message: `log not found: ${req.params.file}`,
-            },
-          });
+        return reply.status(404).send({
+          error: {
+            code: "LOG_NOT_FOUND",
+            message: `log not found: ${req.params.file}`,
+          },
+        });
       }
       return reply.send({ file: req.params.file, content });
     },
@@ -59,14 +57,12 @@ export function registerLogsHandler(app: FastifyInstance): void {
     (req, reply) => {
       const filePath = join(logDir(req.params.id), req.params.file);
       if (!existsSync(filePath)) {
-        return reply
-          .status(404)
-          .send({
-            error: {
-              code: "LOG_NOT_FOUND",
-              message: `log not found: ${req.params.file}`,
-            },
-          });
+        return reply.status(404).send({
+          error: {
+            code: "LOG_NOT_FOUND",
+            message: `log not found: ${req.params.file}`,
+          },
+        });
       }
       const child = spawn("xdg-open", [filePath], { detached: true });
       child.on("error", () => {

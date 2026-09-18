@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { ParamSchema, Preset } from '@ai-dashboard/shared';
-import { deletePreset, duplicatePreset, getEngineSchema, getEngines, getModels, getPresets, putPreset } from '../api/client';
-import { ErrorNotice } from './ErrorNotice';
-import { SchemaForm } from './SchemaForm';
-import { t } from '../i18n';
-import { errInfo } from '../ui/errors';
+import { useCallback, useEffect, useState } from "react";
+import type { ParamSchema, Preset } from "@ai-dashboard/shared";
+import {
+  deletePreset,
+  duplicatePreset,
+  getEngineSchema,
+  getEngines,
+  getModels,
+  getPresets,
+  putPreset,
+} from "../api/client";
+import { ErrorNotice } from "./ErrorNotice";
+import { SchemaForm } from "./SchemaForm";
+import { t } from "../i18n";
+import { errInfo } from "../ui/errors";
 
 /**
  * Preset selector + CRUD (Faza 7.3 + 9.2): choose a preset, manage the set
@@ -21,11 +29,13 @@ export function PresetSelect({
 }) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [schema, setSchema] = useState<ParamSchema[]>([]);
-  const [modelPath, setModelPath] = useState<string>('');
+  const [modelPath, setModelPath] = useState<string>("");
   const [binary, setBinary] = useState<string | null>(null);
-  const [error, setError] = useState<{ message: string; code?: string } | null>(null);
+  const [error, setError] = useState<{ message: string; code?: string } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [newName, setNewName] = useState("");
   const [editParams, setEditParams] = useState<Record<string, unknown>>({});
   const [savingParams, setSavingParams] = useState(false);
   const [isDefault, setIsDefault] = useState(false);
@@ -55,7 +65,9 @@ export function PresetSelect({
         if (model) {
           setModelPath(model.path);
           return getEngines().then((engines) => {
-            setBinary(engines.find((e) => e.id === model.engineId)?.binary ?? null);
+            setBinary(
+              engines.find((e) => e.id === model.engineId)?.binary ?? null,
+            );
             return getEngineSchema(model.engineId).then(setSchema);
           });
         }
@@ -98,23 +110,27 @@ export function PresetSelect({
   const createPreset = (): void => {
     const name = newName.trim();
     if (!name) return;
-    void run(() => putPreset(modelId, name, { version: 1, name, port: 8080, params: {} })).then(() => {
-      setNewName('');
+    void run(() =>
+      putPreset(modelId, name, { version: 1, name, port: 8080, params: {} }),
+    ).then(() => {
+      setNewName("");
       onSelect(name);
     });
   };
 
   const duplicate = (): void => {
     if (!current) return;
-    const target = window.prompt(t('dupPrompt'), `${current.name}-copy`) ?? '';
+    const target = window.prompt(t("dupPrompt"), `${current.name}-copy`) ?? "";
     if (!target) return;
     void run(() => duplicatePreset(modelId, current.name, target));
   };
 
   const remove = (): void => {
     if (!current) return;
-    if (!window.confirm(t('delConfirm'))) return;
-    void run(() => deletePreset(modelId, current.name)).then(() => onSelect(null));
+    if (!window.confirm(t("delConfirm"))) return;
+    void run(() => deletePreset(modelId, current.name)).then(() =>
+      onSelect(null),
+    );
   };
 
   const saveParams = (): void => {
@@ -152,23 +168,28 @@ export function PresetSelect({
 
   return (
     <section>
-      <h3>{t('presetHeading')}</h3>
+      <h3>{t("presetHeading")}</h3>
       <ErrorNotice message={error?.message ?? null} code={error?.code} />
 
       {presets.length === 0 ? (
         <>
-          <p className="muted">{t('presetsEmpty')}</p>
+          <p className="muted">{t("presetsEmpty")}</p>
           {/* Preset creation form (shown when no presets exist) */}
           <div className="preset-create-first">
             <input
               type="text"
               className="input"
-              placeholder={t('newPresetPlaceholder')}
+              placeholder={t("newPresetPlaceholder")}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
-            <button type="button" className="btn" disabled={busy || newName.trim() === ''} onClick={createPreset}>
-              {t('actionNewPreset')}
+            <button
+              type="button"
+              className="btn"
+              disabled={busy || newName.trim() === ""}
+              onClick={createPreset}
+            >
+              {t("actionNewPreset")}
             </button>
           </div>
         </>
@@ -177,32 +198,49 @@ export function PresetSelect({
           {/* Top bar: preset selector + action buttons */}
           <div className="preset-toolbar">
             <label className="field">
-              <span>{t('presetSelect')}</span>
+              <span>{t("presetSelect")}</span>
               <select
                 className="preset-select"
-                value={selected ?? ''}
+                value={selected ?? ""}
                 onChange={(e) => onSelect(e.target.value || null)}
               >
                 {presets.map((preset) => (
                   <option key={preset.name} value={preset.name}>
                     {preset.name}
-                    {preset.params?.default === true ? ` (${t('defaultTag')})` : ''}
+                    {preset.params?.default === true
+                      ? ` (${t("defaultTag")})`
+                      : ""}
                   </option>
                 ))}
               </select>
             </label>
 
             <div className="preset-toolbar-actions">
-              <button type="button" className="btn small" disabled={busy} onClick={createPreset}>
-                {t('actionNewPreset')}
+              <button
+                type="button"
+                className="btn small"
+                disabled={busy}
+                onClick={createPreset}
+              >
+                {t("actionNewPreset")}
               </button>
               {current && (
                 <>
-                  <button type="button" className="btn small" disabled={busy} onClick={duplicate}>
-                    {t('actionDuplicate')}
+                  <button
+                    type="button"
+                    className="btn small"
+                    disabled={busy}
+                    onClick={duplicate}
+                  >
+                    {t("actionDuplicate")}
                   </button>
-                  <button type="button" className="btn small danger" disabled={busy} onClick={remove}>
-                    {t('actionDelete')}
+                  <button
+                    type="button"
+                    className="btn small danger"
+                    disabled={busy}
+                    onClick={remove}
+                  >
+                    {t("actionDelete")}
                   </button>
                 </>
               )}
@@ -214,12 +252,17 @@ export function PresetSelect({
             <input
               type="text"
               className="input"
-              placeholder={t('newPresetPlaceholder')}
+              placeholder={t("newPresetPlaceholder")}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
-            <button type="button" className="btn" disabled={busy || newName.trim() === ''} onClick={createPreset}>
-              {t('actionNewPreset')}
+            <button
+              type="button"
+              className="btn"
+              disabled={busy || newName.trim() === ""}
+              onClick={createPreset}
+            >
+              {t("actionNewPreset")}
             </button>
           </div>
 
@@ -231,7 +274,7 @@ export function PresetSelect({
                 checked={isDefault}
                 onChange={(e) => toggleDefault(e.target.checked)}
               />
-              {t('autoAssign')}
+              {t("autoAssign")}
             </label>
           )}
 
@@ -240,7 +283,7 @@ export function PresetSelect({
               {/* SchemaForm: full parameter editing (Faza 9.2) */}
               {schema.length > 0 && (
                 <div className="preset-params">
-                  <h4>{t('presetParamsHeading')}</h4>
+                  <h4>{t("presetParamsHeading")}</h4>
                   <SchemaForm
                     schema={schema}
                     values={editParams}
@@ -249,8 +292,13 @@ export function PresetSelect({
                     binary={binary ?? undefined}
                   />
                   <div className="instance-actions">
-                    <button type="button" className="btn" disabled={savingParams} onClick={saveParams}>
-                      {t('presetSave')}
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={savingParams}
+                      onClick={saveParams}
+                    >
+                      {t("presetSave")}
                     </button>
                     <button
                       type="button"
@@ -261,7 +309,7 @@ export function PresetSelect({
                         setEditParams({ ...current.params });
                       }}
                     >
-                      {t('presetCancel')}
+                      {t("presetCancel")}
                     </button>
                   </div>
                 </div>

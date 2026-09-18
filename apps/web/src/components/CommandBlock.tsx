@@ -5,11 +5,17 @@
  * Status cards (the engine header) and the external-instance card (the
  * captured command line).
  */
-import { useState } from 'react';
-import { t } from '../i18n/index.js';
+import { useState } from "react";
+import { t } from "../i18n/index.js";
 
 /** The command in a monospace block with a copy button. */
-export function CommandBlock({ command, className = '' }: { command: string; className?: string }) {
+export function CommandBlock({
+  command,
+  className = "",
+}: {
+  command: string;
+  className?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   const copy = (): void => {
@@ -26,14 +32,20 @@ export function CommandBlock({ command, className = '' }: { command: string; cla
     <div className={`cmd ${className}`.trim()}>
       <code className="cmd-block">{command}</code>
       <button type="button" className="btn small info-copy" onClick={copy}>
-        {copied ? t('copied') : t('copyCommand')}
+        {copied ? t("copied") : t("copyCommand")}
       </button>
     </div>
   );
 }
 
 /** The ⓘ button; on hover/focus it reveals the command (copyable) in a popup. */
-export function CommandPopover({ command, label }: { command: string; label: string }) {
+export function CommandPopover({
+  command,
+  label,
+}: {
+  command: string;
+  label: string;
+}) {
   return (
     <span className="info-btn" tabIndex={0} aria-label={label}>
       <svg

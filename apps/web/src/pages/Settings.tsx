@@ -2,13 +2,13 @@
  * Settings (Faza 9.3): global config — model dirs (list), engine binaries,
  * GPU selection, port range, security token.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { getEngines, getConfig, putGlobalConfig } from '../api/client';
-import type { EngineInfo } from '../api/client';
-import { ErrorNotice } from '../components/ErrorNotice';
-import { FilePicker } from '../components/FilePicker';
-import { t } from '../i18n';
-import { errInfo } from '../ui/errors';
+import { useCallback, useEffect, useState } from "react";
+import { getEngines, getConfig, putGlobalConfig } from "../api/client";
+import type { EngineInfo } from "../api/client";
+import { ErrorNotice } from "../components/ErrorNotice";
+import { FilePicker } from "../components/FilePicker";
+import { t } from "../i18n";
+import { errInfo } from "../ui/errors";
 
 interface GpuInfo {
   id: string;
@@ -26,17 +26,24 @@ export function Settings() {
   const [binaryMap, setBinaryMap] = useState<Record<string, string>>({});
   const [portStart, setPortStart] = useState(8080);
   const [portEnd, setPortEnd] = useState(8090);
-  const [token, setToken] = useState('');
+  const [token, setToken] = useState("");
   const [gpus, setGpus] = useState<GpuInfo[]>([]);
   const [preferredGpu, setPreferredGpu] = useState<string | null>(null);
-  const [gpuLabel, setGpuLabel] = useState('');
+  const [gpuLabel, setGpuLabel] = useState("");
   const [gpuUseLabel, setGpuUseLabel] = useState(false);
-  const [error, setError] = useState<{ message: string; code?: string } | null>(null);
+  const [error, setError] = useState<{ message: string; code?: string } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [pickerMode, setPickerMode] = useState<{ type: 'modelDir' | 'binary'; engineId?: string } | null>(null);
-  const [hiddenModels, setHiddenModels] = useState<{ id: string; displayName: string; path: string }[]>([]);
+  const [pickerMode, setPickerMode] = useState<{
+    type: "modelDir" | "binary";
+    engineId?: string;
+  } | null>(null);
+  const [hiddenModels, setHiddenModels] = useState<
+    { id: string; displayName: string; path: string }[]
+  >([]);
   const [stateChangeDelay, setStateChangeDelay] = useState(0);
 
   const load = useCallback((): void => {
@@ -51,27 +58,37 @@ export function Settings() {
         setBinaryMap(binaries);
         setPortStart(config.global.portRange.start);
         setPortEnd(config.global.portRange.end);
-        setToken(config.global.security.token ?? '');
+        setToken(config.global.security.token ?? "");
         setPreferredGpu(config.global.gpu?.preferred ?? null);
-        setGpuLabel(config.global.gpu?.label ?? '');
+        setGpuLabel(config.global.gpu?.label ?? "");
         setGpuUseLabel(config.global.gpu?.useLabel ?? false);
-        setStateChangeDelay(config.global.notifications?.stateChangeDelaySec ?? 0);
+        setStateChangeDelay(
+          config.global.notifications?.stateChangeDelaySec ?? 0,
+        );
         setError(null);
       })
       .catch((err: unknown) => {
         setError(errInfo(err));
       });
 
-    fetch('/api/v1/gpus')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    fetch("/api/v1/gpus")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
       .then((data: { gpus: GpuInfo[] }) => setGpus(data.gpus))
       .catch(() => setGpus([]));
 
-    fetch('/api/v1/models/hidden')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { models: { id: string; displayName: string; path: string }[] }) => {
-        setHiddenModels(data.models);
-      })
+    fetch("/api/v1/models/hidden")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
+      .then(
+        (data: {
+          models: { id: string; displayName: string; path: string }[];
+        }) => {
+          setHiddenModels(data.models);
+        },
+      )
       .catch(() => setHiddenModels([]));
   }, []);
 
@@ -91,11 +108,15 @@ export function Settings() {
       engines: Object.fromEntries(
         Object.entries(binaryMap).map(([id, binary]) => [id, { binary }]),
       ),
-      server: { host: '127.0.0.1', port: 3100 },
-      security: { token: token.trim() !== '' ? token.trim() : null },
+      server: { host: "127.0.0.1", port: 3100 },
+      security: { token: token.trim() !== "" ? token.trim() : null },
       monitoring: { probeIntervalSec: 2, startupTimeoutSec: 30 },
       logs: { ringLines: 200, retentionFiles: 5 },
-      gpu: { preferred: preferredGpu, label: gpuLabel.trim() !== '' ? gpuLabel.trim() : undefined, useLabel: gpuUseLabel && gpuLabel.trim() !== '' },
+      gpu: {
+        preferred: preferredGpu,
+        label: gpuLabel.trim() !== "" ? gpuLabel.trim() : undefined,
+        useLabel: gpuUseLabel && gpuLabel.trim() !== "",
+      },
       notifications: { stateChangeDelaySec: stateChangeDelay },
     };
     putGlobalConfig(body)
@@ -109,12 +130,12 @@ export function Settings() {
   };
 
   const handlePickerSelect = (path: string): void => {
-    if (pickerMode?.type === 'modelDir') {
+    if (pickerMode?.type === "modelDir") {
       if (!modelDirs.includes(path)) {
         setModelDirs([...modelDirs, path]);
         setDirty(true);
       }
-    } else if (pickerMode?.type === 'binary' && pickerMode.engineId) {
+    } else if (pickerMode?.type === "binary" && pickerMode.engineId) {
       setBinaryMap((prev) => ({ ...prev, [pickerMode.engineId!]: path }));
       setDirty(true);
     }
@@ -128,7 +149,7 @@ export function Settings() {
 
   return (
     <section className="settings-page">
-      <h2>{t('settingsHeading')}</h2>
+      <h2>{t("settingsHeading")}</h2>
       <ErrorNotice message={error?.message ?? null} code={error?.code} />
 
       {/* File picker modal */}
@@ -137,16 +158,16 @@ export function Settings() {
           initialPath="/mnt/dane"
           onSelect={handlePickerSelect}
           onClose={() => setPickerMode(null)}
-          isFile={pickerMode.type === 'binary'}
+          isFile={pickerMode.type === "binary"}
         />
       )}
 
       {/* Model directories — list with add/remove */}
       <fieldset>
-        <legend>{t('settingsModelDirs')}</legend>
+        <legend>{t("settingsModelDirs")}</legend>
         <div className="settings-dir-list">
           {modelDirs.length === 0 ? (
-            <p className="muted">{t('noModelDirs')}</p>
+            <p className="muted">{t("noModelDirs")}</p>
           ) : (
             modelDirs.map((dir, idx) => (
               <div key={idx} className="settings-dir-row">
@@ -155,7 +176,7 @@ export function Settings() {
                   type="button"
                   className="btn small danger"
                   onClick={() => removeDir(dir)}
-                  title={t('removeDir')}
+                  title={t("removeDir")}
                 >
                   ✕
                 </button>
@@ -165,52 +186,64 @@ export function Settings() {
           <button
             type="button"
             className="btn small"
-            onClick={() => setPickerMode({ type: 'modelDir' })}
+            onClick={() => setPickerMode({ type: "modelDir" })}
           >
-            + {t('addModelDir')}
+            + {t("addModelDir")}
           </button>
         </div>
       </fieldset>
 
       {/* Engine binaries */}
       <fieldset>
-        <legend>{t('settingsEngines')}</legend>
+        <legend>{t("settingsEngines")}</legend>
         {engines.map((eng) => (
           <div key={eng.id} className="settings-engine">
             <label className="field">
-              <span>{eng.displayName} — {t('settingsEngineBinary')}</span>
+              <span>
+                {eng.displayName} — {t("settingsEngineBinary")}
+              </span>
               <div className="file-input-row">
                 <input
                   type="text"
                   className="input"
-                  value={binaryMap[eng.id] ?? ''}
+                  value={binaryMap[eng.id] ?? ""}
                   onChange={(e) => {
-                    setBinaryMap((prev) => ({ ...prev, [eng.id]: e.target.value }));
+                    setBinaryMap((prev) => ({
+                      ...prev,
+                      [eng.id]: e.target.value,
+                    }));
                     setDirty(true);
                   }}
                 />
                 <button
                   type="button"
                   className="btn small"
-                  onClick={() => setPickerMode({ type: 'binary', engineId: eng.id })}
+                  onClick={() =>
+                    setPickerMode({ type: "binary", engineId: eng.id })
+                  }
                 >
-                  {t('browseBtn')}
+                  {t("browseBtn")}
                 </button>
                 <button
                   type="button"
                   className="btn small"
                   onClick={() => {
-                    fetch('/api/v1/engines/detect')
+                    fetch("/api/v1/engines/detect")
                       .then((r) => r.json())
-                      .then((data: { found: boolean; binary: string | null }) => {
-                        if (data.found && data.binary) {
-                          setBinaryMap((prev) => ({ ...prev, [eng.id]: data.binary as string }));
-                        }
-                      })
+                      .then(
+                        (data: { found: boolean; binary: string | null }) => {
+                          if (data.found && data.binary) {
+                            setBinaryMap((prev) => ({
+                              ...prev,
+                              [eng.id]: data.binary as string,
+                            }));
+                          }
+                        },
+                      )
                       .catch(() => {});
                   }}
                 >
-                  {t('autoDetectBtn')}
+                  {t("autoDetectBtn")}
                 </button>
               </div>
             </label>
@@ -220,9 +253,9 @@ export function Settings() {
 
       {/* Hidden models */}
       <fieldset>
-        <legend>{t('hiddenModelsHeading')}</legend>
+        <legend>{t("hiddenModelsHeading")}</legend>
         {hiddenModels.length === 0 ? (
-          <p className="muted">{t('noHiddenModels')}</p>
+          <p className="muted">{t("noHiddenModels")}</p>
         ) : (
           <div className="hidden-models-list">
             {hiddenModels.map((model) => (
@@ -234,17 +267,19 @@ export function Settings() {
                   className="btn small"
                   onClick={() => {
                     fetch(`/api/v1/models/${model.id}/hide`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ hidden: false }),
                     })
                       .then(() => {
-                        setHiddenModels(hiddenModels.filter((m) => m.id !== model.id));
+                        setHiddenModels(
+                          hiddenModels.filter((m) => m.id !== model.id),
+                        );
                       })
                       .catch(() => {});
                   }}
                 >
-                  {t('unhideModel')}
+                  {t("unhideModel")}
                 </button>
               </div>
             ))}
@@ -254,10 +289,10 @@ export function Settings() {
 
       {/* GPU selection */}
       <fieldset>
-        <legend>{t('settingsGpuSelection')}</legend>
-        <p className="settings-gpu-desc">{t('gpuSelectionDesc')}</p>
+        <legend>{t("settingsGpuSelection")}</legend>
+        <p className="settings-gpu-desc">{t("gpuSelectionDesc")}</p>
         {gpus.length === 0 ? (
-          <p className="muted">{t('noGpusDetected')}</p>
+          <p className="muted">{t("noGpusDetected")}</p>
         ) : (
           gpus.map((gpu) => (
             <label key={gpu.id} className="checkbox-field gpu-card">
@@ -271,7 +306,9 @@ export function Settings() {
                 <div className="gpu-card-details">
                   <span className="gpu-pci-slot">{gpu.pciSlot}</span>
                   {gpu.memoryTotalMB != null && (
-                    <span className="gpu-memory-badge">{(gpu.memoryTotalMB / 1024).toFixed(0)} GB VRAM</span>
+                    <span className="gpu-memory-badge">
+                      {(gpu.memoryTotalMB / 1024).toFixed(0)} GB VRAM
+                    </span>
                   )}
                   <span className="gpu-driver">{gpu.driver}</span>
                 </div>
@@ -289,31 +326,31 @@ export function Settings() {
                 setDirty(true);
               }}
             />
-            <span>{t('gpuUseCustomName')}</span>
+            <span>{t("gpuUseCustomName")}</span>
           </label>
           <label className="field">
-            <span>{t('gpuCustomLabel')}</span>
+            <span>{t("gpuCustomLabel")}</span>
             <input
               type="text"
               className="input"
               value={gpuLabel}
-              placeholder={t('gpuCustomLabelPlaceholder')}
+              placeholder={t("gpuCustomLabelPlaceholder")}
               onChange={(e) => {
                 setGpuLabel(e.target.value);
                 setDirty(true);
               }}
             />
           </label>
-          <p className="muted small">{t('gpuCustomLabelHint')}</p>
+          <p className="muted small">{t("gpuCustomLabelHint")}</p>
         </div>
       </fieldset>
 
       {/* Notifications */}
       <fieldset>
-        <legend>{t('settingsNotifications')}</legend>
-        <p className="settings-notifications-desc">{t('notificationsDesc')}</p>
+        <legend>{t("settingsNotifications")}</legend>
+        <p className="settings-notifications-desc">{t("notificationsDesc")}</p>
         <label className="field">
-          <span>{t('stateChangeDelayLabel')}</span>
+          <span>{t("stateChangeDelayLabel")}</span>
           <input
             type="number"
             className="input"
@@ -325,14 +362,14 @@ export function Settings() {
             }}
           />
         </label>
-        <p className="muted small">{t('stateChangeDelayHint')}</p>
+        <p className="muted small">{t("stateChangeDelayHint")}</p>
       </fieldset>
 
       {/* Port range */}
       <fieldset>
-        <legend>{t('settingsPortRange')}</legend>
+        <legend>{t("settingsPortRange")}</legend>
         <label className="field">
-          <span>{t('settingsPortStart')}</span>
+          <span>{t("settingsPortStart")}</span>
           <input
             type="number"
             className="input"
@@ -344,7 +381,7 @@ export function Settings() {
           />
         </label>
         <label className="field">
-          <span>{t('settingsPortEnd')}</span>
+          <span>{t("settingsPortEnd")}</span>
           <input
             type="number"
             className="input"
@@ -359,13 +396,13 @@ export function Settings() {
 
       {/* Security */}
       <fieldset>
-        <legend>{t('settingsSecurity')}</legend>
+        <legend>{t("settingsSecurity")}</legend>
         <label className="field">
-          <span>{t('settingsToken')}</span>
+          <span>{t("settingsToken")}</span>
           <input
             type="text"
             className="input"
-            placeholder={t('settingsTokenPlaceholder')}
+            placeholder={t("settingsTokenPlaceholder")}
             value={token}
             onChange={(e) => {
               setToken(e.target.value);
@@ -378,13 +415,13 @@ export function Settings() {
       <div className="instance-actions">
         <button
           type="button"
-          className={`btn ${dirty ? 'btn-dirty' : ''}`}
+          className={`btn ${dirty ? "btn-dirty" : ""}`}
           disabled={busy}
           onClick={save}
         >
-          {t('settingsSave')}
+          {t("settingsSave")}
         </button>
-        {saved && <span className="status-ok">{t('settingsSaved')}</span>}
+        {saved && <span className="status-ok">{t("settingsSaved")}</span>}
       </div>
     </section>
   );

@@ -2,8 +2,8 @@
  * Left sidebar with always-on system stats (GPU/CPU/RAM).
  * Uses the preferred GPU from Settings config.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { t } from '../i18n';
+import { useCallback, useEffect, useState } from "react";
+import { t } from "../i18n";
 
 interface GpuMetrics {
   name: string;
@@ -37,7 +37,10 @@ function MiniBar({ pct, color }: { pct: number; color: string }) {
   const width = Math.min(100, Math.max(0, pct));
   return (
     <div className="sidebar-bar-track">
-      <div className="sidebar-bar-fill" style={{ width: `${width}%`, background: color }} />
+      <div
+        className="sidebar-bar-fill"
+        style={{ width: `${width}%`, background: color }}
+      />
     </div>
   );
 }
@@ -65,9 +68,9 @@ function StatRow({
 }
 
 function colorForPct(pct: number): string {
-  if (pct > 90) return 'var(--color-state-error)';
-  if (pct > 70) return 'var(--color-state-stopping)';
-  return 'var(--color-state-running)';
+  if (pct > 90) return "var(--color-state-error)";
+  if (pct > 70) return "var(--color-state-stopping)";
+  return "var(--color-state-running)";
 }
 
 export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
@@ -77,20 +80,26 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
 
   const load = useCallback(() => {
     // Load metrics
-    fetch('/api/v1/system/metrics')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    fetch("/api/v1/system/metrics")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
       .then((data: SystemMetrics) => setMetrics(data))
       .catch(() => setMetrics(null));
 
     // Load GPU list
-    fetch('/api/v1/gpus')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    fetch("/api/v1/gpus")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
       .then((data: { gpus: GpuEntry[] }) => setGpus(data.gpus))
       .catch(() => setGpus([]));
 
     // Load config for preferred GPU
-    fetch('/api/v1/config')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    fetch("/api/v1/config")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
       .then((data: { global: { gpu?: { preferred?: string | null } } }) => {
         setPreferredGpu(data.global.gpu?.preferred ?? null);
       })
@@ -115,9 +124,12 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
   const gpu = gpus.find((g) => g.id === preferredGpu) ?? null;
 
   // DSH status
-  const [dshStatus, setDshStatus] = useState<{ running: boolean; pid: number | null } | null>(null);
+  const [dshStatus, setDshStatus] = useState<{
+    running: boolean;
+    pid: number | null;
+  } | null>(null);
   const checkDsh = useCallback(() => {
-    fetch('/api/v1/dsh/status')
+    fetch("/api/v1/dsh/status")
       .then((r) => r.json())
       .then((data) => setDshStatus(data))
       .catch(() => setDshStatus(null));
@@ -132,10 +144,10 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
   const toggleDsh = async (): Promise<void> => {
     if (dshStatus?.running) {
       // Stop DSH
-      await fetch('/api/v1/dsh/stop', { method: 'POST' });
+      await fetch("/api/v1/dsh/stop", { method: "POST" });
     } else {
       // Start DSH
-      await fetch('/api/v1/dsh/start', { method: 'POST' });
+      await fetch("/api/v1/dsh/start", { method: "POST" });
     }
     checkDsh();
   };
@@ -143,46 +155,54 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
   return (
     <aside className="sidebar">
       <nav className="sidebar-nav">
-        <a href="#/" className="sidebar-link">{t('navDashboard')}</a>
-        <a href="#/status" className="sidebar-link">
-          {t('navStatus')}
-          {runningCount > 0 && <span className="sidebar-count">{runningCount}</span>}
+        <a href="#/" className="sidebar-link">
+          {t("navDashboard")}
         </a>
-        <a href="#/settings" className="sidebar-link">{t('navSettings')}</a>
-        <a href="#/info" className="sidebar-link sidebar-info-link">ℹ️ {t('navInfo')}</a>
+        <a href="#/status" className="sidebar-link">
+          {t("navStatus")}
+          {runningCount > 0 && (
+            <span className="sidebar-count">{runningCount}</span>
+          )}
+        </a>
+        <a href="#/settings" className="sidebar-link">
+          {t("navSettings")}
+        </a>
+        <a href="#/info" className="sidebar-link sidebar-info-link">
+          ℹ️ {t("navInfo")}
+        </a>
       </nav>
 
       {/* DSH control */}
       <div className="sidebar-dsh">
         <button
           type="button"
-          className={`btn small dsh-btn ${dshStatus?.running ? 'running' : ''}`}
+          className={`btn small dsh-btn ${dshStatus?.running ? "running" : ""}`}
           onClick={toggleDsh}
         >
           {dshStatus?.running
             ? `⏹ Stop DSH (PID ${dshStatus.pid})`
-            : '▶ Start DSH'}
+            : "▶ Start DSH"}
         </button>
       </div>
 
       <div className="sidebar-stats">
         {/* GPU section */}
         <div className="sidebar-section">
-          <h3 className="sidebar-section-title">{t('gpuHeading')}</h3>
+          <h3 className="sidebar-section-title">{t("gpuHeading")}</h3>
           {gpu ? (
             <>
               <StatRow
-                label={t('gpuUtilization')}
+                label={t("gpuUtilization")}
                 value={`${gpu.utilization ?? 0}%`}
                 pct={gpu.utilization ?? 0}
                 color={colorForPct(gpu.utilization ?? 0)}
               />
               <StatRow
-                label={t('gpuMemory')}
+                label={t("gpuMemory")}
                 value={
                   gpu.memoryTotalMB != null && gpu.memoryUsedMB != null
                     ? `${(gpu.memoryUsedMB / 1024).toFixed(1)} / ${(gpu.memoryTotalMB / 1024).toFixed(0)} GB`
-                    : '—'
+                    : "—"
                 }
                 pct={
                   gpu.memoryTotalMB != null && gpu.memoryUsedMB != null
@@ -197,22 +217,22 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
               />
             </>
           ) : (
-            <p className="sidebar-section-empty">{t('gpuNotSelected')}</p>
+            <p className="sidebar-section-empty">{t("gpuNotSelected")}</p>
           )}
         </div>
 
         {/* CPU section */}
         <div className="sidebar-section">
-          <h3 className="sidebar-section-title">{t('cpuHeading')}</h3>
+          <h3 className="sidebar-section-title">{t("cpuHeading")}</h3>
           <StatRow
-            label={t('cpuUsage')}
+            label={t("cpuUsage")}
             value={`${cpuPct.toFixed(0)}%`}
             pct={cpuPct}
             color={cpuColor}
           />
           {cpu?.temperatureC != null && (
             <div className="sidebar-substat">
-              <span>{t('cpuTemperature')}</span>
+              <span>{t("cpuTemperature")}</span>
               <span>{cpu.temperatureC.toFixed(0)}°C</span>
             </div>
           )}
@@ -220,18 +240,19 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
 
         {/* RAM section */}
         <div className="sidebar-section">
-          <h3 className="sidebar-section-title">{t('ramHeading')}</h3>
+          <h3 className="sidebar-section-title">{t("ramHeading")}</h3>
           <StatRow
-            label={t('ramUsage')}
-            value={ram ? `${ramPct.toFixed(0)}%` : '—'}
+            label={t("ramUsage")}
+            value={ram ? `${ramPct.toFixed(0)}%` : "—"}
             pct={ramPct}
             color={ramColor}
           />
           {ram && (
             <div className="sidebar-substat">
-              <span>{t('ramUsed')}</span>
+              <span>{t("ramUsed")}</span>
               <span>
-                {(ram.usedMB / 1024).toFixed(1)} / {(ram.totalMB / 1024).toFixed(1)} GB
+                {(ram.usedMB / 1024).toFixed(1)} /{" "}
+                {(ram.totalMB / 1024).toFixed(1)} GB
               </span>
             </div>
           )}

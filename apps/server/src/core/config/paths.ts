@@ -2,9 +2,9 @@
  * `~/.ai-dashboard` layout (PLAN §9.3): directories and file paths.
  * Override: env `AI_DASHBOARD_HOME` (or explicit argument).
  */
-import { mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 export interface DashboardHome {
   /** Root: `~/.ai-dashboard` (or AI_DASHBOARD_HOME). */
@@ -31,19 +31,22 @@ export interface DashboardHome {
 
 /** Resolves the dashboard home: argument > AI_DASHBOARD_HOME env > `~/.ai-dashboard`. */
 export function resolveHome(homeOverride?: string): DashboardHome {
-  const root = homeOverride ?? process.env.AI_DASHBOARD_HOME ?? join(homedir(), '.ai-dashboard');
-  const configDir = join(root, 'config');
+  const root =
+    homeOverride ??
+    process.env.AI_DASHBOARD_HOME ??
+    join(homedir(), ".ai-dashboard");
+  const configDir = join(root, "config");
   return {
     root,
     configDir,
-    enginesDir: join(configDir, 'engines'),
-    modelsDir: join(configDir, 'models'),
-    presetsDir: join(configDir, 'presets'),
-    globalFile: join(configDir, 'global.json'),
-    stateDir: join(root, 'state'),
-    instancesDir: join(root, 'state', 'instances'),
-    logsDir: join(root, 'logs'),
-    backupsDir: join(root, '.backups'),
+    enginesDir: join(configDir, "engines"),
+    modelsDir: join(configDir, "models"),
+    presetsDir: join(configDir, "presets"),
+    globalFile: join(configDir, "global.json"),
+    stateDir: join(root, "state"),
+    instancesDir: join(root, "state", "instances"),
+    logsDir: join(root, "logs"),
+    backupsDir: join(root, ".backups"),
   };
 }
 

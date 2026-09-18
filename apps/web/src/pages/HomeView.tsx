@@ -1,6 +1,6 @@
-import { useOnboarding } from '../hooks/useOnboarding';
-import { ModelList } from './ModelList';
-import { Onboarding } from './Onboarding';
+import { useOnboarding } from "../hooks/useOnboarding";
+import { ModelList } from "./ModelList";
+import { Onboarding } from "./Onboarding";
 
 /**
  * Home view (Faza 7): shows the onboarding wizard when setup is incomplete

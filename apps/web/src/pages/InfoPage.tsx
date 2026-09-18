@@ -2,9 +2,14 @@
  * Info page: app version, engine status, config watch state.
  * The old "Status" content moved here.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { getStatus, getEngines, type DashboardStatus, type EngineInfo } from '../api/client';
-import { t } from '../i18n';
+import { useCallback, useEffect, useState } from "react";
+import {
+  getStatus,
+  getEngines,
+  type DashboardStatus,
+  type EngineInfo,
+} from "../api/client";
+import { t } from "../i18n";
 
 const REFRESH_INTERVAL_MS = 5000;
 
@@ -13,7 +18,9 @@ export function InfoPage() {
   const [engines, setEngines] = useState<EngineInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [engineTest, setEngineTest] = useState<Record<string, { running: boolean; result: string | null }>>({});
+  const [engineTest, setEngineTest] = useState<
+    Record<string, { running: boolean; result: string | null }>
+  >({});
 
   const refresh = useCallback((): void => {
     Promise.all([getStatus(), getEngines()])
@@ -35,32 +42,41 @@ export function InfoPage() {
   }, [refresh]);
 
   const testEngine = (engineId: string): void => {
-    setEngineTest((prev) => ({ ...prev, [engineId]: { running: true, result: null } }));
+    setEngineTest((prev) => ({
+      ...prev,
+      [engineId]: { running: true, result: null },
+    }));
     fetch(`/api/v1/engines/${engineId}/check`)
       .then((r) => r.json())
       .then((data: { ok: boolean; message: string }) => {
         setEngineTest((prev) => ({
           ...prev,
-          [engineId]: { running: false, result: data.ok ? data.message : data.message },
+          [engineId]: {
+            running: false,
+            result: data.ok ? data.message : data.message,
+          },
         }));
       })
       .catch((err: unknown) => {
         setEngineTest((prev) => ({
           ...prev,
-          [engineId]: { running: false, result: err instanceof Error ? err.message : String(err) },
+          [engineId]: {
+            running: false,
+            result: err instanceof Error ? err.message : String(err),
+          },
         }));
       });
   };
 
   if (loading) {
-    return <p className="muted">{t('statusLoading')}</p>;
+    return <p className="muted">{t("statusLoading")}</p>;
   }
 
   if (error || !status) {
     return (
       <section>
-        <h2>{t('infoHeading')}</h2>
-        <p className="status-error">{error ?? t('statusError')}</p>
+        <h2>{t("infoHeading")}</h2>
+        <p className="status-error">{error ?? t("statusError")}</p>
       </section>
     );
   }
@@ -71,25 +87,25 @@ export function InfoPage() {
     <>
       {/* App info */}
       <section>
-        <h2>{t('infoHeading')}</h2>
+        <h2>{t("infoHeading")}</h2>
         <dl className="kv">
-          <dt>{t('fieldAppName')}</dt>
+          <dt>{t("fieldAppName")}</dt>
           <dd>{status.name}</dd>
-          <dt>{t('fieldVersion')}</dt>
+          <dt>{t("fieldVersion")}</dt>
           <dd>{status.version}</dd>
-          <dt>{t('fieldState')}</dt>
+          <dt>{t("fieldState")}</dt>
           <dd>{status.state}</dd>
-          <dt>{t('fieldUptime')}</dt>
+          <dt>{t("fieldUptime")}</dt>
           <dd>{status.uptimeSec} s</dd>
         </dl>
-        <p className="muted small">{t('statusAutoRefresh')}</p>
+        <p className="muted small">{t("statusAutoRefresh")}</p>
       </section>
 
       {/* Engine status */}
       <section>
-        <h2>{t('engineHeading')}</h2>
+        <h2>{t("engineHeading")}</h2>
         {engines.length === 0 ? (
-          <p className="muted">{t('enginesEmpty')}</p>
+          <p className="muted">{t("enginesEmpty")}</p>
         ) : (
           engines.map((eng) => {
             const test = engineTest[eng.id];
@@ -97,13 +113,17 @@ export function InfoPage() {
               <div key={eng.id} className="engine-card">
                 <div className="engine-card-header">
                   <span className="engine-name">{eng.displayName}</span>
-                  <span className={`engine-status-badge ${eng.configured ? 'ok' : 'warn'}`}>
-                    {eng.configured ? t('engineConfigured') : t('engineNotConfigured')}
+                  <span
+                    className={`engine-status-badge ${eng.configured ? "ok" : "warn"}`}
+                  >
+                    {eng.configured
+                      ? t("engineConfigured")
+                      : t("engineNotConfigured")}
                   </span>
                 </div>
                 {eng.binary && (
                   <div className="engine-binary">
-                    <span className="muted">{t('engineBinary')}:</span>
+                    <span className="muted">{t("engineBinary")}:</span>
                     <code className="engine-path">{eng.binary}</code>
                   </div>
                 )}
@@ -113,10 +133,12 @@ export function InfoPage() {
                   disabled={test?.running ?? false}
                   onClick={() => testEngine(eng.id)}
                 >
-                  {test?.running ? t('testingEngine') : t('testEngineBtn')}
+                  {test?.running ? t("testingEngine") : t("testEngineBtn")}
                 </button>
                 {test?.result && (
-                  <p className={`engine-test-result ${test.result.startsWith('OK') ? 'ok' : 'error'}`}>
+                  <p
+                    className={`engine-test-result ${test.result.startsWith("OK") ? "ok" : "error"}`}
+                  >
                     {test.result}
                   </p>
                 )}
@@ -129,19 +151,21 @@ export function InfoPage() {
       {/* Config watch */}
       {config && (
         <section>
-          <h2>{t('configHeading')}</h2>
+          <h2>{t("configHeading")}</h2>
           <dl className="kv">
-            <dt>{t('configHome')}</dt>
+            <dt>{t("configHome")}</dt>
             <dd>{config.home}</dd>
-            <dt>{t('configWatchActive')}</dt>
-            <dd>{config.watchActive ? t('configWatchOn') : t('configWatchOff')}</dd>
-            <dt>{t('configLastChange')}</dt>
-            <dd>{config.lastExternalChangeAt ?? t('configNoChanges')}</dd>
-            <dt>{t('configReloadCount')}</dt>
+            <dt>{t("configWatchActive")}</dt>
+            <dd>
+              {config.watchActive ? t("configWatchOn") : t("configWatchOff")}
+            </dd>
+            <dt>{t("configLastChange")}</dt>
+            <dd>{config.lastExternalChangeAt ?? t("configNoChanges")}</dd>
+            <dt>{t("configReloadCount")}</dt>
             <dd>{config.reloadCount}</dd>
             {config.lastReloadError && (
               <>
-                <dt>{t('configReloadError')}</dt>
+                <dt>{t("configReloadError")}</dt>
                 <dd className="status-error">{config.lastReloadError}</dd>
               </>
             )}

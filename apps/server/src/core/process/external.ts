@@ -14,9 +14,9 @@
  * The `/proc` read and the `ps` call are isolated so they can be injected in
  * tests (the real app runs on the host, where `/proc` is visible).
  */
-import { readdirSync, readFileSync } from 'node:fs';
-import { basename } from 'node:path';
-import { execSync } from 'node:child_process';
+import { readdirSync, readFileSync } from "node:fs";
+import { basename } from "node:path";
+import { execSync } from "node:child_process";
 
 export interface ExternalProcessInfo {
   pid: number;
@@ -38,14 +38,14 @@ export function parseCliArgs(argv: string[]): Record<string, string> {
   const args: Record<string, string> = {};
   for (let i = 1; i < argv.length; i++) {
     const tok = argv[i];
-    if (!tok.startsWith('--')) continue;
-    const eq = tok.indexOf('=');
+    if (!tok.startsWith("--")) continue;
+    const eq = tok.indexOf("=");
     if (eq >= 0) {
       args[tok.slice(2, eq)] = tok.slice(eq + 1);
     } else {
       const key = tok.slice(2);
       const val = argv[i + 1];
-      if (val !== undefined && !val.startsWith('--')) {
+      if (val !== undefined && !val.startsWith("--")) {
         args[key] = val;
         i++;
       }
@@ -62,9 +62,9 @@ export function parseCliArgs(argv: string[]): Record<string, string> {
  */
 export function scanEngineProcesses(
   binaryBases: string[],
-  procRoot = '/proc',
+  procRoot = "/proc",
 ): ExternalProcessInfo[] {
-  const baseSet = new Set(binaryBases.map((b) => b.replace(/\.exe$/i, '')));
+  const baseSet = new Set(binaryBases.map((b) => b.replace(/\.exe$/i, "")));
   let dirs: string[];
   try {
     dirs = readdirSync(procRoot);
@@ -76,12 +76,12 @@ export function scanEngineProcesses(
     if (!/^\d+$/.test(dir)) continue;
     let raw: string;
     try {
-      raw = readFileSync(`${procRoot}/${dir}/cmdline`, 'utf8');
+      raw = readFileSync(`${procRoot}/${dir}/cmdline`, "utf8");
     } catch {
       continue;
     }
-    const cmdline = raw.split('\0').filter((s) => s.length > 0);
-    const base = basename(cmdline[0] ?? '').replace(/\.exe$/i, '');
+    const cmdline = raw.split("\0").filter((s) => s.length > 0);
+    const base = basename(cmdline[0] ?? "").replace(/\.exe$/i, "");
     if (cmdline.length < 2 || !baseSet.has(base)) continue;
     const args = parseCliArgs(cmdline);
     out.push({
@@ -89,17 +89,20 @@ export function scanEngineProcesses(
       cmdline,
       args,
       modelPath: args.model ?? null,
-      port: args.port !== undefined && Number.isFinite(Number(args.port)) ? Number(args.port) : null,
-      host: args.host ?? '127.0.0.1',
+      port:
+        args.port !== undefined && Number.isFinite(Number(args.port))
+          ? Number(args.port)
+          : null,
+      host: args.host ?? "127.0.0.1",
     });
   }
   return out;
 }
 
 /** Reads the process's RSS in MB from `/proc/<pid>/status` (`VmRSS`); null when absent. */
-export function readRssMB(pid: number, procRoot = '/proc'): number | null {
+export function readRssMB(pid: number, procRoot = "/proc"): number | null {
   try {
-    const status = readFileSync(`${procRoot}/${pid}/status`, 'utf8');
+    const status = readFileSync(`${procRoot}/${pid}/status`, "utf8");
     const m = status.match(/VmRSS:\s+(\d+)\s+kB/);
     return m ? Math.round(Number(m[1]) / 1024) : null;
   } catch {
@@ -108,7 +111,10 @@ export function readRssMB(pid: number, procRoot = '/proc'): number | null {
 }
 
 /** The process's elapsed seconds via `ps -o etimes=`; null when `ps` is unavailable. */
-export function readUptimeSec(pid: number, exec: (cmd: string) => string = defaultExec): number | null {
+export function readUptimeSec(
+  pid: number,
+  exec: (cmd: string) => string = defaultExec,
+): number | null {
   try {
     const out = exec(`ps -o etimes= -p ${pid}`).trim();
     const n = Number(out);
@@ -128,7 +134,7 @@ function defaultExec(cmd: string): string {
  * (the registered instance it corresponds to, when it can be identified).
  */
 export interface ExternalInstanceView {
-  detected: 'external';
+  detected: "external";
   pid: number;
   cmdline: string[];
   /** The captured `--key → value` settings. */

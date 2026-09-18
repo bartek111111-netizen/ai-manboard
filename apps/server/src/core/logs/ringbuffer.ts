@@ -5,8 +5,8 @@
  * used for the live log view (`/instances/:id/logs?limit=` + the SSE stream).
  * A fixed-size circular buffer: O(1) push, no growth after the first cycle.
  */
-export type LogLevel = 'info' | 'warn' | 'error';
-export type LogSource = 'stdout' | 'stderr' | 'internal';
+export type LogLevel = "info" | "warn" | "error";
+export type LogSource = "stdout" | "stderr" | "internal";
 
 /** One classified log line. */
 export interface LogLine {
@@ -24,7 +24,7 @@ export class RingBuffer<T> {
 
   constructor(readonly capacity: number) {
     if (!Number.isInteger(capacity) || capacity <= 0) {
-      throw new Error('RingBuffer capacity must be a positive integer');
+      throw new Error("RingBuffer capacity must be a positive integer");
     }
     this.buf = new Array<T>(capacity);
   }
@@ -42,11 +42,14 @@ export class RingBuffer<T> {
     const result: T[] = [];
     if (this.count < this.capacity) {
       // Not full: items occupy [0, count) in order; take the last n.
-      for (let i = this.count - n; i < this.count; i++) result.push(this.buf[i]);
+      for (let i = this.count - n; i < this.count; i++)
+        result.push(this.buf[i]);
     } else {
       // Full: `head` is the oldest slot; the n most recent end at the newest.
       for (let i = 0; i < n; i++) {
-        result.push(this.buf[(this.head - n + i + this.capacity) % this.capacity]);
+        result.push(
+          this.buf[(this.head - n + i + this.capacity) % this.capacity],
+        );
       }
     }
     return result;

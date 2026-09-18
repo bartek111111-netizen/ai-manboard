@@ -1,16 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { t } from '../i18n';
-import { getInstances } from '../api/client';
-import { useModelState } from '../hooks/useModelState';
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import { Sidebar } from "./Sidebar";
+import { t } from "../i18n";
+import { getInstances } from "../api/client";
+import { useModelState } from "../hooks/useModelState";
 
 /**
  * App shell: left sidebar (nav + always-on system stats) + main content.
  * Header: app title + model state indicators (dots + toasts).
  */
 export function Layout() {
-  const [toast, setToast] = useState<{ message: string; state: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; state: string } | null>(
+    null,
+  );
   const prevStates = useRef<Record<string, string>>({});
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -21,8 +23,16 @@ export function Layout() {
     modelStates.forEach((ms) => {
       const prev = prevStates.current[ms.instanceId];
       if (prev && prev !== ms.state) {
-        const stateLabel = ms.state === 'working' ? t('stateWorking') : ms.state === 'idle' ? t('stateIdle') : t('stateReady');
-        setToast({ message: `${ms.displayName}: ${stateLabel}`, state: ms.state });
+        const stateLabel =
+          ms.state === "working"
+            ? t("stateWorking")
+            : ms.state === "idle"
+              ? t("stateIdle")
+              : t("stateReady");
+        setToast({
+          message: `${ms.displayName}: ${stateLabel}`,
+          state: ms.state,
+        });
 
         // Auto-dismiss after 5s
         if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -44,7 +54,11 @@ export function Layout() {
     const check = async () => {
       try {
         const instances = await getInstances();
-        setRunningCount(instances.filter((i) => i.state === 'running' || i.state === 'starting').length);
+        setRunningCount(
+          instances.filter(
+            (i) => i.state === "running" || i.state === "starting",
+          ).length,
+        );
       } catch {
         setRunningCount(0);
       }
@@ -56,10 +70,14 @@ export function Layout() {
 
   const getStateColor = (state: string): string => {
     switch (state) {
-      case 'working': return '#f5a623'; // yellow/amber = generating
-      case 'idle': return '#2ea86a'; // green = ready/idle
-      case 'ready': return '#2ea86a'; // green = ready
-      default: return '#666'; // gray = unknown
+      case "working":
+        return "#f5a623"; // yellow/amber = generating
+      case "idle":
+        return "#2ea86a"; // green = ready/idle
+      case "ready":
+        return "#2ea86a"; // green = ready
+      default:
+        return "#666"; // gray = unknown
     }
   };
 
@@ -69,7 +87,7 @@ export function Layout() {
       <main className="app-main">
         <header className="app-header">
           <h1 className="app-header-title">
-            <NavLink to="/">{t('appTitle')}</NavLink>
+            <NavLink to="/">{t("appTitle")}</NavLink>
           </h1>
           <div className="app-header-status">
             {/* State dots per model */}

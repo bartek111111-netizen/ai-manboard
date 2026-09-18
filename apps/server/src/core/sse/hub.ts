@@ -9,8 +9,8 @@
  * is bound to one instance, an event listener to the global channel. Both
  * return an unsubscribe function (the route handler calls it on disconnect).
  */
-import type { InstanceState } from '@ai-dashboard/shared';
-import type { LogLine } from '../logs/ringbuffer.js';
+import type { InstanceState } from "@ai-dashboard/shared";
+import type { LogLine } from "../logs/ringbuffer.js";
 
 /** A global FSM event (the `stream/events` payload). */
 export interface StateEvent {
@@ -53,7 +53,11 @@ export class SseHub {
 
   /** Publish a global state-change event (from the process manager). */
   publishState(instanceId: string, state: InstanceState): void {
-    const event: StateEvent = { instanceId, state, ts: new Date().toISOString() };
+    const event: StateEvent = {
+      instanceId,
+      state,
+      ts: new Date().toISOString(),
+    };
     this.eventListeners.forEach((cb) => cb(event));
   }
 

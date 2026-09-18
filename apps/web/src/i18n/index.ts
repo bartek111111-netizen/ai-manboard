@@ -1,4 +1,4 @@
-import { pl } from './locales/pl.js';
+import { pl } from "./locales/pl.js";
 
 /**
  * i18n: every string shown to the user comes from a locale dictionary —
@@ -9,7 +9,7 @@ type Locale = typeof pl;
 export type MessageKey = keyof Locale;
 
 const locales: Record<string, Locale> = { pl };
-let currentLocale = 'pl';
+let currentLocale = "pl";
 
 /** Switch the locale; unknown codes are ignored (no-op). */
 export function setLocale(code: string): void {

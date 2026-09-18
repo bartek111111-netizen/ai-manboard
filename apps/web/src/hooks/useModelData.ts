@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { InstanceInfo, ModelView, Preset } from '@ai-dashboard/shared';
-import { ApiError, discoverModels, getInstances, getModels, getPresets } from '../api/client';
+import { useCallback, useEffect, useState } from "react";
+import type { InstanceInfo, ModelView, Preset } from "@ai-dashboard/shared";
+import {
+  ApiError,
+  discoverModels,
+  getInstances,
+  getModels,
+  getPresets,
+} from "../api/client";
 
 export interface ModelData {
   models: ModelView[];
@@ -59,13 +65,10 @@ export function useModelData(intervalMs = 3000): ModelData {
     return () => clearInterval(timer);
   }, [refresh, intervalMs]);
 
-  const scan = useCallback(
-    async (): Promise<void> => {
-      await discoverModels();
-      refresh();
-    },
-    [refresh],
-  );
+  const scan = useCallback(async (): Promise<void> => {
+    await discoverModels();
+    refresh();
+  }, [refresh]);
 
   return { models, instances, presets, error, refreshing, refresh, scan };
 }

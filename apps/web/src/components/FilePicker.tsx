@@ -1,13 +1,13 @@
 /**
  * Real file picker modal (Faza 10+): browse the filesystem via the server API.
  */
-import { useEffect, useState } from 'react';
-import { t } from '../i18n';
+import { useEffect, useState } from "react";
+import { t } from "../i18n";
 
 interface DirEntry {
   name: string;
   path: string;
-  type: 'dir' | 'file';
+  type: "dir" | "file";
   size?: number;
 }
 
@@ -18,7 +18,7 @@ interface BrowseResponse {
 }
 
 export function FilePicker({
-  initialPath = '/mnt/dane',
+  initialPath = "/mnt/dane",
   onSelect,
   onClose,
   isFile = true,
@@ -38,9 +38,11 @@ export function FilePicker({
   const load = (path: string, hidden = false): void => {
     setLoading(true);
     setError(null);
-    const showParam = hidden ? '&showHidden=true' : '';
+    const showParam = hidden ? "&showHidden=true" : "";
     fetch(`/api/v1/browse?path=${encodeURIComponent(path)}${showParam}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
       .then((data: BrowseResponse) => {
         setEntries(data.entries);
         setParent(data.parent);
@@ -63,7 +65,7 @@ export function FilePicker({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal file-picker" onClick={(e) => e.stopPropagation()}>
-        <h2>{isFile ? t('selectFile') : t('selectFolder')}</h2>
+        <h2>{isFile ? t("selectFile") : t("selectFolder")}</h2>
 
         <div className="file-picker-path">
           <button
@@ -72,7 +74,7 @@ export function FilePicker({
             disabled={!parent}
             onClick={() => parent && navigate(parent)}
           >
-            ↑ {t('upDir')}
+            ↑ {t("upDir")}
           </button>
           <span className="file-picker-current">{currentPath}</span>
           <label className="checkbox-label small">
@@ -81,48 +83,48 @@ export function FilePicker({
               checked={showHidden}
               onChange={(e) => setShowHidden(e.target.checked)}
             />
-            {t('showHidden')}
+            {t("showHidden")}
           </label>
         </div>
 
         <div className="file-picker-list">
-          {loading && <p className="muted">{t('loading')}</p>}
+          {loading && <p className="muted">{t("loading")}</p>}
           {error && <p className="error-notice">{error}</p>}
           {!loading && !error && entries.length === 0 && (
-            <p className="muted">{t('emptyDir')}</p>
+            <p className="muted">{t("emptyDir")}</p>
           )}
           {entries
-            .filter((entry) => showHidden || !entry.name.startsWith('.'))
+            .filter((entry) => showHidden || !entry.name.startsWith("."))
             .map((entry) => (
-            <button
-              key={entry.path}
-              type="button"
-              className={`file-picker-entry ${entry.type}`}
-              onClick={() => {
-                if (entry.type === 'dir') {
-                  navigate(entry.path);
-                } else if (!isFile) {
-                  // Folder picker: select the folder itself
-                  onSelect(currentPath);
-                  onClose();
-                } else {
-                  // File picker: select the file
-                  onSelect(entry.path);
-                  onClose();
-                }
-              }}
-            >
-              <span className="file-picker-icon">
-                {entry.type === 'dir' ? '📁' : '📄'}
-              </span>
-              <span className="file-picker-name">{entry.name}</span>
-              {entry.type === 'file' && entry.size != null && (
-                <span className="file-picker-size">
-                  {(entry.size / 1024 / 1024).toFixed(1)} MB
+              <button
+                key={entry.path}
+                type="button"
+                className={`file-picker-entry ${entry.type}`}
+                onClick={() => {
+                  if (entry.type === "dir") {
+                    navigate(entry.path);
+                  } else if (!isFile) {
+                    // Folder picker: select the folder itself
+                    onSelect(currentPath);
+                    onClose();
+                  } else {
+                    // File picker: select the file
+                    onSelect(entry.path);
+                    onClose();
+                  }
+                }}
+              >
+                <span className="file-picker-icon">
+                  {entry.type === "dir" ? "📁" : "📄"}
                 </span>
-              )}
-            </button>
-          ))}
+                <span className="file-picker-name">{entry.name}</span>
+                {entry.type === "file" && entry.size != null && (
+                  <span className="file-picker-size">
+                    {(entry.size / 1024 / 1024).toFixed(1)} MB
+                  </span>
+                )}
+              </button>
+            ))}
         </div>
 
         <div className="modal-actions">
@@ -135,11 +137,11 @@ export function FilePicker({
                 onClose();
               }}
             >
-              {t('selectCurrentDir')}
+              {t("selectCurrentDir")}
             </button>
           )}
           <button type="button" className="btn" onClick={onClose}>
-            {t('cancelBtn')}
+            {t("cancelBtn")}
           </button>
         </div>
       </div>

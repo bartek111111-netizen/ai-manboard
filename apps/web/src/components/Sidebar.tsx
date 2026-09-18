@@ -128,6 +128,9 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
     running: boolean;
     pid: number | null;
   } | null>(null);
+  // The pending DSH action ("start" | "stop") — the operation runs in the
+  // background for a few seconds, so a busy state gives feedback while waiting.
+  const [dshBusy, setDshBusy] = useState<"start" | "stop" | null>(null);
   const checkDsh = useCallback(() => {
     fetch("/api/v1/dsh/status")
       .then((r) => r.json())
@@ -142,14 +145,15 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
   }, [checkDsh]);
 
   const toggleDsh = async (): Promise<void> => {
-    if (dshStatus?.running) {
-      // Stop DSH
-      await fetch("/api/v1/dsh/stop", { method: "POST" });
-    } else {
-      // Start DSH
-      await fetch("/api/v1/dsh/start", { method: "POST" });
+    if (dshBusy) return; // already working — ignore the click
+    const action = dshStatus?.running ? "stop" : "start";
+    setDshBusy(action);
+    try {
+      await fetch(`/api/v1/dsh/${action}`, { method: "POST" });
+    } finally {
+      setDshBusy(null);
+      checkDsh();
     }
-    checkDsh();
   };
 
   return (
@@ -178,11 +182,22 @@ export function Sidebar({ runningCount = 0 }: { runningCount?: number }) {
           type="button"
           className={`btn small dsh-btn ${dshStatus?.running ? "running" : ""}`}
           onClick={toggleDsh}
+          disabled={dshBusy !== null}
         >
-          {dshStatus?.running
-            ? `⏹ Stop DSH (PID ${dshStatus.pid})`
-            : "▶ Start DSH"}
+          {dshBusy === "stop"
+            ? `⏳ ${t("dshBusyStop")}`
+            : dshBusy === "start"
+              ? `⏳ ${t("dshBusyStart")}`
+              : dshStatus?.running
+                ? `⏹ ${t("dshStop")} (PID ${dshStatus.pid})`
+                : `▶ ${t("dshStart")}`}
         </button>
+        {dshBusy && (
+          <p className="sidebar-dsh-status">
+            <span className="sidebar-dsh-spinner" aria-hidden="true" />
+            {t("dshBusyNote")}
+          </p>
+        )}
       </div>
 
       <div className="sidebar-stats">

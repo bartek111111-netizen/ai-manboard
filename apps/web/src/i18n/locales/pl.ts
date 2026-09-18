@@ -303,4 +303,13 @@ export const pl = {
   launchModeSessionDesc:
     "Model zatrzyma się razem z dashboardem (gdy dashboard się zamknie).",
   launchModeTag: "Tryb uruchomienia",
+
+  // DSH control (left sidebar) — start/stop the DeepSeek Harness process.
+  // The operation runs in the background and takes a few seconds, so a busy
+  // state + note tell the user something is happening while they wait.
+  dshStart: "Odpal DSH",
+  dshStop: "Zatrzymaj DSH",
+  dshBusyStart: "Odpalam DSH…",
+  dshBusyStop: "Zatrzymuję DSH…",
+  dshBusyNote: "Komenda DSH wykonuje się w tle — poczekaj chwilę…",
 } as const;

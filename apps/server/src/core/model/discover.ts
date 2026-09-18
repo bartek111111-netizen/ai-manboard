@@ -2,8 +2,13 @@
  * Model discovery (PLAN §8.1, FM-2): recursive scan of `global.modelDirs`
  * (depth ≤ 4), matching each engine's `filePatterns`. Results are cached in
  * `state/models-cache.json` (path + mtime + size) so a rescan is differential:
- * only new files create model configs; deleted files are reported, never
- * auto-removed (S-5: the dashboard never deletes model files).
+ * only new files create model configs.
+ *
+ * A model whose backing file has left the disk (deleted / moved) is dropped
+ * from the dashboard on the next scan — its config (and presets) are removed
+ * so the list always mirrors what is actually on disk. The **file itself** is
+ * never touched (S-5: the dashboard never deletes model files); it is already
+ * gone by hand, we just stop tracking it.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -30,7 +35,7 @@ export type ModelCache = Record<string, CacheEntry>;
 export interface DiscoverResult {
   /** Model ids created by this scan. */
   added: string[];
-  /** Model file paths that disappeared since the last scan. */
+  /** Model ids dropped from the dashboard because their file is gone. */
   removed: string[];
   /** Total number of models after the scan. */
   total: number;
@@ -129,7 +134,6 @@ export function discoverModels(store: ConfigStore, engines: InferenceEngine[]): 
     }
   }
 
-  const cache = readCache(home);
   const added: string[] = [];
   for (const [path, info] of found) {
     if (store.readModel(info.modelId) === null) {
@@ -147,7 +151,21 @@ export function discoverModels(store: ConfigStore, engines: InferenceEngine[]): 
     }
   }
 
-  const removed = Object.keys(cache).filter((p) => !found.has(p));
+  // Drop models whose backing file has left the disk (deleted / moved). The
+  // config + its presets are removed; the file itself is never touched (S-5).
+  // We check the actual file on disk (not just the scan result) so manually
+  // added models pointing outside `modelDirs` are handled correctly too.
+  const removed: string[] = [];
+  for (const id of store.listModelIds()) {
+    const cfg = store.readModel(id);
+    const p = cfg?.params?.model;
+    if (typeof p === 'string' && p.length > 0 && !existsSync(p)) {
+      store.deleteModel(id);
+      removed.push(id);
+    }
+  }
+
+  // Refresh the scan cache to mirror the current disk state.
   writeCache(home, Object.fromEntries(found));
 
   return { added, removed, total: store.listModelIds().length };

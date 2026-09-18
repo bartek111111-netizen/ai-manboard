@@ -106,8 +106,10 @@ export interface ExternalInstanceView {
 
 /** Result of `POST /api/v1/models/discover`. */
 export interface DiscoverResult {
-  added: number;
-  removed: number;
+  /** Model ids created by the scan. */
+  added: string[];
+  /** Model ids dropped because their file is gone. */
+  removed: string[];
   total: number;
 }
 

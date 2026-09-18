@@ -102,8 +102,8 @@ export function ModelList() {
       setTimeout(() => {
         const hiddenCount = models.filter((m) => m.hidden).length;
         setScanResult({
-          added: result.added,
-          removed: result.removed,
+          added: result.added.length,
+          removed: result.removed.length,
           total: result.total,
           hidden: hiddenCount,
         });
@@ -141,7 +141,9 @@ export function ModelList() {
       {scanResult && (
         <div className="scan-result">
           <span>
-            {t("scanResult")} +{scanResult.added}, łącznie {scanResult.total}
+            {t("scanResult")} +{scanResult.added}
+            {scanResult.removed > 0 ? `, -${scanResult.removed}` : ""}, łącznie{" "}
+            {scanResult.total}
             {scanResult.hidden > 0 ? ` (${scanResult.hidden} ukryte)` : ""}
           </span>
           <button

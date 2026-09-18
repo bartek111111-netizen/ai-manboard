@@ -64,7 +64,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const doScan = (): void => {
     void run(async () => {
       const result = await discoverModels();
-      setScanResult({ added: result.added, total: result.total });
+      setScanResult({ added: result.added.length, total: result.total });
       setSaveError(null);
     });
   };

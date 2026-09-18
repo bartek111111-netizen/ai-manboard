@@ -60,7 +60,7 @@ describe('discoverModels (FM-2: scan modelDirs, depth ≤4, incremental)', () =>
     expect(second.total).toBe(1);
   });
 
-  it('reports disappeared files as removed, never deletes the file (S-5)', () => {
+  it('drops a model whose file left the disk, never deletes the file (S-5)', () => {
     const { store, root } = tempHome();
     const modelDir = join(root, 'modele');
     mkdirSync(modelDir, { recursive: true });
@@ -69,12 +69,13 @@ describe('discoverModels (FM-2: scan modelDirs, depth ≤4, incremental)', () =>
     store.writeGlobal({ ...store.readGlobal(), modelDirs: [modelDir] });
 
     discoverModels(store, listEngines());
-    // Simulate the model file leaving disk (e.g. user moved it).
+    // Simulate the model file leaving disk (e.g. user deleted it).
     unlinkSync(file);
     const result = discoverModels(store, listEngines());
-    expect(result.removed).toEqual([file]);
-    // The model config still exists (dashboard never auto-deletes it).
-    expect(store.listModelIds().length).toBe(1);
+    // The model config is removed from the list (its file is gone).
+    const id = modelIdFor(file);
+    expect(result.removed).toEqual([id]);
+    expect(store.listModelIds().length).toBe(0);
     // And the file was never touched by the dashboard (it is already gone by hand).
     expect(existsSync(file)).toBe(false);
   });

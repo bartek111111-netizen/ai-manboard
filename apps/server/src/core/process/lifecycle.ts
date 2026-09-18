@@ -348,15 +348,8 @@ export class LifecycleManager {
       null;
     if (!pid) return { cpuPct: null, rssMB: null };
 
-    // RSS (KB) from /proc/<pid>/status.
-    let rssMB: number | null = null;
-    try {
-      const status = readFileSync(`/proc/${pid}/status`, "utf8");
-      const match = status.match(/VmRSS:\s+(\d+)\s+kB/);
-      if (match) rssMB = Math.round(parseInt(match[1], 10) / 1024);
-    } catch {
-      // RSS unavailable — leave null
-    }
+    // RSS (MB) from /proc/<pid>/status — shared, best-effort (null when gone).
+    const rssMB = readRssMB(pid);
 
     // CPU% from the delta of cumulative jiffies (/proc/<pid>/stat).
     let cpuPct: number | null = null;
@@ -364,14 +357,8 @@ export class LifecycleManager {
     if (jiffies !== null) {
       const now = Date.now();
       const prev = this.lastJiffies.get(instanceId);
-      if (prev) {
-        const dtSec = (now - prev.ts) / 1000;
-        if (dtSec > 0) {
-          const cpuSec = (jiffies - prev.jiffies) / 100; // 100 Hz kernel tick
-          cpuPct = Math.max(0, (cpuSec / dtSec) * 100);
-        }
-      }
-      this.lastJiffies.set(instanceId, { jiffies, ts: Date.now() });
+      if (prev) cpuPct = cpuPctDelta(prev, { jiffies, ts: now });
+      this.lastJiffies.set(instanceId, { jiffies, ts: now });
     }
     return { cpuPct, rssMB };
   }
@@ -585,7 +572,7 @@ export class LifecycleManager {
   private autoSaveLogs(instanceId: string, logs: LogLine[]): void {
     try {
       if (logs.length === 0) return;
-      const modelId = instanceId.split("--")[0];
+      const { modelId } = resolveInstanceId(instanceId);
       const content = logs
         .map((l) => `[${new Date(l.ts).toISOString()}] ${l.line}`)
         .join("\n");
@@ -742,19 +729,39 @@ export class LifecycleManager {
  * Reads the process's cumulative CPU jiffies (utime+stime) from
  * /proc/<pid>/stat. Returns null when the file can't be read (process gone).
  * The (comm) field may contain spaces, so the fields are split after the LAST
- * ')': after it, field 14 (utime) is token index 11 and field 15 (stime) is
- * token index 12.
+ * ')': the CPU-time fields are tokens 11 (utime) and 12 (stime) after it.
  */
 function readProcCpuJiffies(pid: number): number | null {
   try {
     const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
     const close = stat.lastIndexOf(")");
     const fields = stat.slice(close + 1).trim().split(/\s+/);
-    const utime = Number(fields[11]); // field 14
-    const stime = Number(fields[12]); // field 15
+    const utime = Number(fields[11]);
+    const stime = Number(fields[12]);
     if (!Number.isFinite(utime) || !Number.isFinite(stime)) return null;
     return utime + stime;
   } catch {
     return null;
   }
+}
+
+/** Below this the /proc jiffies delta is too quantized to trust as a LIVE rate. */
+const MIN_CPU_POLL_SEC = 0.5;
+
+/**
+ * A LIVE per-process CPU% from two samples of the process's cumulative CPU
+ * jiffies over a wall-clock window. Returns `null` when the window is shorter
+ * than `MIN_CPU_POLL_SEC` (racing or throttled polls — the rate would be an
+ * unreliable spike), otherwise the aggregate % over the window. Like `top`, a
+ * multi-threaded process can report above 100 (one core = 100%).
+ */
+export function cpuPctDelta(
+  prev: { jiffies: number; ts: number },
+  now: { jiffies: number; ts: number },
+): number | null {
+  const dtSec = (now.ts - prev.ts) / 1000;
+  if (dtSec < MIN_CPU_POLL_SEC) return null;
+  const cpuSec = (now.jiffies - prev.jiffies) / 100; // 100 Hz kernel tick
+  if (cpuSec <= 0) return 0;
+  return (cpuSec / dtSec) * 100;
 }

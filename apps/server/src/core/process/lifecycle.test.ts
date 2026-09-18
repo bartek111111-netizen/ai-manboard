@@ -15,7 +15,7 @@ import { HealthProber } from '../health/prober.js';
 import { LogWriter } from '../logs/writer.js';
 import { ProcessManager } from './manager.js';
 import { PidRegistry } from './registry.js';
-import { LifecycleManager } from './lifecycle.js';
+import { LifecycleManager, cpuPctDelta } from './lifecycle.js';
 
 const MODEL_ID = 'smollm2-a1b2c3d4';
 const INSTANCE = `${MODEL_ID}--fast`;
@@ -219,5 +219,27 @@ describe('LifecycleManager', () => {
       lifecycle.shutdown();
       await lifecycle.stop(INSTANCE);
     }
+  });
+});
+
+describe('cpuPctDelta (LIVE per-process CPU%)', () => {
+  const t0 = 1_000_000;
+  it('computes the aggregate % over the window', () => {
+    // 5 CPU-seconds (500 jiffies) over 10 wall-seconds → 50% of one core.
+    expect(cpuPctDelta({ jiffies: 0, ts: t0 }, { jiffies: 500, ts: t0 + 10_000 })).toBe(50);
+  });
+  it('can exceed 100 for a multi-threaded process (like top)', () => {
+    // 15 CPU-seconds over 10s (≈3 cores busy) → 150%.
+    expect(cpuPctDelta({ jiffies: 0, ts: t0 }, { jiffies: 1500, ts: t0 + 10_000 })).toBe(150);
+  });
+  it('returns 0 for a flat (no CPU) window', () => {
+    expect(cpuPctDelta({ jiffies: 1000, ts: t0 }, { jiffies: 1000, ts: t0 + 10_000 })).toBe(0);
+  });
+  it('returns null for a too-short (racing/throttled) window', () => {
+    // 0.1s < MIN_CPU_POLL_SEC (0.5s) → not a representative rate.
+    expect(cpuPctDelta({ jiffies: 0, ts: t0 }, { jiffies: 20, ts: t0 + 100 })).toBeNull();
+  });
+  it('clamps a negative (clock went backwards) delta to 0', () => {
+    expect(cpuPctDelta({ jiffies: 100, ts: t0 }, { jiffies: 90, ts: t0 + 10_000 })).toBe(0);
   });
 });
